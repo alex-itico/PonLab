@@ -4,7 +4,7 @@
 
 ![PonLab Logo](resources/icons/app_icon_128x128.png)
 
-*Una aplicación de escritorio para la simulación y visualización de redes de fibra óptica PON*
+_Una aplicación de escritorio para la simulación y visualización de redes de fibra óptica PON_
 
 [![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)](https://python.org)
 [![PyQt5](https://img.shields.io/badge/PyQt5-5.15+-green.svg)](https://pypi.org/project/PyQt5/)
@@ -42,23 +42,26 @@
 ### Pasos de instalación
 
 1. **Clonar el repositorio:**
+
    ```bash
    git clone https://github.com/alex-itico/PonLab.git
    cd PonLab
    ```
 
 2. **Crear un entorno virtual (recomendado):**
+
    ```bash
    python -m venv venv
-   
+
    # En Windows
    venv\Scripts\activate
-   
+
    # En Linux/macOS
    source venv/bin/activate
    ```
 
 3. **Instalar dependencias:**
+
    ```bash
    pip install -r requirements.txt
    ```
@@ -79,16 +82,17 @@
 
 ### Atajos de Teclado
 
-| Atajo | Función |
-|-------|---------|
-| `C` | Centrar vista en el origen (0, 0) |
-| `R` | Resetear vista (centrar y restaurar zoom) |
-| `Ctrl+I` | Mostrar/Ocultar panel de información |
-| `Ctrl+G` | Mostrar/Ocultar cuadrícula |
+| Atajo    | Función                                   |
+| -------- | ----------------------------------------- |
+| `C`      | Centrar vista en el origen (0, 0)         |
+| `R`      | Resetear vista (centrar y restaurar zoom) |
+| `Ctrl+I` | Mostrar/Ocultar panel de información      |
+| `Ctrl+G` | Mostrar/Ocultar cuadrícula                |
 
 ### Menú Contextual
 
 Haz clic derecho en el canvas para acceder a:
+
 - Opciones de navegación
 - Configuración de cuadrícula
 - Controles de zoom
@@ -122,39 +126,3 @@ PonLab/
     ├── resource_manager.py # Gestor de recursos
     └── validators.py     # Validadores
 ```
-
-## 🎨 Capturas de Pantalla
-
-*[Aquí podrías agregar capturas de pantalla de la aplicación]*
-
-## 🤝 Contribución
-
-Las contribuciones son bienvenidas. Para contribuir:
-
-1. Fork el proyecto
-2. Crea una rama para tu feature (`git checkout -b feature/AmazingFeature`)
-3. Commit tus cambios (`git commit -m 'Add some AmazingFeature'`)
-4. Push a la rama (`git push origin feature/AmazingFeature`)
-5. Abre un Pull Request
-
-## 📝 Licencia
-
-Este proyecto está bajo la Licencia MIT. Ver el archivo [LICENSE](LICENSE) para más detalles.
-
-## 👨‍💻 Autor
-
-**alex-itico**
-- GitHub: [@alex-itico](https://github.com/alex-itico)
-
-## 🙏 Agradecimientos
-
-- Comunidad de PyQt5 por la documentación y ejemplos
-- Colaboradores y testers que ayudaron a mejorar el proyecto
-
----
-
-<div align="center">
-
-**⭐ Si este proyecto te resulta útil, no olvides darle una estrella ⭐**
-
-</div>
