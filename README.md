@@ -120,39 +120,3 @@ PonLab/
     ├── resource_manager.py # Gestor de recursos
     └── validators.py     # Validadores
 ```
-
-## 🎨 Capturas de Pantalla
-
-*[Aquí podrías agregar capturas de pantalla de la aplicación]*
-
-## 🤝 Contribución
-
-Las contribuciones son bienvenidas. Para contribuir:
-
-1. Fork el proyecto
-2. Crea una rama para tu feature (`git checkout -b feature/AmazingFeature`)
-3. Commit tus cambios (`git commit -m 'Add some AmazingFeature'`)
-4. Push a la rama (`git push origin feature/AmazingFeature`)
-5. Abre un Pull Request
-
-## 📝 Licencia
-
-Este proyecto está bajo la Licencia MIT. Ver el archivo [LICENSE](LICENSE) para más detalles.
-
-## 👨‍💻 Autor
-
-**alex-itico**
-- GitHub: [@alex-itico](https://github.com/alex-itico)
-
-## 🙏 Agradecimientos
-
-- Comunidad de PyQt5 por la documentación y ejemplos
-- Colaboradores y testers que ayudaron a mejorar el proyecto
-
----
-
-<div align="center">
-
-**⭐ Si este proyecto te resulta útil, no olvides darle una estrella ⭐**
-
-</div>
