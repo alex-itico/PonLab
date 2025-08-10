@@ -8,8 +8,6 @@ _Una aplicación de escritorio para la simulación y visualización de redes de 
 
 [![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)](https://python.org)
 [![PyQt5](https://img.shields.io/badge/PyQt5-5.15+-green.svg)](https://pypi.org/project/PyQt5/)
-[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-
 </div>
 
 ## 📋 Descripción
