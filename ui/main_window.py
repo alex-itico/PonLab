@@ -71,6 +71,7 @@ class MainWindow(QMainWindow):
         
         # Crear el canvas principal
         self.canvas = Canvas()
+        self.canvas.device_dropped.connect(self.on_device_dropped)
         main_layout.addWidget(self.canvas)
         
         # El canvas ocupa el espacio restante
@@ -123,7 +124,8 @@ class MainWindow(QMainWindow):
         self.components_action = QAction('Mostrar/Ocultar &Componentes', self)
         self.components_action.setCheckable(True)
         self.components_action.setChecked(self.components_visible)
-        self.components_action.setStatusTip('Mostrar u ocultar panel de componentes')
+        self.components_action.setShortcut('Ctrl+P')
+        self.components_action.setStatusTip('Mostrar u ocultar panel de componentes (Ctrl+P)')
         self.components_action.triggered.connect(self.toggle_components)
         view_menu.addAction(self.components_action)
         
@@ -221,9 +223,17 @@ class MainWindow(QMainWindow):
     
     def on_device_selected(self, device_name, device_type):
         """Manejar selección de dispositivo del sidebar"""
-        self.statusBar().showMessage(f'Dispositivo seleccionado: {device_name} ({device_type})', 3000)
-        print(f"Dispositivo para agregar: {device_name} - {device_type}")
-        # TODO: Implementar drag & drop al canvas
+        self.statusBar().showMessage(f'Dispositivo seleccionado: {device_name} ({device_type}) - Arrastra al canvas', 3000)
+        print(f"Dispositivo para arrastrar: {device_name} - {device_type}")
+    
+    def on_device_dropped(self, device_name, device_type, x, y):
+        """Manejar drop de dispositivo en el canvas"""
+        self.statusBar().showMessage(f'Dispositivo {device_type} agregado en ({x:.1f}, {y:.1f})', 4000)
+        print(f"✅ {device_type} agregado en canvas en posición ({x:.1f}, {y:.1f})")
+        
+        # Actualizar información si es necesario
+        device_count = self.canvas.get_device_manager().get_device_count()
+        print(f"📊 Total de dispositivos en canvas: {device_count}")
     
     def toggle_grid(self):
         """Alternar visibilidad de la cuadrícula y el origen"""

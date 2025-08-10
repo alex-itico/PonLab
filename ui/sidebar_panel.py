@@ -4,9 +4,9 @@ Panel lateral que contiene dispositivos y controles para el simulador de redes p
 """
 
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, 
-                             QScrollArea, QFrame, QPushButton, QSizePolicy)
-from PyQt5.QtCore import Qt, pyqtSignal
-from PyQt5.QtGui import QFont, QPixmap, QPainter, QColor, QPen, QBrush
+                             QScrollArea, QFrame, QPushButton, QSizePolicy, QApplication)
+from PyQt5.QtCore import Qt, pyqtSignal, QMimeData, QPoint
+from PyQt5.QtGui import QFont, QPixmap, QPainter, QColor, QPen, QBrush, QDrag
 from PyQt5.QtSvg import QSvgRenderer
 from utils.constants import DEFAULT_SIDEBAR_WIDTH
 import os
@@ -15,11 +15,13 @@ class DeviceItem(QFrame):
     """Widget para representar un dispositivo individual"""
     
     device_clicked = pyqtSignal(str)  # Señal emitida al hacer click
+    drag_started = pyqtSignal(str, str)  # device_name, device_type
     
     def __init__(self, device_name, device_type, parent=None):
         super().__init__(parent)
         self.device_name = device_name
         self.device_type = device_type
+        self.drag_start_position = QPoint()
         self.setup_ui()
     
     def setup_ui(self):
@@ -101,17 +103,30 @@ class DeviceItem(QFrame):
             renderer = QSvgRenderer(svg_path)
             
             if renderer.isValid():
+                # Renderizar con alta calidad para evitar pixelado
+                scale_factor = 2.0  # Renderizar a 2x resolución
+                high_res_size = int(40 * scale_factor)
+                
                 # Crear pixmap para renderizar el SVG
-                pixmap = QPixmap(40, 40)
+                pixmap = QPixmap(high_res_size, high_res_size)
                 pixmap.fill(Qt.transparent)  # Fondo completamente transparente
                 
-                # Renderizar SVG en el pixmap
+                # Renderizar SVG en el pixmap con alta calidad
                 painter = QPainter(pixmap)
-                painter.setRenderHint(QPainter.Antialiasing)
+                painter.setRenderHint(QPainter.Antialiasing, True)
+                painter.setRenderHint(QPainter.SmoothPixmapTransform, True)
+                painter.setRenderHint(QPainter.HighQualityAntialiasing, True)
                 renderer.render(painter)
                 painter.end()
                 
-                self.icon_label.setPixmap(pixmap)
+                # Escalar al tamaño final con suavizado
+                final_pixmap = pixmap.scaled(
+                    40, 40,
+                    Qt.KeepAspectRatio,
+                    Qt.SmoothTransformation
+                )
+                
+                self.icon_label.setPixmap(final_pixmap)
             else:
                 self.create_fallback_icon()
                 
@@ -156,7 +171,95 @@ class DeviceItem(QFrame):
         """Manejar click del mouse"""
         if event.button() == Qt.LeftButton:
             self.device_clicked.emit(self.device_name)
+            self.drag_start_position = event.pos()
         super().mousePressEvent(event)
+    
+    def mouseMoveEvent(self, event):
+        """Manejar movimiento del mouse para iniciar drag"""
+        if not (event.buttons() & Qt.LeftButton):
+            return
+        
+        if ((event.pos() - self.drag_start_position).manhattanLength() < 
+            QApplication.startDragDistance()):
+            return
+        
+        # Iniciar operación de drag
+        self.start_drag()
+    
+    def start_drag(self):
+        """Iniciar operación de drag & drop"""
+        drag = QDrag(self)
+        mime_data = QMimeData()
+        
+        # Establecer datos del dispositivo
+        device_data = f"{self.device_name}|{self.device_type}"
+        mime_data.setText(device_data)
+        
+        # Crear pixmap para mostrar durante el drag
+        drag_pixmap = self.create_drag_pixmap()
+        drag.setPixmap(drag_pixmap)
+        drag.setHotSpot(QPoint(drag_pixmap.width()//2, drag_pixmap.height()//2))
+        
+        drag.setMimeData(mime_data)
+        
+        # Emitir señal de inicio de drag
+        self.drag_started.emit(self.device_name, self.device_type)
+        
+        # Ejecutar drag
+        drop_action = drag.exec_(Qt.CopyAction)
+    
+    def create_drag_pixmap(self):
+        """Crear pixmap para mostrar durante el drag"""
+        # Obtener el icono actual del dispositivo
+        current_pixmap = self.icon_label.pixmap()
+        
+        if current_pixmap and not current_pixmap.isNull():
+            # Crear una versión semi-transparente del icono para drag
+            drag_pixmap = QPixmap(current_pixmap.size())
+            drag_pixmap.fill(Qt.transparent)
+            
+            painter = QPainter(drag_pixmap)
+            painter.setOpacity(0.7)  # Semi-transparente
+            painter.drawPixmap(0, 0, current_pixmap)
+            painter.end()
+            
+            return drag_pixmap
+        else:
+            # Crear pixmap de respaldo si no hay icono
+            return self.create_fallback_drag_pixmap()
+    
+    def create_fallback_drag_pixmap(self):
+        """Crear pixmap de respaldo para drag"""
+        pixmap = QPixmap(40, 40)
+        pixmap.fill(Qt.transparent)
+        
+        painter = QPainter(pixmap)
+        painter.setRenderHint(QPainter.Antialiasing)
+        painter.setOpacity(0.7)
+        
+        # Color según tipo de dispositivo
+        if self.device_type == "OLT":
+            color = QColor(52, 152, 219)  # Azul
+        elif self.device_type == "ONU":
+            color = QColor(46, 204, 113)  # Verde
+        else:
+            color = QColor(149, 165, 166)  # Gris
+        
+        # Dibujar rectángulo redondeado
+        painter.setPen(QPen(color, 2))
+        painter.setBrush(QBrush(color.lighter(180)))
+        painter.drawRoundedRect(2, 2, 36, 36, 6, 6)
+        
+        # Dibujar texto inicial
+        painter.setPen(QPen(Qt.white))
+        font = QFont()
+        font.setBold(True)
+        font.setPointSize(12)
+        painter.setFont(font)
+        painter.drawText(pixmap.rect(), Qt.AlignCenter, self.device_type[:2])
+        
+        painter.end()
+        return pixmap
     
     def set_theme(self, dark_theme):
         """Actualizar tema del dispositivo"""
