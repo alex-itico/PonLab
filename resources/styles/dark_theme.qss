@@ -1,0 +1,147 @@
+/*
+Tema Oscuro para Simulador de Redes Ópticas Pasivas
+*/
+
+/* Ventana Principal */
+QMainWindow {
+    background-color: #2b2b2b;
+    color: #ffffff;
+}
+
+/* Barra de Menú */
+QMenuBar {
+    background-color: #3c3c3c;
+    color: #ffffff;
+    border-bottom: 1px solid #555555;
+    padding: 4px;
+}
+
+QMenuBar::item {
+    background-color: transparent;
+    padding: 4px 8px;
+    border-radius: 4px;
+}
+
+QMenuBar::item:selected {
+    background-color: #4a90e2;
+    color: #ffffff;
+}
+
+QMenuBar::item:pressed {
+    background-color: #357abd;
+}
+
+/* Menús Desplegables */
+QMenu {
+    background-color: #3c3c3c;
+    color: #ffffff;
+    border: 1px solid #555555;
+    border-radius: 4px;
+    padding: 4px;
+}
+
+QMenu::item {
+    padding: 6px 20px;
+    border-radius: 4px;
+}
+
+QMenu::item:selected {
+    background-color: #4a90e2;
+    color: #ffffff;
+}
+
+QMenu::separator {
+    height: 1px;
+    background-color: #555555;
+    margin: 4px 0px;
+}
+
+/* Barra de Estado */
+QStatusBar {
+    background-color: #3c3c3c;
+    color: #cccccc;
+    border-top: 1px solid #555555;
+}
+
+/* Widgets Centrales */
+QWidget {
+    background-color: #2b2b2b;
+    color: #ffffff;
+}
+
+/* Botones */
+QPushButton {
+    background-color: #4a90e2;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    font-weight: bold;
+}
+
+QPushButton:hover {
+    background-color: #357abd;
+}
+
+QPushButton:pressed {
+    background-color: #2a5a8a;
+}
+
+/* Scrollbars */
+QScrollBar:vertical {
+    background-color: #404040;
+    width: 12px;
+    border-radius: 6px;
+}
+
+QScrollBar::handle:vertical {
+    background-color: #666666;
+    min-height: 20px;
+    border-radius: 6px;
+}
+
+QScrollBar::handle:vertical:hover {
+    background-color: #888888;
+}
+
+QScrollBar:horizontal {
+    background-color: #404040;
+    height: 12px;
+    border-radius: 6px;
+}
+
+QScrollBar::handle:horizontal {
+    background-color: #666666;
+    min-width: 20px;
+    border-radius: 6px;
+}
+
+QScrollBar::handle:horizontal:hover {
+    background-color: #888888;
+}
+
+/* Canvas y Graphics View */
+QGraphicsView {
+    border: 2px solid #555555;
+    border-radius: 4px;
+    background-color: #1e1e1e;
+}
+
+/* Ocultar scrollbars del canvas */
+QGraphicsView QScrollBar:horizontal,
+QGraphicsView QScrollBar:vertical {
+    background: transparent;
+    width: 0px;
+    height: 0px;
+    border: none;
+}
+
+/* Diálogos */
+QMessageBox {
+    background-color: #3c3c3c;
+    color: #ffffff;
+}
+
+QMessageBox QPushButton {
+    min-width: 80px;
+}

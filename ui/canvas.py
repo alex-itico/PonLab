@@ -1,0 +1,850 @@
+"""
+Canvas (QGraphicsScene)
+Canvas principal para diseñar la topología de red óptica
+Cuadrícula infinita centrada con origen visual y información del mouse
+"""
+
+from PyQt5.QtWidgets import (QGraphicsView, QGraphicsScene, QWidget, 
+                             QGraphicsEllipseItem, QGraphicsLineItem, 
+                             QGraphicsTextItem, QGraphicsRectItem, QLabel,
+                             QGraphicsItem, QMenu, QAction, QActionGroup, QShortcut)
+from PyQt5.QtCore import Qt, QRectF, QPoint
+from PyQt5.QtGui import QPen, QBrush, QColor, QPainter, QCursor, QFont, QKeySequence
+from .map_overlay_toggle import MapOverlayToggle
+from utils.constants import DEFAULT_CANVAS_WIDTH, DEFAULT_CANVAS_HEIGHT
+
+class Canvas(QGraphicsView):
+    """Clase de canvas con cuadrícula infinita centrada"""
+    
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        
+        # Variables de estado
+        self.grid_visible = True
+        self.origin_visible = True
+        self.grid_size = 20  # Tamaño por defecto
+        self.zoom_factor = 1.0
+        self.dark_theme = False
+        
+        # Variables para pan con botón central
+        self.pan_active = False
+        self.last_pan_point = None
+        self.last_context_pos = QPoint(0, 0)  # Para el menú contextual
+        
+        # Variables de visibilidad
+        self.info_panel_visible = True
+        
+        # Configurar la escena
+        scene_size = 10000  # Escena muy grande para simular infinito
+        self.scene = QGraphicsScene(self)
+        self.scene.setSceneRect(-scene_size/2, -scene_size/2, scene_size, scene_size)
+        self.setScene(self.scene)
+        
+        # Configurar canvas
+        self.setup_canvas()
+        self.setup_grid()
+        self.setup_origin()
+        
+        # Centrar en el origen
+        self.centerOn(0, 0)
+        
+        # Crear info panel
+        self.setup_info_panel()
+        
+        # Crear botón de máscara de mapa
+        self.setup_map_overlay_toggle()
+        
+        # Configurar shortcuts globales
+        self.setup_shortcuts()
+    
+    def setup_canvas(self):
+        """Configurar propiedades básicas del canvas"""
+        # Renderizado de alta calidad
+        self.setRenderHint(QPainter.Antialiasing)
+        self.setRenderHint(QPainter.TextAntialiasing)
+        self.setRenderHint(QPainter.SmoothPixmapTransform)
+        
+        # Sin scrollbars
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        
+        # Configuración de transformación
+        self.setTransformationAnchor(QGraphicsView.AnchorUnderMouse)
+        self.setResizeAnchor(QGraphicsView.AnchorUnderMouse)
+        
+        # Modo de arrastre
+        self.setDragMode(QGraphicsView.NoDrag)
+        
+        # Color de fondo
+        self.update_background_color()
+        
+        # Cursor por defecto
+        self.setCursor(QCursor(Qt.CrossCursor))
+        
+        # Configurar foco para recibir eventos de teclado
+        self.setFocusPolicy(Qt.StrongFocus)
+        
+        # Habilitar tracking del mouse para info panel
+        self.setMouseTracking(True)
+    
+    def setup_info_panel(self):
+        """Configurar panel de información en esquina inferior derecha"""
+        self.info_label = QLabel(self)
+        
+        # Determinar colores según tema
+        if hasattr(self, 'dark_theme') and self.dark_theme:
+            bg_color = "rgba(40, 40, 40, 220)"
+            text_color = "#FFFFFF"
+            border_color = "#666666"
+        else:
+            bg_color = "rgba(255, 255, 255, 240)"
+            text_color = "#2c2c2c"
+            border_color = "#cccccc"
+        
+        self.info_label.setStyleSheet(f"""
+            QLabel {{
+                background-color: {bg_color};
+                color: {text_color};
+                padding: 12px 16px;
+                border: 2px solid {border_color};
+                border-radius: 0px;
+                font-family: 'Segoe UI', 'Tahoma', 'Arial', sans-serif;
+                font-size: 12px;
+                font-weight: 500;
+                line-height: 1.4;
+            }}
+        """)
+        self.info_label.setAlignment(Qt.AlignLeft)
+        self.update_info_panel(0, 0)
+        self.position_info_panel()
+        
+        # Aplicar visibilidad inicial
+        if self.info_panel_visible:
+            self.info_label.show()
+        else:
+            self.info_label.hide()
+    
+    def setup_map_overlay_toggle(self):
+        """Configurar el botón de máscara de mapa en esquina inferior izquierda"""
+        self.map_overlay_toggle = MapOverlayToggle(self)
+        
+        # Aplicar tema actual
+        if hasattr(self, 'dark_theme'):
+            self.map_overlay_toggle.set_theme(self.dark_theme)
+        
+        # Conectar señal (por ahora sin funcionalidad específica)
+        self.map_overlay_toggle.toggled.connect(self.on_map_overlay_toggled)
+        
+        # Posicionar en esquina inferior izquierda
+        self.position_map_overlay_toggle()
+        
+        # Mostrar el botón
+        self.map_overlay_toggle.show()
+    
+    def setup_shortcuts(self):
+        """Configurar shortcuts globales para el canvas"""
+        # Shortcut para toggle del panel de información
+        self.info_shortcut = QShortcut(QKeySequence("Ctrl+I"), self)
+        self.info_shortcut.activated.connect(self.toggle_info_panel)
+        
+        # Shortcut para centrar vista
+        self.center_shortcut = QShortcut(QKeySequence("C"), self)
+        self.center_shortcut.activated.connect(self.center_view)
+        
+        # Shortcut para reset vista
+        self.reset_shortcut = QShortcut(QKeySequence("R"), self)
+        self.reset_shortcut.activated.connect(self.reset_view)
+        
+    
+    def position_map_overlay_toggle(self):
+        """Posicionar el botón de mapa en la esquina inferior izquierda"""
+        if not hasattr(self, 'map_overlay_toggle'):
+            return
+            
+        # Posicionar en esquina inferior izquierda con margen
+        margin = 15
+        self.map_overlay_toggle.move(margin, self.height() - self.map_overlay_toggle.height() - margin)
+    
+    def on_map_overlay_toggled(self, is_active):
+        """Manejar cambio del botón de máscara de mapa"""
+        # Por ahora solo imprimir el cambio
+        state = "activada" if is_active else "desactivada"
+        print(f"Máscara de mapa {state}")
+        # TODO: Implementar lógica para mostrar/ocultar máscara de mapa
+    
+    def position_info_panel(self):
+        """Posicionar el panel de información en la esquina inferior derecha"""
+        if not self.info_panel_visible or not hasattr(self, 'info_label'):
+            return
+            
+        # Asegurarse de que el label tenga el tamaño correcto
+        self.info_label.adjustSize()
+        
+        # Posicionar en esquina inferior derecha con margen
+        margin = 10
+        new_x = self.width() - self.info_label.width() - margin
+        new_y = self.height() - self.info_label.height() - margin
+        
+        self.info_label.move(new_x, new_y)
+        
+        # Asegurar que esté visible si debe estarlo
+        if self.info_panel_visible:
+            self.info_label.show()
+            self.info_label.raise_()  # Traer al frente
+    
+    def update_info_panel(self, scene_x, scene_y):
+        """Actualizar información del panel"""
+        if not self.info_panel_visible:
+            return
+            
+        # Calcular coordenadas de cuadrícula (relativas al origen)
+        grid_x = int(scene_x / self.grid_size)
+        grid_y = int(-scene_y / self.grid_size)  # Y invertido para coordenadas más naturales
+        
+        # Coordenadas del mundo (escena)
+        world_x = int(scene_x)
+        world_y = int(scene_y)
+        
+        info_text = f"""Mouse - Cuadrícula: ({grid_x},{grid_y})
+Mouse - Mundo: ({world_x},{world_y})
+Zoom: {self.zoom_factor:.1f}x
+Tamaño de cuadrícula: {self.grid_size}px"""
+        
+        self.info_label.setText(info_text)
+    
+    def update_background_color(self):
+        """Actualizar color de fondo según el tema"""
+        if self.dark_theme:
+            self.setBackgroundBrush(QBrush(QColor(30, 30, 30)))
+        else:
+            self.setBackgroundBrush(QBrush(QColor(250, 250, 250)))
+    
+    def setup_grid(self):
+        """Configurar y dibujar la cuadrícula infinita"""
+        if not self.grid_visible:
+            return
+        
+        self.clear_grid()
+        
+        # Colores según tema
+        if self.dark_theme:
+            grid_color = QColor(60, 60, 60)
+            major_grid_color = QColor(80, 80, 80)
+        else:
+            grid_color = QColor(220, 220, 220)
+            major_grid_color = QColor(180, 180, 180)
+        
+        # Obtener área visible
+        visible_rect = self.mapToScene(self.viewport().rect()).boundingRect()
+        
+        # Expandir un poco el área para suavizar el scroll
+        margin = self.grid_size * 10
+        start_x = int(visible_rect.left() - margin)
+        end_x = int(visible_rect.right() + margin)
+        start_y = int(visible_rect.top() - margin)
+        end_y = int(visible_rect.bottom() + margin)
+        
+        # Alinear al grid
+        start_x = start_x - (start_x % self.grid_size)
+        start_y = start_y - (start_y % self.grid_size)
+        
+        # Dibujar líneas verticales
+        x = start_x
+        while x <= end_x:
+            # Línea mayor cada 5 líneas
+            is_major = (x % (self.grid_size * 5) == 0)
+            color = major_grid_color if is_major else grid_color
+            width = 1 if not is_major else 1
+            
+            # Crear línea sin borde (solo con el color de línea)
+            pen = QPen(color, width)
+            pen.setStyle(Qt.SolidLine)
+            line = self.scene.addLine(x, start_y, x, end_y, pen)
+            line.setZValue(-10)  # Muy al fondo
+            x += self.grid_size
+        
+        # Dibujar líneas horizontales
+        y = start_y
+        while y <= end_y:
+            # Línea mayor cada 5 líneas
+            is_major = (y % (self.grid_size * 5) == 0)
+            color = major_grid_color if is_major else grid_color
+            width = 1 if not is_major else 1
+            
+            # Crear línea sin borde (solo con el color de línea)
+            pen = QPen(color, width)
+            pen.setStyle(Qt.SolidLine)
+            line = self.scene.addLine(start_x, y, end_x, y, pen)
+            line.setZValue(-10)  # Muy al fondo
+            y += self.grid_size
+    
+    def clear_grid(self):
+        """Limpiar cuadrícula existente"""
+        for item in self.scene.items():
+            if hasattr(item, 'zValue') and item.zValue() == -10:
+                self.scene.removeItem(item)
+    
+    def setup_origin(self):
+        """Configurar origen en el centro (0,0)"""
+        if not self.origin_visible:
+            return
+        
+        self.clear_origin()
+        
+        # Colores según el tema
+        origin_red = QColor(220, 50, 50)
+        # Las flechas cambian de color según el tema
+        axis_color = QColor(50, 50, 50) if not self.dark_theme else QColor(220, 220, 220)
+        text_color = QColor(100, 100, 100) if not self.dark_theme else QColor(200, 200, 200)
+        
+        # 1. Línea eje X completa (de -30 a +30) - FONDO
+        arrow_length = 30
+        x_line = QGraphicsLineItem(-arrow_length, 0, arrow_length, 0)
+        x_line.setPen(QPen(axis_color, 2))
+        x_line.setZValue(-5)  # Detrás del cuadrado y círculo
+        x_line.setFlag(QGraphicsItem.ItemIgnoresTransformations, True)
+        self.scene.addItem(x_line)
+        
+        # Punta de flecha X positiva
+        arrow_size = 4
+        x_arrow1_pos = QGraphicsLineItem(arrow_length, 0, arrow_length-arrow_size, -arrow_size/2)
+        x_arrow1_pos.setPen(QPen(axis_color, 2))
+        x_arrow1_pos.setZValue(-5)
+        x_arrow1_pos.setFlag(QGraphicsItem.ItemIgnoresTransformations, True)
+        self.scene.addItem(x_arrow1_pos)
+        
+        x_arrow2_pos = QGraphicsLineItem(arrow_length, 0, arrow_length-arrow_size, arrow_size/2)
+        x_arrow2_pos.setPen(QPen(axis_color, 2))
+        x_arrow2_pos.setZValue(-5)
+        x_arrow2_pos.setFlag(QGraphicsItem.ItemIgnoresTransformations, True)
+        self.scene.addItem(x_arrow2_pos)
+        
+        # Punta de flecha X negativa
+        x_arrow1_neg = QGraphicsLineItem(-arrow_length, 0, -arrow_length+arrow_size, -arrow_size/2)
+        x_arrow1_neg.setPen(QPen(axis_color, 2))
+        x_arrow1_neg.setZValue(-5)
+        x_arrow1_neg.setFlag(QGraphicsItem.ItemIgnoresTransformations, True)
+        self.scene.addItem(x_arrow1_neg)
+        
+        x_arrow2_neg = QGraphicsLineItem(-arrow_length, 0, -arrow_length+arrow_size, arrow_size/2)
+        x_arrow2_neg.setPen(QPen(axis_color, 2))
+        x_arrow2_neg.setZValue(-5)
+        x_arrow2_neg.setFlag(QGraphicsItem.ItemIgnoresTransformations, True)
+        self.scene.addItem(x_arrow2_neg)
+        
+        # 2. Línea eje Y completa (de -30 a +30) - FONDO
+        y_line = QGraphicsLineItem(0, -arrow_length, 0, arrow_length)
+        y_line.setPen(QPen(axis_color, 2))
+        y_line.setZValue(-5)  # Detrás del cuadrado y círculo
+        y_line.setFlag(QGraphicsItem.ItemIgnoresTransformations, True)
+        self.scene.addItem(y_line)
+        
+        # Punta de flecha Y positiva (hacia arriba)
+        y_arrow1_pos = QGraphicsLineItem(0, -arrow_length, -arrow_size/2, -arrow_length+arrow_size)
+        y_arrow1_pos.setPen(QPen(axis_color, 2))
+        y_arrow1_pos.setZValue(-5)
+        y_arrow1_pos.setFlag(QGraphicsItem.ItemIgnoresTransformations, True)
+        self.scene.addItem(y_arrow1_pos)
+        
+        y_arrow2_pos = QGraphicsLineItem(0, -arrow_length, arrow_size/2, -arrow_length+arrow_size)
+        y_arrow2_pos.setPen(QPen(axis_color, 2))
+        y_arrow2_pos.setZValue(-5)
+        y_arrow2_pos.setFlag(QGraphicsItem.ItemIgnoresTransformations, True)
+        self.scene.addItem(y_arrow2_pos)
+        
+        # Punta de flecha Y negativa (hacia abajo)
+        y_arrow1_neg = QGraphicsLineItem(0, arrow_length, -arrow_size/2, arrow_length-arrow_size)
+        y_arrow1_neg.setPen(QPen(axis_color, 2))
+        y_arrow1_neg.setZValue(-5)
+        y_arrow1_neg.setFlag(QGraphicsItem.ItemIgnoresTransformations, True)
+        self.scene.addItem(y_arrow1_neg)
+        
+        y_arrow2_neg = QGraphicsLineItem(0, arrow_length, arrow_size/2, arrow_length-arrow_size)
+        y_arrow2_neg.setPen(QPen(axis_color, 2))
+        y_arrow2_neg.setZValue(-5)
+        y_arrow2_neg.setFlag(QGraphicsItem.ItemIgnoresTransformations, True)
+        self.scene.addItem(y_arrow2_neg)
+        
+        # 3. Cuadrado central rojo más pequeño - ADELANTE
+        square_size = 4
+        origin_square = QGraphicsRectItem(-square_size/2, -square_size/2, 
+                                         square_size, square_size)
+        origin_square.setPen(QPen(origin_red, 1))
+        origin_square.setBrush(QBrush(origin_red))
+        origin_square.setZValue(1)  # Adelante de las flechas
+        origin_square.setFlag(QGraphicsItem.ItemIgnoresTransformations, True)
+        self.scene.addItem(origin_square)
+        
+        # 4. Circunferencia roja alrededor - ADELANTE
+        circle_radius = 8
+        origin_circle = QGraphicsEllipseItem(-circle_radius, -circle_radius,
+                                           circle_radius * 2, circle_radius * 2)
+        origin_circle.setPen(QPen(origin_red, 1))
+        origin_circle.setBrush(QBrush(Qt.transparent))
+        origin_circle.setZValue(1)  # Adelante de las flechas
+        origin_circle.setFlag(QGraphicsItem.ItemIgnoresTransformations, True)
+        self.scene.addItem(origin_circle)
+        
+        # 5. Etiqueta (0,0) - mantener solo esta en la escena
+        origin_label = QGraphicsTextItem("(0,0)")
+        font = QFont("Arial", 8)
+        origin_label.setFont(font)
+        origin_label.setDefaultTextColor(text_color)
+        # Posición fija relativa al origen
+        origin_label.setPos(10, 5)
+        origin_label.setZValue(2)  # Muy adelante
+        origin_label.setFlag(QGraphicsItem.ItemIgnoresTransformations, True)
+        self.scene.addItem(origin_label)
+        
+        # 6. Crear etiquetas X e Y como widgets overlay (no en la escena)
+        self.setup_axis_labels()
+    
+    def setup_axis_labels(self):
+        """Configurar etiquetas de ejes como overlays fijos"""
+        # Limpiar etiquetas anteriores si existen
+        if hasattr(self, 'x_label_widget'):
+            self.x_label_widget.setParent(None)
+        if hasattr(self, 'y_label_widget'):
+            self.y_label_widget.setParent(None)
+        
+        # Colores según tema
+        axis_color = "#323232" if not self.dark_theme else "#DDDDDD"
+        
+        # Etiqueta X
+        self.x_label_widget = QLabel("X", self)
+        self.x_label_widget.setStyleSheet(f"""
+            QLabel {{
+                color: {axis_color};
+                font-family: Arial;
+                font-size: 12px;
+                font-weight: bold;
+                background: transparent;
+                border: none;
+            }}
+        """)
+        self.x_label_widget.setAlignment(Qt.AlignCenter)
+        
+        # Etiqueta Y
+        self.y_label_widget = QLabel("Y", self)
+        self.y_label_widget.setStyleSheet(f"""
+            QLabel {{
+                color: {axis_color};
+                font-family: Arial;
+                font-size: 12px;
+                font-weight: bold;
+                background: transparent;
+                border: none;
+            }}
+        """)
+        self.y_label_widget.setAlignment(Qt.AlignCenter)
+        
+        # Posicionar las etiquetas
+        self.update_axis_labels_position()
+        
+        # Mostrar las etiquetas
+        if self.origin_visible:
+            self.x_label_widget.show()
+            self.y_label_widget.show()
+        else:
+            self.x_label_widget.hide()
+            self.y_label_widget.hide()
+    
+    def update_axis_labels_position(self):
+        """Actualizar posición de las etiquetas de ejes"""
+        if not hasattr(self, 'x_label_widget') or not hasattr(self, 'y_label_widget'):
+            return
+            
+        # Obtener posición del origen en coordenadas de vista
+        origin_scene = QPoint(0, 0)  # Origen en coordenadas de escena
+        origin_view = self.mapFromScene(origin_scene)
+        
+        # Ajustar tamaño de las etiquetas
+        self.x_label_widget.adjustSize()
+        self.y_label_widget.adjustSize()
+        
+        # Posiciones fijas respecto al origen visual
+        offset_x = 40  # Distancia del origen
+        offset_y = 40
+        
+        # Posicionar etiqueta X (a la derecha del origen)
+        x_pos = origin_view.x() + offset_x
+        y_pos = origin_view.y() - self.x_label_widget.height() // 2
+        self.x_label_widget.move(x_pos, y_pos)
+        
+        # Posicionar etiqueta Y (arriba del origen)  
+        x_pos = origin_view.x() - self.y_label_widget.width() // 2
+        y_pos = origin_view.y() - offset_y - self.y_label_widget.height()
+        self.y_label_widget.move(x_pos, y_pos)
+    
+    def clear_origin(self):
+        """Limpiar origen existente"""
+        for item in self.scene.items():
+            if hasattr(item, 'zValue'):
+                z_val = item.zValue()
+                # Limpiar elementos del origen (z-values -5, 1, y 2)
+                if z_val == -5 or z_val == 1 or z_val == 2:
+                    self.scene.removeItem(item)
+        
+        # Ocultar etiquetas overlay
+        if hasattr(self, 'x_label_widget'):
+            self.x_label_widget.hide()
+        if hasattr(self, 'y_label_widget'):
+            self.y_label_widget.hide()
+    
+    def create_context_menu(self, pos):
+        """Crear menú contextual para el canvas"""
+        context_menu = QMenu(self)
+        
+        # Obtener coordenadas del click
+        scene_pos = self.mapToScene(pos)
+        grid_x = int(scene_pos.x() / self.grid_size)
+        grid_y = int(-scene_pos.y() / self.grid_size)
+        world_x = int(scene_pos.x())
+        world_y = int(scene_pos.y())
+        
+        # NAVEGACIÓN
+        nav_label = QAction("🧭 Navegación:", self)
+        nav_label.setEnabled(False)
+        context_menu.addAction(nav_label)
+        
+        center_action = QAction("🎯 Centrar en Origen (C)", self)
+        center_action.triggered.connect(self.center_view)
+        context_menu.addAction(center_action)
+        
+        reset_action = QAction("🔄 Resetear Vista (R)", self)
+        reset_action.triggered.connect(self.reset_view)
+        context_menu.addAction(reset_action)
+        
+        context_menu.addSeparator()
+        
+        # CUADRÍCULA
+        grid_label = QAction("📐 Cuadrícula:", self)
+        grid_label.setEnabled(False)
+        context_menu.addAction(grid_label)
+        
+        grid_text = f"{'🚫 Ocultar' if self.grid_visible else '👁️ Mostrar'} Cuadrícula (Ctrl+G)"
+        grid_toggle_action = QAction(grid_text, self)
+        # Usar el mismo método que el menubar para consistencia total
+        grid_toggle_action.triggered.connect(self.toggle_grid)
+        context_menu.addAction(grid_toggle_action)
+        
+        info_text = f"{'🚫 Ocultar' if self.info_panel_visible else '👁️ Mostrar'} Info Panel (Ctrl+I)"
+        info_toggle_action = QAction(info_text, self)
+        info_toggle_action.triggered.connect(self.toggle_info_panel)
+        context_menu.addAction(info_toggle_action)
+        
+        # Submenu Tamaño de Cuadrícula
+        grid_size_menu = context_menu.addMenu("📏 Tamaño Cuadrícula")
+        grid_sizes = [1, 5, 10, 15, 20, 25, 30, 40, 50, 75, 100]
+        
+        size_group = QActionGroup(self)
+        for size in grid_sizes:
+            size_action = QAction(f"{size}px", self)
+            size_action.setCheckable(True)
+            size_action.setChecked(self.grid_size == size)
+            size_action.triggered.connect(lambda checked, s=size: self.set_grid_size(s))
+            size_group.addAction(size_action)
+            grid_size_menu.addAction(size_action)
+        
+        context_menu.addSeparator()
+        
+        # ZOOM
+        zoom_label = QAction("🔍 Zoom:", self)
+        zoom_label.setEnabled(False)
+        context_menu.addAction(zoom_label)
+        
+        # Submenu Nivel de Zoom
+        zoom_menu = context_menu.addMenu("🔎 Nivel de Zoom")
+        zoom_levels = [0.25, 0.5, 0.75, 1.0, 1.5, 2.0, 3.0, 5.0, 10.0]
+        
+        zoom_group = QActionGroup(self)
+        for zoom in zoom_levels:
+            zoom_text = f"{zoom}x"
+            if zoom == 1.0:
+                zoom_text = "1x (Normal)"
+            zoom_action = QAction(zoom_text, self)
+            zoom_action.setCheckable(True)
+            zoom_action.setChecked(abs(self.zoom_factor - zoom) < 0.1)
+            zoom_action.triggered.connect(lambda checked, z=zoom: self.set_zoom_level(z))
+            zoom_group.addAction(zoom_action)
+            zoom_menu.addAction(zoom_action)
+        
+        context_menu.addSeparator()
+        
+        # INFORMACIÓN
+        info_label = QAction("ℹ️ Información:", self)
+        info_label.setEnabled(False)
+        context_menu.addAction(info_label)
+        
+        grid_info = QAction(f"📍 Cuadrícula: ({grid_x}, {grid_y})", self)
+        grid_info.setEnabled(False)
+        context_menu.addAction(grid_info)
+        
+        world_info = QAction(f"🌍 Mundo: ({world_x}, {world_y})", self)
+        world_info.setEnabled(False)
+        context_menu.addAction(world_info)
+        
+        return context_menu
+    
+    def toggle_info_panel(self):
+        """Alternar visibilidad del panel de información"""
+        try:
+            if not hasattr(self, 'info_label'):
+                print("AVISO: info_label no existe")
+                return
+            
+            self.info_panel_visible = not self.info_panel_visible
+            
+            if self.info_panel_visible:
+                self.position_info_panel()
+                self.info_label.show()
+                self.info_label.raise_()
+                print("Panel de informacion mostrado (QShortcut)")
+            else:
+                self.info_label.hide()
+                print("Panel de informacion ocultado (QShortcut)")
+                
+        except Exception as e:
+            print(f"ERROR en toggle_info_panel: {e}")
+            import traceback
+            traceback.print_exc()
+    
+    def set_grid_size(self, size):
+        """Establecer tamaño de cuadrícula"""
+        self.grid_size = size
+        self.setup_grid()  # Redibujar cuadrícula con nuevo tamaño
+    
+    def set_zoom_level(self, zoom_level):
+        """Establecer nivel de zoom específico"""
+        # Calcular el factor necesario para llegar al zoom deseado
+        scale_factor = zoom_level / self.zoom_factor
+        self.zoom_factor = zoom_level
+        
+        # Aplicar transformación
+        self.scale(scale_factor, scale_factor)
+        
+        # Actualizar elementos
+        self.setup_grid()
+        self.update_axis_labels_position()
+        
+        # Actualizar info panel
+        scene_pos = self.mapToScene(self.last_context_pos)
+        self.update_info_panel(scene_pos.x(), scene_pos.y())
+    
+    def set_theme(self, dark_theme):
+        """Cambiar tema"""
+        self.dark_theme = dark_theme
+        self.update_background_color()
+        if self.grid_visible:
+            self.setup_grid()
+        if self.origin_visible:
+            self.setup_origin()
+        
+        # Actualizar etiquetas de ejes
+        if hasattr(self, 'x_label_widget'):
+            self.setup_axis_labels()
+        
+        # Actualizar estilo del info panel con nuevo diseño
+        if dark_theme:
+            bg_color = "rgba(40, 40, 40, 220)"
+            text_color = "#FFFFFF"
+            border_color = "#666666"
+        else:
+            bg_color = "rgba(255, 255, 255, 240)"
+            text_color = "#2c2c2c"
+            border_color = "#cccccc"
+            
+        self.info_label.setStyleSheet(f"""
+            QLabel {{
+                background-color: {bg_color};
+                color: {text_color};
+                padding: 12px 16px;
+                border: 2px solid {border_color};
+                border-radius: 0px;
+                font-family: 'Segoe UI', 'Tahoma', 'Arial', sans-serif;
+                font-size: 12px;
+                font-weight: 500;
+                line-height: 1.4;
+            }}
+        """)
+        
+        # Actualizar tema del botón de mapa
+        if hasattr(self, 'map_overlay_toggle'):
+            self.map_overlay_toggle.set_theme(dark_theme)
+    def mousePressEvent(self, event):
+        """Manejar clic del mouse"""
+        # Asegurar que el canvas tome el foco para recibir eventos de teclado
+        self.setFocus()
+        
+        if event.button() == Qt.MiddleButton:
+            self.pan_active = True
+            self.last_pan_point = event.pos()
+            self.setCursor(QCursor(Qt.ClosedHandCursor))
+            event.accept()
+        elif event.button() == Qt.RightButton:
+            # Click derecho - mostrar menú contextual
+            self.last_context_pos = event.pos()
+            context_menu = self.create_context_menu(event.pos())
+            context_menu.exec_(self.mapToGlobal(event.pos()))
+            event.accept()
+        else:
+            super().mousePressEvent(event)
+    
+    def mouseMoveEvent(self, event):
+        """Manejar movimiento del mouse"""
+        # Actualizar info panel con posición del mouse
+        scene_pos = self.mapToScene(event.pos())
+        self.update_info_panel(scene_pos.x(), scene_pos.y())
+        
+        if self.pan_active and self.last_pan_point:
+            # Pan con botón central
+            delta = event.pos() - self.last_pan_point
+            self.last_pan_point = event.pos()
+            
+            self.horizontalScrollBar().setValue(
+                self.horizontalScrollBar().value() - delta.x()
+            )
+            self.verticalScrollBar().setValue(
+                self.verticalScrollBar().value() - delta.y()
+            )
+            
+            # Actualizar posición de etiquetas al hacer pan
+            self.update_axis_labels_position()
+            
+            # Actualizar cuadrícula durante el pan
+            self.setup_grid()
+            event.accept()
+        else:
+            super().mouseMoveEvent(event)
+    
+    def mouseReleaseEvent(self, event):
+        """Manejar liberación del mouse"""
+        if event.button() == Qt.MiddleButton and self.pan_active:
+            self.pan_active = False
+            self.last_pan_point = None
+            self.setCursor(QCursor(Qt.CrossCursor))
+            event.accept()
+        else:
+            super().mouseReleaseEvent(event)
+    
+    def wheelEvent(self, event):
+        """Manejar zoom con rueda del mouse"""
+        zoom_in_factor = 1.15
+        zoom_out_factor = 1 / zoom_in_factor
+        
+        if event.angleDelta().y() > 0:
+            zoom_factor = zoom_in_factor
+            self.zoom_factor *= zoom_factor
+        else:
+            zoom_factor = zoom_out_factor  
+            self.zoom_factor *= zoom_factor
+        
+        self.scale(zoom_factor, zoom_factor)
+        
+        # Actualizar cuadrícula después del zoom
+        self.setup_grid()
+        
+        # Actualizar posición de etiquetas después del zoom
+        self.update_axis_labels_position()
+        
+        # Actualizar info panel
+        scene_pos = self.mapToScene(event.pos())
+        self.update_info_panel(scene_pos.x(), scene_pos.y())
+    
+    def resizeEvent(self, event):
+        """Manejar cambio de tamaño"""
+        super().resizeEvent(event)
+        self.position_info_panel()
+        self.position_map_overlay_toggle()  # Reposicionar botón de mapa
+        self.setup_grid()  # Redibujar cuadrícula con nuevo tamaño
+        self.update_axis_labels_position()  # Actualizar posición de etiquetas
+    
+    def paintEvent(self, event):
+        """Evento de pintado personalizado"""
+        super().paintEvent(event)
+        # Redibujar cuadrícula si es necesario
+        self.setup_grid()
+    
+    def refresh_layout(self):
+        """Refrescar el layout del canvas después de cambios de configuración"""
+        # Reposicionar elementos
+        self.position_info_panel()
+        self.position_map_overlay_toggle()  # Reposicionar botón de mapa
+        self.setup_grid()
+        self.update_axis_labels_position()
+        
+        # Asegurar visibilidad correcta del info panel
+        if hasattr(self, 'info_label'):
+            if self.info_panel_visible:
+                self.info_label.show()
+            else:
+                self.info_label.hide()
+    
+    # Métodos públicos para control
+    def center_view(self):
+        """Centrar vista en el origen (atajo C)"""
+        self.centerOn(0, 0)
+        self.setup_grid()
+        self.update_axis_labels_position()
+    
+    def reset_view(self):
+        """Resetear vista original (atajo R)"""
+        self.resetTransform()
+        self.zoom_factor = 1.0
+        self.centerOn(0, 0)
+        self.setup_grid()
+        self.update_axis_labels_position()
+    
+    def toggle_grid_and_origin(self):
+        """Método principal para alternar cuadrícula y origen juntos"""
+        # Cambiar estado de ambos elementos
+        self.grid_visible = not self.grid_visible
+        self.origin_visible = self.grid_visible  # Origen siempre sigue a la cuadrícula
+        
+        # Aplicar cambios
+        if self.grid_visible:
+            self.setup_grid()
+            self.setup_origin()
+        else:
+            self.clear_grid()
+            self.clear_origin()
+    
+    def toggle_grid(self):
+        """Alternar solo cuadrícula (método heredado, redirige al principal)"""
+        self.toggle_grid_and_origin()
+    
+    def toggle_origin(self):
+        """Alternar visibilidad del origen"""
+        self.origin_visible = not self.origin_visible
+        if self.origin_visible:
+            self.setup_origin()
+            # Mostrar etiquetas overlay
+            if hasattr(self, 'x_label_widget'):
+                self.x_label_widget.show()
+                self.y_label_widget.show()
+        else:
+            self.clear_origin()
+    
+    # Atajos de teclado (backup - los shortcuts QShortcut tienen prioridad)
+    def keyPressEvent(self, event):
+        """Manejar atajos de teclado como backup"""
+        try:
+            # Los QShortcut manejan estos, pero mantenemos como backup
+            if event.key() == Qt.Key_C and not (event.modifiers() & Qt.ControlModifier):
+                print("� Backup shortcut: C")
+                self.center_view()
+                event.accept()
+            elif event.key() == Qt.Key_R and not (event.modifiers() & Qt.ControlModifier):
+                print("🔄 Backup shortcut: R")
+                self.reset_view()
+                event.accept()
+            elif event.key() == Qt.Key_I and event.modifiers() == Qt.ControlModifier:
+                print("🔄 Backup shortcut: Ctrl+I")
+                self.toggle_info_panel()
+                event.accept()
+            else:
+                super().keyPressEvent(event)
+                
+        except Exception as e:
+            print(f"ERROR en keyPressEvent: {e}")
+            super().keyPressEvent(event)
