@@ -8,13 +8,17 @@ from PyQt5.QtWidgets import (QGraphicsView, QGraphicsScene, QWidget,
                              QGraphicsEllipseItem, QGraphicsLineItem, 
                              QGraphicsTextItem, QGraphicsRectItem, QLabel,
                              QGraphicsItem, QMenu, QAction, QActionGroup, QShortcut)
-from PyQt5.QtCore import Qt, QRectF, QPoint
+from PyQt5.QtCore import Qt, QRectF, QPoint, pyqtSignal
 from PyQt5.QtGui import QPen, QBrush, QColor, QPainter, QCursor, QFont, QKeySequence
 from .map_overlay_toggle import MapOverlayToggle
 from utils.constants import DEFAULT_CANVAS_WIDTH, DEFAULT_CANVAS_HEIGHT
+from core import DeviceManager
 
 class Canvas(QGraphicsView):
     """Clase de canvas con cuadrícula infinita centrada"""
+    
+    # Señales
+    device_dropped = pyqtSignal(str, str, float, float)  # device_name, device_type, x, y
     
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -39,6 +43,15 @@ class Canvas(QGraphicsView):
         self.scene = QGraphicsScene(self)
         self.scene.setSceneRect(-scene_size/2, -scene_size/2, scene_size, scene_size)
         self.setScene(self.scene)
+        
+        # Inicializar gestor de dispositivos
+        self.device_manager = DeviceManager(self.scene)
+        
+        # Conectar señal para actualizar info panel
+        self.device_manager.devices_changed.connect(self.update_device_info)
+        
+        # Habilitar drag and drop
+        self.setAcceptDrops(True)
         
         # Configurar canvas
         self.setup_canvas()
@@ -155,6 +168,16 @@ class Canvas(QGraphicsView):
         self.reset_shortcut = QShortcut(QKeySequence("R"), self)
         self.reset_shortcut.activated.connect(self.reset_view)
         
+        # Shortcuts para redimensionar dispositivos
+        self.increase_size_shortcut = QShortcut(QKeySequence("+"), self)
+        self.increase_size_shortcut.activated.connect(self.increase_selected_device_size)
+        
+        self.increase_size_shortcut2 = QShortcut(QKeySequence("="), self)
+        self.increase_size_shortcut2.activated.connect(self.increase_selected_device_size)
+        
+        self.decrease_size_shortcut = QShortcut(QKeySequence("-"), self)
+        self.decrease_size_shortcut.activated.connect(self.decrease_selected_device_size)
+        
     
     def position_map_overlay_toggle(self):
         """Posicionar el botón de mapa en la esquina inferior izquierda"""
@@ -205,12 +228,27 @@ class Canvas(QGraphicsView):
         world_x = int(scene_x)
         world_y = int(scene_y)
         
+        # Obtener estadísticas de dispositivos
+        device_stats = self.device_manager.get_device_stats()
+        
         info_text = f"""Mouse - Cuadrícula: ({grid_x},{grid_y})
 Mouse - Mundo: ({world_x},{world_y})
 Zoom: {self.zoom_factor:.1f}x
-Tamaño de cuadrícula: {self.grid_size}px"""
+Tamaño de cuadrícula: {self.grid_size}px
+
+📦 Total de dispositivos: {device_stats['total_devices']}"""
         
         self.info_label.setText(info_text)
+    
+    def update_device_info(self):
+        """Actualizar información de dispositivos en el panel (callback)"""
+        # Obtener posición actual del mouse si está disponible
+        if hasattr(self, 'last_mouse_scene_pos'):
+            scene_pos = self.last_mouse_scene_pos
+        else:
+            scene_pos = self.mapToScene(self.mapFromGlobal(self.cursor().pos()))
+        
+        self.update_info_panel(scene_pos.x(), scene_pos.y())
     
     def update_background_color(self):
         """Actualizar color de fondo según el tema"""
@@ -640,6 +678,9 @@ Tamaño de cuadrícula: {self.grid_size}px"""
         if self.origin_visible:
             self.setup_origin()
         
+        # Actualizar colores de etiquetas de dispositivos
+        self.device_manager.update_label_colors(dark_theme)
+        
         # Actualizar etiquetas de ejes
         if hasattr(self, 'x_label_widget'):
             self.setup_axis_labels()
@@ -694,6 +735,7 @@ Tamaño de cuadrícula: {self.grid_size}px"""
         """Manejar movimiento del mouse"""
         # Actualizar info panel con posición del mouse
         scene_pos = self.mapToScene(event.pos())
+        self.last_mouse_scene_pos = scene_pos  # Guardar para update_device_info
         self.update_info_panel(scene_pos.x(), scene_pos.y())
         
         if self.pan_active and self.last_pan_point:
@@ -825,13 +867,29 @@ Tamaño de cuadrícula: {self.grid_size}px"""
         else:
             self.clear_origin()
     
+    def toggle_sidebar_panel(self):
+        """Alternar visibilidad del panel lateral"""
+        # Buscar la ventana principal para alternar el panel lateral
+        main_window = None
+        parent = self.parent()
+        while parent:
+            if hasattr(parent, 'toggle_components'):
+                main_window = parent
+                break
+            parent = parent.parent()
+        
+        if main_window and hasattr(main_window, 'toggle_components'):
+            main_window.toggle_components()
+        else:
+            print("⚠️ No se pudo encontrar el método toggle_components en la ventana principal")
+    
     # Atajos de teclado (backup - los shortcuts QShortcut tienen prioridad)
     def keyPressEvent(self, event):
         """Manejar atajos de teclado como backup"""
         try:
             # Los QShortcut manejan estos, pero mantenemos como backup
             if event.key() == Qt.Key_C and not (event.modifiers() & Qt.ControlModifier):
-                print("� Backup shortcut: C")
+                print("🎯 Backup shortcut: C")
                 self.center_view()
                 event.accept()
             elif event.key() == Qt.Key_R and not (event.modifiers() & Qt.ControlModifier):
@@ -842,9 +900,163 @@ Tamaño de cuadrícula: {self.grid_size}px"""
                 print("🔄 Backup shortcut: Ctrl+I")
                 self.toggle_info_panel()
                 event.accept()
+            elif event.key() == Qt.Key_P and event.modifiers() == Qt.ControlModifier:
+                print("📋 Backup shortcut: Ctrl+P")
+                self.toggle_sidebar_panel()
+                event.accept()
+            elif event.key() in (Qt.Key_Delete, Qt.Key_Backspace):
+                # Eliminar dispositivo seleccionado
+                selected_device = self.device_manager.get_selected_device()
+                if selected_device:
+                    print(f"🗑️ Eliminando dispositivo: {selected_device.name}")
+                    self.device_manager.remove_device(selected_device.id)
+                    event.accept()
+                else:
+                    super().keyPressEvent(event)
             else:
                 super().keyPressEvent(event)
                 
         except Exception as e:
             print(f"ERROR en keyPressEvent: {e}")
             super().keyPressEvent(event)
+    
+    # ==========================================
+    # DRAG & DROP FUNCTIONALITY
+    # ==========================================
+    
+    def dragEnterEvent(self, event):
+        """Manejar entrada de drag"""
+        if event.mimeData().hasText():
+            # Verificar si el texto contiene datos de dispositivo
+            text_data = event.mimeData().text()
+            if '|' in text_data:
+                device_name, device_type = text_data.split('|', 1)
+                if device_type in ['OLT', 'ONU']:
+                    event.acceptProposedAction()
+                    return
+        
+        event.ignore()
+    
+    def dragMoveEvent(self, event):
+        """Manejar movimiento durante drag"""
+        if event.mimeData().hasText():
+            text_data = event.mimeData().text()
+            if '|' in text_data:
+                device_name, device_type = text_data.split('|', 1)
+                if device_type in ['OLT', 'ONU']:
+                    event.acceptProposedAction()
+                    
+                    # Actualizar cursor para indicar que se puede hacer drop
+                    self.setCursor(Qt.CrossCursor)
+                    return
+        
+        # Restaurar cursor normal si no se puede hacer drop
+        self.setCursor(Qt.ForbiddenCursor)
+        event.ignore()
+    
+    def dragLeaveEvent(self, event):
+        """Manejar salida de drag"""
+        # Restaurar cursor normal
+        self.setCursor(Qt.CrossCursor)
+        event.accept()
+    
+    def dropEvent(self, event):
+        """Manejar drop de dispositivo"""
+        if event.mimeData().hasText():
+            text_data = event.mimeData().text()
+            if '|' in text_data:
+                try:
+                    device_name, device_type = text_data.split('|', 1)
+                    if device_type in ['OLT', 'ONU']:
+                        # Convertir posición del drop a coordenadas de escena
+                        scene_pos = self.mapToScene(event.pos())
+                        x = scene_pos.x()
+                        y = scene_pos.y()
+                        
+                        # Ajustar a cuadrícula si está visible
+                        if self.grid_visible and self.grid_size > 0:
+                            x = round(x / self.grid_size) * self.grid_size
+                            y = round(y / self.grid_size) * self.grid_size
+                        
+                        # Agregar dispositivo usando el device manager
+                        device = self.device_manager.add_device(device_type, x, y)
+                        
+                        if device:
+                            print(f"✅ Dispositivo {device_type} agregado en ({x:.1f}, {y:.1f})")
+                            # Emitir señal
+                            self.device_dropped.emit(device_name, device_type, x, y)
+                            event.acceptProposedAction()
+                        else:
+                            print(f"❌ Error agregando dispositivo {device_type}")
+                            event.ignore()
+                        
+                        # Restaurar cursor
+                        self.setCursor(Qt.CrossCursor)
+                        return
+                        
+                except Exception as e:
+                    print(f"Error en dropEvent: {e}")
+        
+        event.ignore()
+    
+    # ==========================================
+    # DEVICE MANAGEMENT METHODS
+    # ==========================================
+    
+    def get_device_manager(self):
+        """Obtener gestor de dispositivos"""
+        return self.device_manager
+    
+    def add_device_at_position(self, device_type, x, y, name=None):
+        """Agregar dispositivo en posición específica (método público)"""
+        return self.device_manager.add_device(device_type, x, y, name)
+    
+    def remove_device_by_id(self, device_id):
+        """Remover dispositivo por ID"""
+        return self.device_manager.remove_device(device_id)
+    
+    def get_all_devices(self):
+        """Obtener todos los dispositivos"""
+        return self.device_manager.get_all_devices()
+    
+    def clear_all_devices(self):
+        """Limpiar todos los dispositivos"""
+        self.device_manager.clear_all_devices()
+    
+    def snap_to_grid_position(self, x, y):
+        """Ajustar coordenadas a la cuadrícula"""
+        if self.grid_visible and self.grid_size > 0:
+            snapped_x = round(x / self.grid_size) * self.grid_size
+            snapped_y = round(y / self.grid_size) * self.grid_size
+            return snapped_x, snapped_y
+        return x, y
+    
+    # ==========================================
+    # DEVICE RESIZE METHODS
+    # ==========================================
+    
+    def increase_selected_device_size(self):
+        """Aumentar tamaño del dispositivo seleccionado (tecla +)"""
+        selected_device = self.device_manager.get_selected_device()
+        if selected_device:
+            current_size = selected_device.icon_size
+            new_size = min(128, current_size + 8)  # Incremento de 8px, máximo 128px
+            
+            if new_size != current_size:
+                selected_device.set_icon_size(new_size)
+                print(f"📏 Dispositivo {selected_device.device_type} redimensionado: {current_size}px → {new_size}px")
+        else:
+            print("⚠️  Selecciona un dispositivo para redimensionar")
+    
+    def decrease_selected_device_size(self):
+        """Disminuir tamaño del dispositivo seleccionado (tecla -)"""
+        selected_device = self.device_manager.get_selected_device()
+        if selected_device:
+            current_size = selected_device.icon_size
+            new_size = max(32, current_size - 8)  # Decremento de 8px, mínimo 32px
+            
+            if new_size != current_size:
+                selected_device.set_icon_size(new_size)
+                print(f"📏 Dispositivo {selected_device.device_type} redimensionado: {current_size}px → {new_size}px")
+        else:
+            print("⚠️  Selecciona un dispositivo para redimensionar")
