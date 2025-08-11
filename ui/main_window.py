@@ -244,6 +244,8 @@ class MainWindow(QMainWindow):
             # Sincronizar estado con el canvas
             self.grid_visible = self.canvas.grid_visible
             self.origin_visible = self.canvas.origin_visible
+            # Ocultar vértices al alternar cuadrícula
+            self.canvas.device_manager.deselect_all()
         
         grid_status = "mostrada" if self.grid_visible else "oculta"
         self.statusBar().showMessage(f'Cuadrícula y origen {grid_status}', 2000)
@@ -255,12 +257,16 @@ class MainWindow(QMainWindow):
         """Resetear vista original"""
         if self.canvas:
             self.canvas.reset_view()
+            # Ocultar vértices al resetear vista
+            self.canvas.device_manager.deselect_all()
             self.statusBar().showMessage('Vista reseteada', 2000)
     
     def center_view(self):
         """Centrar vista en el origen"""
         if self.canvas:
             self.canvas.center_view()
+            # Ocultar vértices al centrar vista
+            self.canvas.device_manager.deselect_all()
             self.statusBar().showMessage('Vista centrada', 2000)
     
     def toggle_simulation(self):

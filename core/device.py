@@ -15,6 +15,7 @@ class Device(QObject):
     # Señales
     position_changed = pyqtSignal(float, float)  # x, y
     properties_changed = pyqtSignal()
+    selection_changed = pyqtSignal(bool)  # is_selected
     
     def __init__(self, device_type, name=None, x=0, y=0):
         super().__init__()
@@ -52,7 +53,9 @@ class Device(QObject):
     
     def set_selected(self, selected):
         """Establecer estado de selección"""
-        self.selected = selected
+        if self.selected != selected:
+            self.selected = selected
+            self.selection_changed.emit(selected)
     
     def is_selected(self):
         """Verificar si está seleccionado"""
