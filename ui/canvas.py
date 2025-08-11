@@ -727,6 +727,8 @@ Tamaño de cuadrícula: {self.grid_size}px
             self.last_context_pos = event.pos()
             context_menu = self.create_context_menu(event.pos())
             context_menu.exec_(self.mapToGlobal(event.pos()))
+            # Ocultar vértices al usar menú contextual
+            self.device_manager.deselect_all()
             event.accept()
         else:
             super().mousePressEvent(event)
@@ -887,22 +889,35 @@ Tamaño de cuadrícula: {self.grid_size}px
     def keyPressEvent(self, event):
         """Manejar atajos de teclado como backup"""
         try:
+            # Escape - ocultar vértices
+            if event.key() == Qt.Key_Escape:
+                print("🚫 Ocultando vértices")
+                self.device_manager.deselect_all()
+                event.accept()
             # Los QShortcut manejan estos, pero mantenemos como backup
-            if event.key() == Qt.Key_C and not (event.modifiers() & Qt.ControlModifier):
+            elif event.key() == Qt.Key_C and not (event.modifiers() & Qt.ControlModifier):
                 print("🎯 Backup shortcut: C")
                 self.center_view()
+                # Ocultar vértices al centrar (acción no relacionada con dispositivos)
+                self.device_manager.deselect_all()
                 event.accept()
             elif event.key() == Qt.Key_R and not (event.modifiers() & Qt.ControlModifier):
                 print("🔄 Backup shortcut: R")
                 self.reset_view()
+                # Ocultar vértices al resetear (acción no relacionada con dispositivos)
+                self.device_manager.deselect_all()
                 event.accept()
             elif event.key() == Qt.Key_I and event.modifiers() == Qt.ControlModifier:
                 print("🔄 Backup shortcut: Ctrl+I")
                 self.toggle_info_panel()
+                # Ocultar vértices al alternar panel info
+                self.device_manager.deselect_all()
                 event.accept()
             elif event.key() == Qt.Key_P and event.modifiers() == Qt.ControlModifier:
                 print("📋 Backup shortcut: Ctrl+P")
                 self.toggle_sidebar_panel()
+                # Ocultar vértices al alternar panel lateral
+                self.device_manager.deselect_all()
                 event.accept()
             elif event.key() in (Qt.Key_Delete, Qt.Key_Backspace):
                 # Eliminar dispositivo seleccionado
@@ -912,6 +927,8 @@ Tamaño de cuadrícula: {self.grid_size}px
                     self.device_manager.remove_device(selected_device.id)
                     event.accept()
                 else:
+                    # Si no hay dispositivo seleccionado, ocultar vértices
+                    self.device_manager.deselect_all()
                     super().keyPressEvent(event)
             else:
                 super().keyPressEvent(event)
