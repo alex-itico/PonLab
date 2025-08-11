@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![PonLab Logo](resources/icons/app_icon_128x128.png)
+![PonLab Logo](resources/icons/app_icon.png)
 
 _Una aplicación de escritorio para la simulación y visualización de redes de fibra óptica PON_
 
