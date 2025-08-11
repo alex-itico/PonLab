@@ -398,7 +398,7 @@ class MainWindow(QMainWindow):
             </ul>
             
             <p><b>Repositorio GitHub:</b><br>
-            <a href="https://github.com/usuario/simulador-wdm">https://github.com/usuario/simulador-wdm</a><br>
+            <a href="https://github.com/alex-itico/PonLab.git">https://github.com/alex-itico/PonLab.git</a><br>
             <i>(Repositorio oficial - próximamente actualizado)</i></p>
             
             <p>© 2025 - Desarrollado con PyQt5</p>'''
