@@ -50,7 +50,9 @@ class Canvas(QGraphicsView):
         self.setScene(self.scene)
         
         # Inicializar gestor de dispositivos
+        # Crear gestores principales
         self.device_manager = DeviceManager(self.scene)
+        self.device_manager.set_canvas_reference(self)  # Pasar referencia al canvas
         
         # Inicializar gestor de conexiones
         from core.connection_manager import ConnectionManager
