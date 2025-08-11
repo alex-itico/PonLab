@@ -64,6 +64,7 @@ class MainWindow(QMainWindow):
         # Crear el sidebar panel
         self.sidebar = SidebarPanel()
         self.sidebar.device_selected.connect(self.on_device_selected)
+        self.sidebar.connection_mode_toggled.connect(self.on_connection_mode_toggled)
         
         # Agregar sidebar al layout si está visible
         if self.components_visible:
@@ -234,6 +235,17 @@ class MainWindow(QMainWindow):
         # Actualizar información si es necesario
         device_count = self.canvas.get_device_manager().get_device_count()
         print(f"📊 Total de dispositivos en canvas: {device_count}")
+    
+    def on_connection_mode_toggled(self, enabled):
+        """Manejar cambio de modo conexión"""
+        if self.canvas:
+            self.canvas.set_connection_mode(enabled)
+            
+            # Actualizar status bar
+            if enabled:
+                self.statusBar().showMessage("🔗 Modo Conexión ACTIVO - Selecciona dos dispositivos para conectar", 0)
+            else:
+                self.statusBar().showMessage("🔗 Modo Conexión DESACTIVADO", 2000)
     
     def toggle_grid(self):
         """Alternar visibilidad de la cuadrícula y el origen"""

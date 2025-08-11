@@ -145,6 +145,10 @@ class DeviceGraphicsItem(QGraphicsPixmapItem):
             # Actualizar posición del dispositivo cuando se mueve el item gráfico
             new_pos = value
             self.device.set_position(new_pos.x(), new_pos.y())
+            
+            # Actualizar conexiones que involucren este dispositivo
+            self._update_device_connections()
+            
         elif change == QGraphicsItem.ItemSelectedChange:
             # Manejar cambios de selección automáticamente
             is_selected = bool(value)
@@ -161,6 +165,22 @@ class DeviceGraphicsItem(QGraphicsPixmapItem):
         
         return super().itemChange(change, value)
     
+    def _update_device_connections(self):
+        """Actualizar las conexiones relacionadas con este dispositivo"""
+        # Buscar el canvas para obtener el connection manager
+        canvas = None
+        for view in self.scene().views():
+            if hasattr(view, 'connection_manager'):
+                canvas = view
+                break
+        
+        if canvas and hasattr(canvas, 'connection_manager'):
+            # Obtener conexiones que involucren este dispositivo
+            connections = canvas.connection_manager.get_connections_for_device(self.device)
+            for connection in connections:
+                if connection.graphics_item:
+                    connection.graphics_item.update_line()
+    
     def update_theme(self, dark_theme=False):
         """Actualizar tema de los elementos gráficos"""
         # Actualizar tema de la etiqueta
@@ -171,9 +191,9 @@ class DeviceGraphicsItem(QGraphicsPixmapItem):
             self.connection_points_manager.update_theme(dark_theme)
     
     def mousePressEvent(self, event):
-        """Manejar click del mouse para selección"""
+        """Manejar click del mouse para selección o conexión"""
         if event.button() == Qt.LeftButton:
-            # Buscar el device manager en el canvas
+            # Buscar el canvas
             canvas = None
             scene_parent = self.scene().parent()
             if hasattr(scene_parent, 'device_manager'):
@@ -185,8 +205,22 @@ class DeviceGraphicsItem(QGraphicsPixmapItem):
                         canvas = view
                         break
             
-            if canvas and hasattr(canvas, 'device_manager'):
-                canvas.device_manager.select_device_by_object(self.device)
+            if canvas:
+                # Verificar si estamos en modo conexión
+                if hasattr(canvas, 'handle_device_click_for_connection'):
+                    connection_handled = canvas.handle_device_click_for_connection(self.device)
+                    if connection_handled:
+                        # Si se manejó la conexión, no hacer selección normal
+                        super().mousePressEvent(event)
+                        return
+                
+                # Selección normal
+                if hasattr(canvas, 'device_manager'):
+                    canvas.device_manager.select_device_by_object(self.device)
+                else:
+                    # Fallback: selección directa
+                    was_selected = self.device.is_selected()
+                    self.device.set_selected(not was_selected)
             else:
                 # Fallback: selección directa
                 was_selected = self.device.is_selected()
@@ -258,6 +292,19 @@ class DeviceManager(QObject):
     def remove_device(self, device_id):
         """Remover dispositivo del canvas"""
         if device_id in self.devices:
+            device = self.devices[device_id]
+            
+            # Notificar al connection manager antes de eliminar el dispositivo
+            # Buscar canvas para obtener connection_manager
+            canvas = None
+            for view in self.canvas_scene.views():
+                if hasattr(view, 'connection_manager'):
+                    canvas = view
+                    break
+            
+            if canvas and hasattr(canvas, 'connection_manager'):
+                canvas.connection_manager.remove_connections_for_device(device)
+            
             # Obtener item gráfico y limpiar recursos
             graphics_item = self.graphics_items[device_id]
             graphics_item.cleanup()  # Limpiar connection points
@@ -266,7 +313,6 @@ class DeviceManager(QObject):
             self.canvas_scene.removeItem(graphics_item)
             
             # Limpiar referencias
-            device = self.devices[device_id]
             if device == self.selected_device:
                 self.selected_device = None
             

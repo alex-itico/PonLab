@@ -38,6 +38,11 @@ class Canvas(QGraphicsView):
         # Variables de visibilidad
         self.info_panel_visible = True
         
+        # Variables para modo conexión
+        self.connection_mode = False
+        self.connection_source_device = None  # Primer dispositivo seleccionado para conexión
+        self.original_cursor = self.cursor()
+        
         # Configurar la escena
         scene_size = 10000  # Escena muy grande para simular infinito
         self.scene = QGraphicsScene(self)
@@ -47,8 +52,15 @@ class Canvas(QGraphicsView):
         # Inicializar gestor de dispositivos
         self.device_manager = DeviceManager(self.scene)
         
+        # Inicializar gestor de conexiones
+        from core.connection_manager import ConnectionManager
+        self.connection_manager = ConnectionManager(self)
+        
         # Conectar señal para actualizar info panel
         self.device_manager.devices_changed.connect(self.update_device_info)
+        
+        # Conectar señal para actualizar posiciones de conexiones
+        self.device_manager.devices_changed.connect(self.connection_manager.update_connections_positions)
         
         # Habilitar drag and drop
         self.setAcceptDrops(True)
@@ -72,10 +84,12 @@ class Canvas(QGraphicsView):
     
     def setup_canvas(self):
         """Configurar propiedades básicas del canvas"""
-        # Renderizado de alta calidad
-        self.setRenderHint(QPainter.Antialiasing)
-        self.setRenderHint(QPainter.TextAntialiasing)
-        self.setRenderHint(QPainter.SmoothPixmapTransform)
+        # Configurar renderizado balanceado (compromiso calidad-rendimiento)
+        self.setup_rendering_quality()
+        
+        # Optimizaciones de caché y viewport
+        self.setCacheMode(QGraphicsView.CacheBackground)
+        self.setViewportUpdateMode(QGraphicsView.BoundingRectViewportUpdate)
         
         # Sin scrollbars
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
@@ -87,6 +101,17 @@ class Canvas(QGraphicsView):
         
         # Modo de arrastre
         self.setDragMode(QGraphicsView.NoDrag)
+    
+    def setup_rendering_quality(self):
+        """Configurar calidad de renderizado balanceada (compromiso calidad-rendimiento)"""
+        # Balance entre calidad y rendimiento
+        self.setRenderHint(QPainter.Antialiasing, True)
+        self.setRenderHint(QPainter.TextAntialiasing, True)
+        self.setRenderHint(QPainter.SmoothPixmapTransform, False)  # Desactivado para mejor rendimiento
+        # Solo algunas optimizaciones
+        self.setOptimizationFlag(QGraphicsView.DontAdjustForAntialiasing, True)
+        self.setOptimizationFlag(QGraphicsView.DontSavePainterState, True)
+        self.grid_quality = "medium"
         
         # Color de fondo
         self.update_background_color()
@@ -177,6 +202,10 @@ class Canvas(QGraphicsView):
         
         self.decrease_size_shortcut = QShortcut(QKeySequence("-"), self)
         self.decrease_size_shortcut.activated.connect(self.decrease_selected_device_size)
+        
+        # Shortcut para toggle modo conexión
+        self.connection_shortcut = QShortcut(QKeySequence("L"), self)
+        self.connection_shortcut.activated.connect(self.toggle_connection_mode_shortcut)
         
     
     def position_map_overlay_toggle(self):
@@ -272,11 +301,12 @@ Tamaño de cuadrícula: {self.grid_size}px
             grid_color = QColor(220, 220, 220)
             major_grid_color = QColor(180, 180, 180)
         
-        # Obtener área visible
+        # Obtener área visible con configuración balanceada
         visible_rect = self.mapToScene(self.viewport().rect()).boundingRect()
         
-        # Expandir un poco el área para suavizar el scroll
-        margin = self.grid_size * 10
+        # Configuración balanceada
+        margin = self.grid_size * 5  # Balance
+        max_lines = 200  # Balance
         start_x = int(visible_rect.left() - margin)
         end_x = int(visible_rect.right() + margin)
         start_y = int(visible_rect.top() - margin)
@@ -286,9 +316,14 @@ Tamaño de cuadrícula: {self.grid_size}px
         start_x = start_x - (start_x % self.grid_size)
         start_y = start_y - (start_y % self.grid_size)
         
-        # Dibujar líneas verticales
+        # Optimización: limitar número máximo de líneas
+        x_step = max(self.grid_size, (end_x - start_x) // max_lines)
+        y_step = max(self.grid_size, (end_y - start_y) // max_lines)
+        
+        # Dibujar líneas verticales (optimizado)
         x = start_x
-        while x <= end_x:
+        line_count = 0
+        while x <= end_x and line_count < max_lines:
             # Línea mayor cada 5 líneas
             is_major = (x % (self.grid_size * 5) == 0)
             color = major_grid_color if is_major else grid_color
@@ -299,11 +334,13 @@ Tamaño de cuadrícula: {self.grid_size}px
             pen.setStyle(Qt.SolidLine)
             line = self.scene.addLine(x, start_y, x, end_y, pen)
             line.setZValue(-10)  # Muy al fondo
-            x += self.grid_size
+            x += x_step  # Usar step optimizado
+            line_count += 1
         
-        # Dibujar líneas horizontales
+        # Dibujar líneas horizontales (optimizado)
         y = start_y
-        while y <= end_y:
+        line_count = 0
+        while y <= end_y and line_count < max_lines:
             # Línea mayor cada 5 líneas
             is_major = (y % (self.grid_size * 5) == 0)
             color = major_grid_color if is_major else grid_color
@@ -314,7 +351,8 @@ Tamaño de cuadrícula: {self.grid_size}px
             pen.setStyle(Qt.SolidLine)
             line = self.scene.addLine(start_x, y, end_x, y, pen)
             line.setZValue(-10)  # Muy al fondo
-            y += self.grid_size
+            y += y_step  # Usar step optimizado
+            line_count += 1
     
     def clear_grid(self):
         """Limpiar cuadrícula existente"""
@@ -681,6 +719,9 @@ Tamaño de cuadrícula: {self.grid_size}px
         # Actualizar colores de etiquetas de dispositivos
         self.device_manager.update_label_colors(dark_theme)
         
+        # Actualizar colores de conexiones
+        self.connection_manager.update_theme_colors(dark_theme)
+        
         # Actualizar etiquetas de ejes
         if hasattr(self, 'x_label_widget'):
             self.setup_axis_labels()
@@ -712,6 +753,91 @@ Tamaño de cuadrícula: {self.grid_size}px
         # Actualizar tema del botón de mapa
         if hasattr(self, 'map_overlay_toggle'):
             self.map_overlay_toggle.set_theme(dark_theme)
+    
+    def set_connection_mode(self, enabled):
+        """Activar/desactivar modo conexión"""
+        self.connection_mode = enabled
+        self.connection_source_device = None  # Reset source
+        
+        if enabled:
+            # Cambiar cursor a modo conexión
+            self.setCursor(Qt.CrossCursor)
+            print("🔗 Modo conexión ACTIVADO - Selecciona dos dispositivos para conectar")
+        else:
+            # Restaurar cursor normal
+            self.setCursor(self.original_cursor)
+            print("🔗 Modo conexión DESACTIVADO")
+    
+    def is_connection_mode_active(self):
+        """Verificar si el modo conexión está activo"""
+        return self.connection_mode
+    
+    def handle_device_click_for_connection(self, device):
+        """Manejar click en dispositivo cuando está activo el modo conexión"""
+        if not self.connection_mode:
+            return False  # No estamos en modo conexión
+            
+        if self.connection_source_device is None:
+            # Primer dispositivo seleccionado
+            self.connection_source_device = device
+            print(f"🔗 Dispositivo origen seleccionado: {device.name}")
+            return True
+        else:
+            # Segundo dispositivo seleccionado - intentar crear conexión
+            target_device = device
+            source_device = self.connection_source_device
+            
+            # Reset source device
+            self.connection_source_device = None
+            
+            # Intentar crear la conexión
+            connection = self.connection_manager.create_connection(source_device, target_device)
+            
+            if connection:
+                print(f"🔗✅ Conexión creada: {source_device.name} <-> {target_device.name}")
+            
+            return True
+    
+    def toggle_connection_mode_shortcut(self):
+        """Toggle del modo conexión via shortcut (tecla L)"""
+        new_mode = not self.connection_mode
+        self.set_connection_mode(new_mode)
+        
+        # Notificar al sidebar para actualizar estado visual
+        try:
+            main_window = self.parent()
+            while main_window and not hasattr(main_window, 'sidebar'):
+                main_window = main_window.parent()
+            
+            if main_window and hasattr(main_window, 'sidebar'):
+                sidebar = main_window.sidebar
+                if hasattr(sidebar, 'connection_item') and sidebar.connection_item:
+                    sidebar.connection_item.set_connection_mode(new_mode)
+                    
+            if new_mode:
+                print("🔗⌨️ Modo conexión ACTIVADO (tecla L)")
+            else:
+                print("🔗⌨️ Modo conexión DESACTIVADO (tecla L)")
+                
+        except Exception as e:
+            print(f"Error en shortcut conexión: {e}")
+    
+    def notify_sidebar_connection_mode_change(self):
+        """Notificar al sidebar que el modo conexión cambió desde el canvas"""
+        try:
+            # Buscar la ventana principal para acceder al sidebar
+            main_window = self.parent()
+            while main_window and not hasattr(main_window, 'sidebar'):
+                main_window = main_window.parent()
+            
+            if main_window and hasattr(main_window, 'sidebar'):
+                sidebar = main_window.sidebar
+                if hasattr(sidebar, 'connection_item') and sidebar.connection_item:
+                    sidebar.connection_item.set_connection_mode(False)
+                    print("🔗 Sidebar notificado: modo conexión desactivado")
+        except Exception as e:
+            print(f"Error notificando al sidebar: {e}")
+
     def mousePressEvent(self, event):
         """Manejar clic del mouse"""
         # Asegurar que el canvas tome el foco para recibir eventos de teclado
@@ -735,10 +861,17 @@ Tamaño de cuadrícula: {self.grid_size}px
     
     def mouseMoveEvent(self, event):
         """Manejar movimiento del mouse"""
-        # Actualizar info panel con posición del mouse
+        # Actualizar info panel con posición del mouse (throttled)
         scene_pos = self.mapToScene(event.pos())
         self.last_mouse_scene_pos = scene_pos  # Guardar para update_device_info
-        self.update_info_panel(scene_pos.x(), scene_pos.y())
+        
+        # Solo actualizar info panel cada 10ms para evitar updates excesivos
+        if not hasattr(self, '_last_info_update') or (
+            hasattr(self, '_last_info_update') and 
+            (event.timestamp() - self._last_info_update) > 10
+        ):
+            self.update_info_panel(scene_pos.x(), scene_pos.y())
+            self._last_info_update = event.timestamp()
         
         if self.pan_active and self.last_pan_point:
             # Pan con botón central
@@ -752,11 +885,14 @@ Tamaño de cuadrícula: {self.grid_size}px
                 self.verticalScrollBar().value() - delta.y()
             )
             
-            # Actualizar posición de etiquetas al hacer pan
-            self.update_axis_labels_position()
+            # Actualizar posición de etiquetas al hacer pan (throttled)
+            if not hasattr(self, '_last_axis_update') or (
+                hasattr(self, '_last_axis_update') and 
+                (event.timestamp() - self._last_axis_update) > 50
+            ):
+                self.update_axis_labels_position()
+                self._last_axis_update = event.timestamp()
             
-            # Actualizar cuadrícula durante el pan
-            self.setup_grid()
             event.accept()
         else:
             super().mouseMoveEvent(event)
@@ -772,7 +908,7 @@ Tamaño de cuadrícula: {self.grid_size}px
             super().mouseReleaseEvent(event)
     
     def wheelEvent(self, event):
-        """Manejar zoom con rueda del mouse"""
+        """Manejar zoom con rueda del mouse (optimizado)"""
         zoom_in_factor = 1.15
         zoom_out_factor = 1 / zoom_in_factor
         
@@ -785,13 +921,20 @@ Tamaño de cuadrícula: {self.grid_size}px
         
         self.scale(zoom_factor, zoom_factor)
         
-        # Actualizar cuadrícula después del zoom
-        self.setup_grid()
+        # Throttle updates para mejor rendimiento durante zoom continuo
+        if not hasattr(self, '_last_zoom_update') or (
+            hasattr(self, '_last_zoom_update') and 
+            (event.timestamp() - self._last_zoom_update) > 100
+        ):
+            # Actualizar cuadrícula después del zoom (throttled)
+            self.setup_grid()
+            
+            # Actualizar posición de etiquetas después del zoom (throttled)
+            self.update_axis_labels_position()
+            
+            self._last_zoom_update = event.timestamp()
         
-        # Actualizar posición de etiquetas después del zoom
-        self.update_axis_labels_position()
-        
-        # Actualizar info panel
+        # Actualizar info panel (ligero)
         scene_pos = self.mapToScene(event.pos())
         self.update_info_panel(scene_pos.x(), scene_pos.y())
     
@@ -804,10 +947,10 @@ Tamaño de cuadrícula: {self.grid_size}px
         self.update_axis_labels_position()  # Actualizar posición de etiquetas
     
     def paintEvent(self, event):
-        """Evento de pintado personalizado"""
+        """Evento de pintado personalizado (optimizado)"""
         super().paintEvent(event)
-        # Redibujar cuadrícula si es necesario
-        self.setup_grid()
+        # Eliminar redibujado automático de grilla para mejor rendimiento
+        # self.setup_grid()  # Comentado para evitar redibujados excesivos
     
     def refresh_layout(self):
         """Refrescar el layout del canvas después de cambios de configuración"""
@@ -889,10 +1032,17 @@ Tamaño de cuadrícula: {self.grid_size}px
     def keyPressEvent(self, event):
         """Manejar atajos de teclado como backup"""
         try:
-            # Escape - ocultar vértices
+            # Escape - ocultar vértices y desactivar modo conexión
             if event.key() == Qt.Key_Escape:
-                print("🚫 Ocultando vértices")
+                print("🚫 Ocultando vértices y desactivando modo conexión")
                 self.device_manager.deselect_all()
+                
+                # Desactivar modo conexión si está activo
+                if self.connection_mode:
+                    self.set_connection_mode(False)
+                    # Notificar al sidebar para que actualice su estado visual
+                    self.notify_sidebar_connection_mode_change()
+                
                 event.accept()
             # Los QShortcut manejan estos, pero mantenemos como backup
             elif event.key() == Qt.Key_C and not (event.modifiers() & Qt.ControlModifier):
@@ -919,15 +1069,37 @@ Tamaño de cuadrícula: {self.grid_size}px
                 # Ocultar vértices al alternar panel lateral
                 self.device_manager.deselect_all()
                 event.accept()
+            elif event.key() == Qt.Key_L and not (event.modifiers() & Qt.ControlModifier):
+                print("🔗 Backup shortcut: L")
+                self.toggle_connection_mode_shortcut()
+                event.accept()
             elif event.key() in (Qt.Key_Delete, Qt.Key_Backspace):
-                # Eliminar dispositivo seleccionado
+                # Eliminar dispositivo seleccionado o conexiones seleccionadas
+                deleted_something = False
+                
+                # Primero intentar eliminar dispositivos
                 selected_device = self.device_manager.get_selected_device()
                 if selected_device:
                     print(f"🗑️ Eliminando dispositivo: {selected_device.name}")
                     self.device_manager.remove_device(selected_device.id)
+                    deleted_something = True
+                
+                # Luego intentar eliminar conexiones seleccionadas
+                selected_connections = self.scene.selectedItems()
+                connections_deleted = 0
+                for item in selected_connections:
+                    if hasattr(item, 'connection'):  # Es un ConnectionGraphicsItem
+                        self.connection_manager.remove_connection(item.connection)
+                        connections_deleted += 1
+                        deleted_something = True
+                
+                if connections_deleted > 0:
+                    print(f"🗑️ {connections_deleted} conexion(es) eliminada(s)")
+                
+                if deleted_something:
                     event.accept()
                 else:
-                    # Si no hay dispositivo seleccionado, ocultar vértices
+                    # Si no hay nada que eliminar, ocultar vértices
                     self.device_manager.deselect_all()
                     super().keyPressEvent(event)
             else:
