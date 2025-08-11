@@ -91,10 +91,24 @@ class DeviceGraphicsItem(QGraphicsPixmapItem):
                     text_color = QColor(255, 255, 255)  # Blanco para tema oscuro
                 else:
                     text_color = QColor(0, 0, 0)        # Negro para tema claro
+                print(f"🎨 Tema encontrado: {'oscuro' if canvas.dark_theme else 'claro'}, color: {'blanco' if canvas.dark_theme else 'negro'}")
             else:
-                text_color = QColor(255, 255, 255)      # Por defecto blanco
+                # Por defecto asumir tema claro (negro para texto)
+                text_color = QColor(0, 0, 0)  # Negro por defecto (tema claro)
+                print("⚠️ Canvas no encontrado, usando color negro por defecto")
             
             self.label_item.setDefaultTextColor(text_color)
+    
+    def set_label_color_direct(self, dark_theme):
+        """Establecer color de etiqueta directamente según tema"""
+        if self.label_item:
+            if dark_theme:
+                text_color = QColor(255, 255, 255)  # Blanco para tema oscuro
+            else:
+                text_color = QColor(0, 0, 0)        # Negro para tema claro
+            
+            self.label_item.setDefaultTextColor(text_color)
+            print(f"🎨 Color de etiqueta establecido: {'blanco' if dark_theme else 'negro'}")
     
     def update_label_position(self):
         """Actualizar posición de la etiqueta"""
@@ -248,6 +262,7 @@ class DeviceManager(QObject):
         super().__init__()
         
         self.canvas_scene = canvas_scene
+        self.canvas = None  # Referencia al canvas (se asigna después)
         self.devices = {}  # ID -> Device
         self.graphics_items = {}  # ID -> DeviceGraphicsItem
         
@@ -259,6 +274,10 @@ class DeviceManager(QObject):
         
         # Dispositivo actualmente seleccionado
         self.selected_device = None
+    
+    def set_canvas_reference(self, canvas):
+        """Establecer referencia al canvas"""
+        self.canvas = canvas
     
     def add_device(self, device_type, x, y, name=None):
         """Agregar nuevo dispositivo al canvas"""
@@ -273,6 +292,13 @@ class DeviceManager(QObject):
             
             # Crear item gráfico
             graphics_item = DeviceGraphicsItem(device)
+            
+            # Inicializar tema del nuevo dispositivo usando referencia directa
+            if self.canvas and hasattr(self.canvas, 'dark_theme'):
+                graphics_item.set_label_color_direct(self.canvas.dark_theme)
+            else:
+                # Fallback: intentar el método tradicional
+                graphics_item.update_label_color()
             
             # Agregar al diccionario y escena
             self.devices[device.id] = device
@@ -464,6 +490,13 @@ class DeviceManager(QObject):
                 
                 # Crear item gráfico
                 graphics_item = DeviceGraphicsItem(device)
+                
+                # Inicializar tema del dispositivo cargado usando referencia directa
+                if self.canvas and hasattr(self.canvas, 'dark_theme'):
+                    graphics_item.set_label_color_direct(self.canvas.dark_theme)
+                else:
+                    # Fallback: intentar el método tradicional
+                    graphics_item.update_label_color()
                 
                 # Agregar a gestión
                 self.devices[device_id] = device
