@@ -12,6 +12,7 @@ from PyQt5.QtCore import Qt, QRectF, QPoint, pyqtSignal
 from PyQt5.QtGui import QPen, QBrush, QColor, QPainter, QCursor, QFont, QKeySequence
 from .map_overlay_toggle import MapOverlayToggle
 from utils.constants import DEFAULT_CANVAS_WIDTH, DEFAULT_CANVAS_HEIGHT
+from utils.project_manager import ProjectManager
 from core import DeviceManager
 
 class Canvas(QGraphicsView):
@@ -57,6 +58,10 @@ class Canvas(QGraphicsView):
         # Inicializar gestor de conexiones
         from core.connection_manager import ConnectionManager
         self.connection_manager = ConnectionManager(self)
+        
+        # Inicializar gestor de proyectos con auto-save
+        self.project_manager = ProjectManager()
+        self.setup_project_manager()
         
         # Conectar señal para actualizar info panel
         self.device_manager.devices_changed.connect(self.update_device_info)
@@ -1251,3 +1256,90 @@ Tamaño de cuadrícula: {self.grid_size}px
                 print(f"📏 Dispositivo {selected_device.device_type} redimensionado: {current_size}px → {new_size}px")
         else:
             print("⚠️  Selecciona un dispositivo para redimensionar")
+    
+    # ===== MÉTODOS DE GESTIÓN DE PROYECTOS =====
+    
+    def setup_project_manager(self):
+        """Configurar el gestor de proyectos"""
+        # Conectar señales para auto-save
+        self.device_manager.devices_changed.connect(self.auto_save_project)
+        self.connection_manager.connections_changed.connect(self.auto_save_project)
+        
+        # Conectar señal de carga de proyecto
+        self.project_manager.project_loaded.connect(self.load_project_data)
+        
+        # NO cargar proyecto previo automáticamente
+        # self.project_manager.load_auto_save()
+        
+        print("🗂️ Gestor de proyectos inicializado (sin carga automática)")
+    
+    def auto_save_project(self):
+        """Guardar automáticamente el estado actual del proyecto"""
+        try:
+            # Obtener datos actuales
+            devices_data = self.device_manager.export_devices_data()
+            connections_data = self.connection_manager.export_connections_data()
+            canvas_data = {
+                "zoom": self.zoom_factor,
+                "grid_visible": self.grid_visible,
+                "grid_size": self.grid_size
+            }
+            
+            # Actualizar proyecto
+            self.project_manager.update_project_data(devices_data, connections_data, canvas_data)
+            
+        except Exception as e:
+            print(f"❌ Error en auto-save del proyecto: {e}")
+    
+    def load_project_data(self, project_data: dict):
+        """Cargar datos del proyecto en el canvas - solo dispositivos y conexiones"""
+        try:
+            print("📂 Cargando dispositivos y conexiones...")
+            
+            # Limpiar canvas actual
+            self.clear_canvas()
+            
+            # Cargar dispositivos
+            devices_data = project_data.get("devices", {})
+            if devices_data:
+                self.device_manager.import_devices_data(devices_data)
+                print(f"✅ Cargados {len(devices_data)} dispositivos")
+            
+            # Cargar conexiones
+            connections_data = project_data.get("connections", {})
+            if connections_data:
+                self.connection_manager.load_from_data(connections_data)
+                print(f"✅ Cargadas {len(connections_data)} conexiones")
+            
+            # Actualizar vista
+            self.update()
+            self.update_device_info()
+            
+            print("✅ Proyecto cargado exitosamente")
+            
+        except Exception as e:
+            print(f"❌ Error cargando proyecto: {e}")
+    
+    def clear_canvas(self):
+        """Limpiar completamente el canvas"""
+        self.device_manager.clear_all_devices()
+        self.connection_manager.cleanup()
+        self.setup_grid()
+    
+    def has_unsaved_work(self) -> bool:
+        """Verificar si hay trabajo sin guardar"""
+        device_count = len(self.device_manager.devices)
+        connection_count = len(self.connection_manager.connections)
+        return device_count > 0 or connection_count > 0
+    
+    def save_project_as(self, file_path: str) -> bool:
+        """Guardar proyecto en ruta específica"""
+        return self.project_manager.save_as(file_path)
+    
+    def load_project_file(self, file_path: str) -> bool:
+        """Cargar proyecto desde archivo"""
+        return self.project_manager.load_project(file_path)
+    
+    def get_project_info(self) -> dict:
+        """Obtener información del proyecto actual"""
+        return self.project_manager.get_project_info()

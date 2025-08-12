@@ -3,13 +3,17 @@ Gestor de conexiones entre dispositivos
 """
 
 from PyQt5.QtWidgets import QMessageBox
+from PyQt5.QtCore import QObject, pyqtSignal
 from typing import List, Optional
 from .connection import Connection
 from .device import Device
 
 
-class ConnectionManager:
+class ConnectionManager(QObject):
     """Gestor principal de todas las conexiones entre dispositivos"""
+    
+    # Señales
+    connections_changed = pyqtSignal()  # Emitida cuando cambian las conexiones
     
     def __init__(self, canvas=None):
         """
@@ -18,6 +22,7 @@ class ConnectionManager:
         Args:
             canvas: Referencia al canvas para agregar/remover items gráficos
         """
+        super().__init__()
         self.canvas = canvas
         self.connections: List[Connection] = []
         self.selected_connections: List[Connection] = []
@@ -74,6 +79,9 @@ class ConnectionManager:
         # Agregar a la lista de conexiones
         self.connections.append(connection)
         
+        # Emitir señal de cambio
+        self.connections_changed.emit()
+        
         print(f"✅ Conexión creada: {device_a.name} <-> {device_b.name}")
         return connection
     
@@ -88,6 +96,9 @@ class ConnectionManager:
             self.connections.remove(connection)
             if connection in self.selected_connections:
                 self.selected_connections.remove(connection)
+            
+            # Emitir señal de cambio
+            self.connections_changed.emit()
             
             print(f"🗑️ Conexión eliminada: {connection}")
     
@@ -177,6 +188,9 @@ class ConnectionManager:
         self.connections.clear()
         self.selected_connections.clear()
         
+        # Emitir señal de cambio
+        self.connections_changed.emit()
+        
         print("🧹 ConnectionManager limpiado")
     
     def get_connection_info(self) -> dict:
@@ -186,3 +200,52 @@ class ConnectionManager:
             'selected_connections': len(self.selected_connections),
             'connections': [str(conn) for conn in self.connections]
         }
+    
+    def export_connections_data(self) -> dict:
+        """Exportar datos de conexiones para guardar en archivo"""
+        connections_data = {}
+        
+        for i, connection in enumerate(self.connections):
+            connection_id = f"connection_{i+1}"
+            connections_data[connection_id] = {
+                "device_a_id": connection.device_a.id,
+                "device_b_id": connection.device_b.id,
+                "device_a_name": connection.device_a.name,
+                "device_b_name": connection.device_b.name,
+                "distance": connection.calculate_distance()
+            }
+        
+        return connections_data
+    
+    def load_from_data(self, connections_data: dict):
+        """Cargar conexiones desde datos guardados"""
+        try:
+            # Limpiar conexiones existentes
+            self.cleanup()
+            
+            if not self.canvas or not hasattr(self.canvas, 'device_manager'):
+                print("❌ Canvas o device_manager no disponible para cargar conexiones")
+                return
+            
+            device_manager = self.canvas.device_manager
+            
+            for connection_id, conn_data in connections_data.items():
+                # Buscar dispositivos por ID
+                device_a_id = conn_data.get("device_a_id")
+                device_b_id = conn_data.get("device_b_id")
+                
+                device_a = device_manager.get_device(device_a_id)
+                device_b = device_manager.get_device(device_b_id)
+                
+                if device_a and device_b:
+                    # Crear conexión
+                    connection = self.create_connection(device_a, device_b)
+                    if connection:
+                        print(f"✅ Conexión restaurada: {device_a.name} ↔ {device_b.name}")
+                else:
+                    print(f"⚠️ No se pudieron encontrar dispositivos para conexión: {connection_id}")
+            
+            print(f"📡 Cargadas {len(self.connections)} conexiones")
+            
+        except Exception as e:
+            print(f"❌ Error cargando conexiones: {e}")
