@@ -64,6 +64,7 @@ class MainWindow(QMainWindow):
         # Crear el sidebar panel
         self.sidebar = SidebarPanel()
         self.sidebar.device_selected.connect(self.on_device_selected)
+        self.sidebar.connection_mode_toggled.connect(self.on_connection_mode_toggled)
         
         # Agregar sidebar al layout si está visible
         if self.components_visible:
@@ -198,13 +199,86 @@ class MainWindow(QMainWindow):
     # Métodos de manejo de eventos del menú
     def open_file(self):
         """Abrir archivo de proyecto"""
-        # TODO: Implementar lógica para abrir archivos
-        print("Abrir archivo seleccionado")
+        from PyQt5.QtWidgets import QFileDialog, QMessageBox
+        
+        # Verificar si hay trabajo sin guardar antes de abrir
+        if self.canvas and self.canvas.has_unsaved_work():
+            reply = QMessageBox.question(
+                self,
+                'Trabajo sin guardar',
+                'Tienes trabajo sin guardar. ¿Quieres continuar?\nSe perderá el trabajo actual.',
+                QMessageBox.Yes | QMessageBox.No,
+                QMessageBox.No
+            )
+            
+            if reply != QMessageBox.Yes:
+                return
+        
+        # Mostrar diálogo de abrir archivo
+        file_path, _ = QFileDialog.getOpenFileName(
+            self,
+            'Abrir proyecto PON',
+            '',  # Directorio inicial
+            'Archivos PON (*.pon);;Todos los archivos (*.*)'
+        )
+        
+        # Si el usuario canceló el diálogo
+        if not file_path:
+            return
+        
+        # Intentar cargar el proyecto
+        if self.canvas and self.canvas.load_project_file(file_path):
+            self.statusBar().showMessage(f'Proyecto cargado: {file_path}', 4000)
+            print(f"📂 Proyecto cargado desde: {file_path}")
+        else:
+            QMessageBox.warning(
+                self,
+                'Error al abrir',
+                f'No se pudo abrir el archivo:\n{file_path}\n\nVerifica que sea un archivo PON válido.',
+                QMessageBox.Ok
+            )
     
     def save_file(self):
         """Guardar archivo de proyecto"""
-        # TODO: Implementar lógica para guardar archivos
-        print("Guardar archivo seleccionado")
+        from PyQt5.QtWidgets import QFileDialog, QMessageBox
+        
+        # Verificar si hay contenido que guardar
+        if not self.canvas or not self.canvas.has_unsaved_work():
+            QMessageBox.information(
+                self,
+                'Sin contenido',
+                'No hay dispositivos o conexiones para guardar.',
+                QMessageBox.Ok
+            )
+            return
+        
+        # Mostrar diálogo de guardar archivo
+        file_path, _ = QFileDialog.getSaveFileName(
+            self,
+            'Guardar proyecto PON',
+            'mi_topologia.pon',  # Nombre por defecto
+            'Archivos PON (*.pon);;Todos los archivos (*.*)'
+        )
+        
+        # Si el usuario canceló el diálogo
+        if not file_path:
+            return
+        
+        # Asegurar extensión .pon
+        if not file_path.lower().endswith('.pon'):
+            file_path += '.pon'
+        
+        # Intentar guardar
+        if self.canvas.save_project_as(file_path):
+            self.statusBar().showMessage(f'Proyecto guardado: {file_path}', 4000)
+            print(f"💾 Proyecto guardado en: {file_path}")
+        else:
+            QMessageBox.warning(
+                self,
+                'Error al guardar',
+                f'No se pudo guardar el proyecto en:\n{file_path}\n\nVerifica los permisos de escritura.',
+                QMessageBox.Ok
+            )
     
     def toggle_components(self):
         """Alternar visibilidad del panel de componentes"""
@@ -235,6 +309,17 @@ class MainWindow(QMainWindow):
         device_count = self.canvas.get_device_manager().get_device_count()
         print(f"📊 Total de dispositivos en canvas: {device_count}")
     
+    def on_connection_mode_toggled(self, enabled):
+        """Manejar cambio de modo conexión"""
+        if self.canvas:
+            self.canvas.set_connection_mode(enabled)
+            
+            # Actualizar status bar
+            if enabled:
+                self.statusBar().showMessage("🔗 Modo Conexión ACTIVO - Selecciona dos dispositivos para conectar", 0)
+            else:
+                self.statusBar().showMessage("🔗 Modo Conexión DESACTIVADO", 2000)
+    
     def toggle_grid(self):
         """Alternar visibilidad de la cuadrícula y el origen"""
         # Actualizar canvas si existe
@@ -244,6 +329,8 @@ class MainWindow(QMainWindow):
             # Sincronizar estado con el canvas
             self.grid_visible = self.canvas.grid_visible
             self.origin_visible = self.canvas.origin_visible
+            # Ocultar vértices al alternar cuadrícula
+            self.canvas.device_manager.deselect_all()
         
         grid_status = "mostrada" if self.grid_visible else "oculta"
         self.statusBar().showMessage(f'Cuadrícula y origen {grid_status}', 2000)
@@ -255,12 +342,16 @@ class MainWindow(QMainWindow):
         """Resetear vista original"""
         if self.canvas:
             self.canvas.reset_view()
+            # Ocultar vértices al resetear vista
+            self.canvas.device_manager.deselect_all()
             self.statusBar().showMessage('Vista reseteada', 2000)
     
     def center_view(self):
         """Centrar vista en el origen"""
         if self.canvas:
             self.canvas.center_view()
+            # Ocultar vértices al centrar vista
+            self.canvas.device_manager.deselect_all()
             self.statusBar().showMessage('Vista centrada', 2000)
     
     def toggle_simulation(self):
@@ -398,7 +489,7 @@ class MainWindow(QMainWindow):
             </ul>
             
             <p><b>Repositorio GitHub:</b><br>
-            <a href="https://github.com/alex-itico/PonLab.git">https://github.com/alex-itico/PonLab.git</a><br>
+            <a href="https://github.com/alex-itico/PonLab">https://github.com/alex-itico/PonLab</a><br>
             <i>(Repositorio oficial - próximamente actualizado)</i></p>
             
             <p>© 2025 - Desarrollado con PyQt5</p>'''
@@ -442,6 +533,15 @@ class MainWindow(QMainWindow):
     
     def closeEvent(self, event):
         """Manejar el evento de cierre de la ventana"""
+        # Verificar si hay trabajo sin guardar
+        if self.canvas and self.canvas.has_unsaved_work():
+            # Mostrar diálogo de confirmación
+            reply = self.show_close_confirmation_dialog()
+            
+            if reply != QMessageBox.Yes:
+                event.ignore()  # Cancelar cierre
+                return
+        
         # Guardar estado de la ventana
         config_manager.save_window_state(self)
         
@@ -454,3 +554,67 @@ class MainWindow(QMainWindow):
         
         # Permitir el cierre de la ventana
         event.accept()
+    
+    def show_close_confirmation_dialog(self):
+        """Mostrar diálogo de confirmación de cierre"""
+        from PyQt5.QtWidgets import QMessageBox
+        
+        msg_box = QMessageBox(self)
+        msg_box.setIcon(QMessageBox.Question)
+        msg_box.setWindowTitle('Confirmar cierre')
+        msg_box.setText('Tienes trabajo sin guardar en el canvas.')
+        msg_box.setInformativeText('¿Estás seguro de que quieres cerrar el programa?')
+        msg_box.setDetailedText('Se perderán todos los dispositivos y conexiones creadas.')
+        
+        # Botones personalizados
+        yes_button = msg_box.addButton('Sí, cerrar', QMessageBox.YesRole)
+        no_button = msg_box.addButton('Cancelar', QMessageBox.NoRole)
+        save_button = msg_box.addButton('Guardar', QMessageBox.AcceptRole)
+        
+        msg_box.setDefaultButton(no_button)
+        
+        msg_box.exec_()
+        
+        if msg_box.clickedButton() == yes_button:
+            return QMessageBox.Yes
+        elif msg_box.clickedButton() == save_button:
+            # Implementar guardado rápido
+            return self.save_and_close()
+        else:
+            return QMessageBox.No
+    
+    def save_and_close(self):
+        """Guardar proyecto rápidamente y cerrar"""
+        from PyQt5.QtWidgets import QFileDialog
+        
+        # Mostrar diálogo de guardar archivo
+        file_path, _ = QFileDialog.getSaveFileName(
+            self,
+            'Guardar proyecto PON',
+            'mi_topologia.pon',  # Nombre por defecto
+            'Archivos PON (*.pon);;Todos los archivos (*.*)'
+        )
+        
+        # Si el usuario canceló el diálogo
+        if not file_path:
+            return QMessageBox.No  # No cerrar
+        
+        # Asegurar extensión .pon
+        if not file_path.lower().endswith('.pon'):
+            file_path += '.pon'
+        
+        # Intentar guardar
+        if self.canvas and self.canvas.save_project_as(file_path):
+            self.statusBar().showMessage(f'Proyecto guardado: {file_path}', 3000)
+            print(f"💾 Proyecto guardado en: {file_path}")
+            return QMessageBox.Yes  # Proceder con el cierre
+        else:
+            # Si falla el guardado, preguntar qué hacer
+            reply = QMessageBox.question(
+                self, 
+                'Error al guardar', 
+                f'No se pudo guardar el proyecto en:\n{file_path}\n\n¿Quieres cerrar sin guardar?',
+                QMessageBox.Yes | QMessageBox.No,
+                QMessageBox.No
+            )
+            return reply

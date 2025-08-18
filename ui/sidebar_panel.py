@@ -296,15 +296,230 @@ class DeviceItem(QFrame):
                 }
             """)
 
+class ConnectionItem(QFrame):
+    """Widget para la herramienta de conexión con el mismo diseño que los dispositivos"""
+    
+    connection_mode_toggled = pyqtSignal(bool)  # Señal cuando se activa/desactiva
+    
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.connection_mode = False
+        self.dark_theme = False
+        self.setup_ui()
+    
+    def setup_ui(self):
+        """Configurar la interfaz de la herramienta de conexión"""
+        self.setFixedHeight(60)
+        self.setFrameStyle(QFrame.Box)
+        self.setLineWidth(1)
+        self.setCursor(Qt.PointingHandCursor)
+        
+        # Layout principal
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(8, 8, 8, 8)
+        layout.setSpacing(8)
+        
+        # Icono de la herramienta
+        self.icon_label = QLabel()
+        self.icon_label.setFixedSize(40, 40)
+        self.icon_label.setAlignment(Qt.AlignCenter)
+        self.setup_connection_icon()
+        layout.addWidget(self.icon_label)
+        
+        # Información de la herramienta
+        info_layout = QVBoxLayout()
+        info_layout.setContentsMargins(0, 0, 0, 0)
+        info_layout.setSpacing(2)
+        
+        # Nombre de la herramienta
+        name_label = QLabel("Añadir Conexiones")
+        name_font = QFont()
+        name_font.setBold(True)
+        name_font.setPointSize(10)
+        name_label.setFont(name_font)
+        info_layout.addWidget(name_label)
+        
+        # Descripción de la herramienta
+        desc_label = QLabel("Conexión")
+        desc_font = QFont()
+        desc_font.setPointSize(8)
+        desc_label.setFont(desc_font)
+        desc_label.setStyleSheet("color: #666666;")
+        info_layout.addWidget(desc_label)
+        
+        layout.addLayout(info_layout)
+        layout.addStretch()
+    
+    def setup_connection_icon(self):
+        """Cargar icono SVG para la herramienta de conexión"""
+        try:
+            # Seleccionar el archivo SVG según el tema
+            if self.dark_theme:
+                icon_filename = 'alicate_dark.svg'
+            else:
+                icon_filename = 'alicate_light.svg'
+            
+            # Construir ruta al archivo SVG
+            current_file = os.path.abspath(__file__)
+            ui_dir = os.path.dirname(current_file)
+            project_root = os.path.dirname(ui_dir)
+            icon_path = os.path.join(project_root, 'resources', 'devices', icon_filename)
+            
+            if os.path.exists(icon_path):
+                self.load_svg_icon(icon_path)
+            else:
+                self.create_fallback_icon()
+                
+        except Exception as e:
+            self.create_fallback_icon()
+            print(f"Error cargando icono de conexión: {e}")
+    
+    def load_svg_icon(self, svg_path):
+        """Cargar icono desde archivo SVG"""
+        try:
+            svg_renderer = QSvgRenderer(svg_path)
+            
+            # Crear pixmap con resolución alta (supersampling 2x)
+            pixmap = QPixmap(80, 80)
+            pixmap.fill(Qt.transparent)
+            
+            painter = QPainter(pixmap)
+            painter.setRenderHint(QPainter.Antialiasing)
+            painter.setRenderHint(QPainter.SmoothPixmapTransform)
+            svg_renderer.render(painter)
+            painter.end()
+            
+            # Escalar a tamaño final manteniendo la calidad
+            final_pixmap = pixmap.scaled(40, 40, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+            self.icon_label.setPixmap(final_pixmap)
+            
+        except Exception as e:
+            self.create_fallback_icon()
+            print(f"Error cargando SVG: {e}")
+    
+    def create_fallback_icon(self):
+        """Crear icono fallback si no se puede cargar el SVG"""
+        pixmap = QPixmap(40, 40)
+        pixmap.fill(Qt.transparent)
+        
+        painter = QPainter(pixmap)
+        painter.setRenderHint(QPainter.Antialiasing)
+        
+        # Color según tema
+        if self.dark_theme:
+            color = QColor(255, 255, 255)
+        else:
+            color = QColor(0, 0, 0)
+        
+        painter.setPen(QPen(color, 2))
+        painter.setBrush(QBrush(color))
+        
+        # Dibujar alicate simple
+        painter.drawEllipse(16, 16, 8, 8)
+        painter.drawLine(10, 10, 30, 30)
+        painter.drawLine(30, 10, 10, 30)
+        
+        painter.end()
+        self.icon_label.setPixmap(pixmap)
+    
+    def mousePressEvent(self, event):
+        """Manejar click en la herramienta de conexión"""
+        if event.button() == Qt.LeftButton:
+            self.toggle_connection_mode()
+        super().mousePressEvent(event)
+    
+    def toggle_connection_mode(self):
+        """Toggle del modo conexión"""
+        self.connection_mode = not self.connection_mode
+        self.update_visual_state()
+        self.connection_mode_toggled.emit(self.connection_mode)
+        print(f"🔗 Modo conexión: {'ACTIVADO' if self.connection_mode else 'DESACTIVADO'}")
+    
+    def set_connection_mode(self, enabled):
+        """Establecer el modo conexión programáticamente"""
+        if self.connection_mode != enabled:
+            self.connection_mode = enabled
+            self.update_visual_state()
+    
+    def update_visual_state(self):
+        """Actualizar el estado visual según el modo activo"""
+        self.set_theme(self.dark_theme)  # Re-aplicar tema con estado actual
+    
+    def is_connection_mode_active(self):
+        """Verificar si el modo conexión está activo"""
+        return self.connection_mode
+    
+    def set_theme(self, dark_theme):
+        """Actualizar tema de la herramienta de conexión"""
+        self.dark_theme = dark_theme
+        
+        if self.connection_mode:
+            # Estado activo (verde)
+            self.setStyleSheet("""
+                ConnectionItem {
+                    background-color: #4CAF50;
+                    border: 2px solid #45a049;
+                    border-radius: 4px;
+                }
+                ConnectionItem:hover {
+                    background-color: #45a049;
+                    border-color: #3d8b40;
+                }
+                QLabel {
+                    color: #ffffff;
+                    background: transparent;
+                }
+            """)
+        elif dark_theme:
+            # Modo oscuro
+            self.setStyleSheet("""
+                ConnectionItem {
+                    background-color: #3c3c3c;
+                    border: 1px solid #555555;
+                    border-radius: 4px;
+                }
+                ConnectionItem:hover {
+                    background-color: #4a4a4a;
+                    border-color: #4a90e2;
+                }
+                QLabel {
+                    color: #ffffff;
+                    background: transparent;
+                }
+            """)
+        else:
+            # Modo claro
+            self.setStyleSheet("""
+                ConnectionItem {
+                    background-color: #ffffff;
+                    border: 1px solid #d0d0d0;
+                    border-radius: 4px;
+                }
+                ConnectionItem:hover {
+                    background-color: #f5f5f5;
+                    border-color: #2196f3;
+                }
+                QLabel {
+                    color: #333333;
+                    background: transparent;
+                }
+            """)
+        
+        # Actualizar icono según el tema
+        self.setup_connection_icon()
+
+
 class SidebarPanel(QWidget):
     """Panel lateral con dispositivos y controles"""
     
     device_selected = pyqtSignal(str, str)  # nombre_dispositivo, tipo_dispositivo
+    connection_mode_toggled = pyqtSignal(bool)  # True cuando se activa modo conexión
     
     def __init__(self, parent=None):
         super().__init__(parent)
         self.dark_theme = False
         self.device_items = []
+        self.connection_item = None  # Referencia al item de conexión
         self.setup_ui()
         self.populate_devices()
     
@@ -329,13 +544,13 @@ class SidebarPanel(QWidget):
         title_label.setFixedHeight(40)
         main_layout.addWidget(title_label)
         
-        # Área de scroll para dispositivos
+        # Área de scroll para dispositivos y herramientas
         scroll_area = QScrollArea()
         scroll_area.setWidgetResizable(True)
         scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         
-        # Widget contenedor de dispositivos
+        # Widget contenedor de dispositivos y herramientas
         self.devices_widget = QWidget()
         self.devices_layout = QVBoxLayout(self.devices_widget)
         self.devices_layout.setContentsMargins(5, 5, 5, 5)
@@ -358,8 +573,37 @@ class SidebarPanel(QWidget):
         # Aplicar tema inicial
         self.set_theme(self.dark_theme)
     
+    def setup_connection_tool(self):
+        """Configurar la herramienta de conexión"""
+        # Crear el item de conexión con las mismas dimensiones que los dispositivos
+        self.connection_item = ConnectionItem()
+        self.connection_item.connection_mode_toggled.connect(self.on_connection_mode_toggled)
+        self.connection_item.set_theme(self.dark_theme)
+        
+        # Agregar al layout antes del stretch
+        self.devices_layout.insertWidget(
+            self.devices_layout.count() - 1, 
+            self.connection_item
+        )
+    
+    def on_connection_mode_toggled(self, enabled):
+        """Manejar cambio en el modo conexión"""
+        # Emitir la señal hacia arriba
+        self.connection_mode_toggled.emit(enabled)
+    
+    def is_connection_mode_active(self):
+        """Verificar si el modo conexión está activo"""
+        if self.connection_item:
+            return self.connection_item.is_connection_mode_active()
+        return False
+    
+    def deactivate_connection_mode(self):
+        """Desactivar el modo conexión"""
+        if self.connection_item and self.connection_item.is_connection_mode_active():
+            self.connection_item.set_connection_mode(False)
+    
     def populate_devices(self):
-        """Poblar el panel con dispositivos predefinidos"""
+        """Poblar el panel con dispositivos predefinidos y herramientas"""
         # Lista de dispositivos disponibles
         devices = [
             ("Terminal de Linea Óptica", "OLT"),      # nombre_mostrado, tipo_para_icono
@@ -378,6 +622,9 @@ class SidebarPanel(QWidget):
                 device_item
             )
             self.device_items.append(device_item)
+        
+        # Agregar herramienta de conexión después de los dispositivos
+        self.setup_connection_tool()
     
     def on_device_clicked(self, device_name):
         """Manejar click en dispositivo"""
@@ -450,6 +697,10 @@ class SidebarPanel(QWidget):
         # Actualizar tema de todos los dispositivos
         for device_item in self.device_items:
             device_item.set_theme(dark_theme)
+        
+        # Actualizar tema del item de conexión
+        if hasattr(self, 'connection_item') and self.connection_item:
+            self.connection_item.set_theme(dark_theme)
     
     def add_device(self, device_name, device_type):
         """Agregar un nuevo dispositivo al panel"""
