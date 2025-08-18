@@ -34,7 +34,7 @@ _Una aplicación de escritorio para la simulación y visualización de redes de 
 
 ### Prerrequisitos
 
-- Python 3.8 o superior
+- Python 3.8 o superior (3.13.3 utilizada como base)
 - pip (gestor de paquetes de Python)
 
 ### Pasos de instalación
@@ -50,12 +50,7 @@ _Una aplicación de escritorio para la simulación y visualización de redes de 
 
    ```bash
    python -m venv venv
-
-   # En Windows
-   venv\Scripts\activate
-
-   # En Linux/macOS
-   source venv/bin/activate
+   
    ```
 
 3. **Instalar dependencias:**
