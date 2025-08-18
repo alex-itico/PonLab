@@ -7,6 +7,7 @@ from PyQt5.QtCore import QObject, pyqtSignal, Qt
 from PyQt5.QtWidgets import QGraphicsPixmapItem, QGraphicsItem, QGraphicsRectItem, QGraphicsTextItem
 from PyQt5.QtGui import QPen, QBrush, QColor, QFont
 from .device_types import create_device
+from .connection_points import ConnectionPointsManager
 import json
 
 class DeviceGraphicsItem(QGraphicsPixmapItem):
@@ -17,11 +18,13 @@ class DeviceGraphicsItem(QGraphicsPixmapItem):
         
         self.device = device
         self.label_item = None  # Etiqueta de texto
+        self.connection_points_manager = None  # Gestor de puntos de conexión
         self.setup_graphics()
         
         # Conectar señales del dispositivo
         self.device.position_changed.connect(self.update_position)
         self.device.properties_changed.connect(self.update_graphics)
+        self.device.selection_changed.connect(self.on_selection_changed)
     
     def setup_graphics(self):
         """Configurar propiedades gráficas del item"""
@@ -43,6 +46,9 @@ class DeviceGraphicsItem(QGraphicsPixmapItem):
         
         # Crear etiqueta
         self.create_label()
+        
+        # Crear gestor de puntos de conexión
+        self.connection_points_manager = ConnectionPointsManager(self)
     
     def create_label(self):
         """Crear etiqueta de texto para el dispositivo"""
@@ -85,10 +91,24 @@ class DeviceGraphicsItem(QGraphicsPixmapItem):
                     text_color = QColor(255, 255, 255)  # Blanco para tema oscuro
                 else:
                     text_color = QColor(0, 0, 0)        # Negro para tema claro
+                print(f"🎨 Tema encontrado: {'oscuro' if canvas.dark_theme else 'claro'}, color: {'blanco' if canvas.dark_theme else 'negro'}")
             else:
-                text_color = QColor(255, 255, 255)      # Por defecto blanco
+                # Por defecto asumir tema claro (negro para texto)
+                text_color = QColor(0, 0, 0)  # Negro por defecto (tema claro)
+                print("⚠️ Canvas no encontrado, usando color negro por defecto")
             
             self.label_item.setDefaultTextColor(text_color)
+    
+    def set_label_color_direct(self, dark_theme):
+        """Establecer color de etiqueta directamente según tema"""
+        if self.label_item:
+            if dark_theme:
+                text_color = QColor(255, 255, 255)  # Blanco para tema oscuro
+            else:
+                text_color = QColor(0, 0, 0)        # Negro para tema claro
+            
+            self.label_item.setDefaultTextColor(text_color)
+            print(f"🎨 Color de etiqueta establecido: {'blanco' if dark_theme else 'negro'}")
     
     def update_label_position(self):
         """Actualizar posición de la etiqueta"""
@@ -120,11 +140,74 @@ class DeviceGraphicsItem(QGraphicsPixmapItem):
             self.label_item.setPlainText(self.device.name)
             self.update_label_color()  # Actualizar color también
             self.update_label_position()
+        
+        # Actualizar posiciones de los connection points
+        if self.connection_points_manager:
+            self.connection_points_manager.update_positions()
+    
+    def on_selection_changed(self, is_selected):
+        """Manejar cambio de selección del dispositivo"""
+        if self.connection_points_manager:
+            if is_selected:
+                self.connection_points_manager.show_points()
+            else:
+                self.connection_points_manager.hide_points()
+    
+    def itemChange(self, change, value):
+        """Manejar cambios en el item gráfico (incluyendo selección)"""
+        if change == QGraphicsItem.ItemPositionChange:
+            # Actualizar posición del dispositivo cuando se mueve el item gráfico
+            new_pos = value
+            self.device.set_position(new_pos.x(), new_pos.y())
+            
+            # Actualizar conexiones que involucren este dispositivo
+            self._update_device_connections()
+            
+        elif change == QGraphicsItem.ItemSelectedChange:
+            # Manejar cambios de selección automáticamente
+            is_selected = bool(value)
+            
+            # Sincronizar con el estado del dispositivo
+            self.device.set_selected(is_selected)
+            
+            # Manejar vértices de conexión
+            if self.connection_points_manager:
+                if is_selected:
+                    self.connection_points_manager.show_points()
+                else:
+                    self.connection_points_manager.hide_points()
+        
+        return super().itemChange(change, value)
+    
+    def _update_device_connections(self):
+        """Actualizar las conexiones relacionadas con este dispositivo"""
+        # Buscar el canvas para obtener el connection manager
+        canvas = None
+        for view in self.scene().views():
+            if hasattr(view, 'connection_manager'):
+                canvas = view
+                break
+        
+        if canvas and hasattr(canvas, 'connection_manager'):
+            # Obtener conexiones que involucren este dispositivo
+            connections = canvas.connection_manager.get_connections_for_device(self.device)
+            for connection in connections:
+                if connection.graphics_item:
+                    connection.graphics_item.update_line()
+    
+    def update_theme(self, dark_theme=False):
+        """Actualizar tema de los elementos gráficos"""
+        # Actualizar tema de la etiqueta
+        self.update_label_color()
+        
+        # Actualizar tema de los connection points
+        if self.connection_points_manager:
+            self.connection_points_manager.update_theme(dark_theme)
     
     def mousePressEvent(self, event):
-        """Manejar click del mouse para selección"""
+        """Manejar click del mouse para selección o conexión"""
         if event.button() == Qt.LeftButton:
-            # Buscar el device manager en el canvas
+            # Buscar el canvas
             canvas = None
             scene_parent = self.scene().parent()
             if hasattr(scene_parent, 'device_manager'):
@@ -136,8 +219,22 @@ class DeviceGraphicsItem(QGraphicsPixmapItem):
                         canvas = view
                         break
             
-            if canvas and hasattr(canvas, 'device_manager'):
-                canvas.device_manager.select_device_by_object(self.device)
+            if canvas:
+                # Verificar si estamos en modo conexión
+                if hasattr(canvas, 'handle_device_click_for_connection'):
+                    connection_handled = canvas.handle_device_click_for_connection(self.device)
+                    if connection_handled:
+                        # Si se manejó la conexión, no hacer selección normal
+                        super().mousePressEvent(event)
+                        return
+                
+                # Selección normal
+                if hasattr(canvas, 'device_manager'):
+                    canvas.device_manager.select_device_by_object(self.device)
+                else:
+                    # Fallback: selección directa
+                    was_selected = self.device.is_selected()
+                    self.device.set_selected(not was_selected)
             else:
                 # Fallback: selección directa
                 was_selected = self.device.is_selected()
@@ -145,14 +242,11 @@ class DeviceGraphicsItem(QGraphicsPixmapItem):
             
         super().mousePressEvent(event)
     
-    def itemChange(self, change, value):
-        """Manejar cambios en el item gráfico"""
-        if change == QGraphicsItem.ItemPositionChange:
-            # Actualizar posición del dispositivo cuando se mueve el item gráfico
-            new_pos = value
-            self.device.set_position(new_pos.x(), new_pos.y())
-        
-        return super().itemChange(change, value)
+    def cleanup(self):
+        """Limpiar recursos del item gráfico"""
+        if self.connection_points_manager:
+            self.connection_points_manager.cleanup()
+            self.connection_points_manager = None
 
 
 class DeviceManager(QObject):
@@ -168,6 +262,7 @@ class DeviceManager(QObject):
         super().__init__()
         
         self.canvas_scene = canvas_scene
+        self.canvas = None  # Referencia al canvas (se asigna después)
         self.devices = {}  # ID -> Device
         self.graphics_items = {}  # ID -> DeviceGraphicsItem
         
@@ -179,6 +274,10 @@ class DeviceManager(QObject):
         
         # Dispositivo actualmente seleccionado
         self.selected_device = None
+    
+    def set_canvas_reference(self, canvas):
+        """Establecer referencia al canvas"""
+        self.canvas = canvas
     
     def add_device(self, device_type, x, y, name=None):
         """Agregar nuevo dispositivo al canvas"""
@@ -193,6 +292,13 @@ class DeviceManager(QObject):
             
             # Crear item gráfico
             graphics_item = DeviceGraphicsItem(device)
+            
+            # Inicializar tema del nuevo dispositivo usando referencia directa
+            if self.canvas and hasattr(self.canvas, 'dark_theme'):
+                graphics_item.set_label_color_direct(self.canvas.dark_theme)
+            else:
+                # Fallback: intentar el método tradicional
+                graphics_item.update_label_color()
             
             # Agregar al diccionario y escena
             self.devices[device.id] = device
@@ -212,12 +318,27 @@ class DeviceManager(QObject):
     def remove_device(self, device_id):
         """Remover dispositivo del canvas"""
         if device_id in self.devices:
-            # Remover item gráfico de la escena
+            device = self.devices[device_id]
+            
+            # Notificar al connection manager antes de eliminar el dispositivo
+            # Buscar canvas para obtener connection_manager
+            canvas = None
+            for view in self.canvas_scene.views():
+                if hasattr(view, 'connection_manager'):
+                    canvas = view
+                    break
+            
+            if canvas and hasattr(canvas, 'connection_manager'):
+                canvas.connection_manager.remove_connections_for_device(device)
+            
+            # Obtener item gráfico y limpiar recursos
             graphics_item = self.graphics_items[device_id]
+            graphics_item.cleanup()  # Limpiar connection points
+            
+            # Remover item gráfico de la escena
             self.canvas_scene.removeItem(graphics_item)
             
             # Limpiar referencias
-            device = self.devices[device_id]
             if device == self.selected_device:
                 self.selected_device = None
             
@@ -370,6 +491,13 @@ class DeviceManager(QObject):
                 # Crear item gráfico
                 graphics_item = DeviceGraphicsItem(device)
                 
+                # Inicializar tema del dispositivo cargado usando referencia directa
+                if self.canvas and hasattr(self.canvas, 'dark_theme'):
+                    graphics_item.set_label_color_direct(self.canvas.dark_theme)
+                else:
+                    # Fallback: intentar el método tradicional
+                    graphics_item.update_label_color()
+                
                 # Agregar a gestión
                 self.devices[device_id] = device
                 self.graphics_items[device_id] = graphics_item
@@ -397,7 +525,24 @@ class DeviceManager(QObject):
         }
     
     def update_label_colors(self, dark_theme=None):
-        """Actualizar colores de todas las etiquetas de dispositivos"""
+        """Actualizar colores de todas las etiquetas de dispositivos y connection points"""
+        # Buscar información del tema si no se proporciona
+        if dark_theme is None:
+            # Intentar obtener tema del canvas
+            for graphics_item in self.graphics_items.values():
+                if graphics_item.scene():
+                    for view in graphics_item.scene().views():
+                        if hasattr(view, 'dark_theme'):
+                            dark_theme = view.dark_theme
+                            break
+                    break
+            if dark_theme is None:
+                dark_theme = False  # Default
+        
         for graphics_item in self.graphics_items.values():
+            # Actualizar etiquetas
             if hasattr(graphics_item, 'update_label_color'):
                 graphics_item.update_label_color()
+            # Actualizar connection points
+            if hasattr(graphics_item, 'update_theme'):
+                graphics_item.update_theme(dark_theme)

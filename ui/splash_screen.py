@@ -75,22 +75,22 @@ class SplashScreen(QSplashScreen):
         title_font = QFont("Arial", 24, QFont.Bold)
         painter.setFont(title_font)
         
-        title_rect = painter.fontMetrics().boundingRect("Simulador Redes de Acceso Óptica")
+        title_rect = painter.fontMetrics().boundingRect("Simulador Redes de Ópticas Pasivas")
         title_x = (self.width() - title_rect.width()) // 2
         title_y = (self.height() + title_rect.height()) // 2 + 40
         
-        painter.drawText(title_x, title_y, "Simulador Redes de Acceso Óptica")
+        painter.drawText(title_x, title_y, "Simulador Redes de Ópticas Pasivas")
         
         # Dibujar el subtítulo
         painter.setPen(QColor(200, 200, 200))
         subtitle_font = QFont("Arial", 12)
         painter.setFont(subtitle_font)
         
-        subtitle_rect = painter.fontMetrics().boundingRect("Redes de Acceso Óptica")
+        subtitle_rect = painter.fontMetrics().boundingRect("Redes de Ópticas Pasivas")
         subtitle_x = (self.width() - subtitle_rect.width()) // 2
         subtitle_y = title_y + 35
         
-        painter.drawText(subtitle_x, subtitle_y, "Redes de Acceso Óptica")
+        painter.drawText(subtitle_x, subtitle_y, "Redes de Ópticas Pasivas")
         
         # Dibujar versión
         painter.setPen(QColor(150, 150, 150))
