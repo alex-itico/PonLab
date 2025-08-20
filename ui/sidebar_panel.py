@@ -9,7 +9,9 @@ from PyQt5.QtCore import Qt, pyqtSignal, QMimeData, QPoint
 from PyQt5.QtGui import QFont, QPixmap, QPainter, QColor, QPen, QBrush, QDrag
 from PyQt5.QtSvg import QSvgRenderer
 from utils.constants import DEFAULT_SIDEBAR_WIDTH
+from .simulation_panel import SimulationPanel
 import os
+
 
 class DeviceItem(QFrame):
     """Widget para representar un dispositivo individual"""
@@ -570,6 +572,14 @@ class SidebarPanel(QWidget):
         info_label.setFixedHeight(40)
         main_layout.addWidget(info_label)
         
+        # Agregar panel de simulación
+        self.sim_panel = SimulationPanel()
+        self.sim_panel.start_simulation.connect(self._handle_simulation_start)
+        self.sim_panel.stop_simulation.connect(self._handle_simulation_stop)
+        main_layout.addWidget(self.sim_panel)
+        
+        self.setLayout(main_layout)
+        
         # Aplicar tema inicial
         self.set_theme(self.dark_theme)
     
@@ -720,3 +730,43 @@ class SidebarPanel(QWidget):
         for device_item in self.device_items:
             device_item.setParent(None)
         self.device_items.clear()
+    
+    def _handle_simulation_start(self, params):
+        """Iniciar simulación en el OLT"""
+        if not hasattr(self, 'canvas') or not self.canvas:
+            print("No hay canvas disponible")
+            return
+        
+        try:
+            olt = self.canvas.device_manager.get_devices_by_type("OLT")[0]
+            if not olt:
+                print("No se encontró un OLT")
+                return
+                
+            # Configurar ONUs
+            onus = self.canvas.device_manager.get_devices_by_type("ONU")
+            if not onus:
+                print("No se encontraron ONUs")
+                return
+                
+            # Configurar parámetros de simulación
+            for onu in onus:
+                onu.properties['traffic_profile'] = params.get('traffic_profile', 'constant')
+                onu.properties['mean_rate'] = params.get('mean_rate', 500)
+                
+            # Configurar y iniciar simulación
+            olt.scheduler.configure_simulation(params)
+            olt.scheduler.simulation_finished.connect(self.sim_panel.on_simulation_finished)
+            olt.scheduler.start_simulation()
+            
+        except Exception as e:
+            print(f"Error al iniciar simulación: {e}")
+    
+    def _handle_simulation_stop(self):
+        """Detener simulación en curso"""
+        if not self.canvas:
+            return
+            
+        olt = self.canvas.device_manager.get_devices_by_type("OLT")[0]
+        if olt:
+            olt.scheduler.stop_simulation()
