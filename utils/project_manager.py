@@ -165,9 +165,9 @@ class ProjectManager(QObject):
                         # Borrar archivos temporales de más de 1 día
                         if os.path.getctime(file_path) < (datetime.now().timestamp() - 86400):
                             os.remove(file_path)
-                            print(f"🧹 Archivo temporal eliminado: {file}")
+                            print(f"Archivo temporal eliminado: {file}")
         except Exception as e:
-            print(f"⚠️ Error limpiando archivos temporales: {e}")
+            print(f"Error limpiando archivos temporales: {e}")
     
     def has_temp_save(self) -> bool:
         """Verificar si existe un archivo temporal"""

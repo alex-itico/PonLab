@@ -75,6 +75,9 @@ class MainWindow(QMainWindow):
         self.canvas.device_dropped.connect(self.on_device_dropped)
         main_layout.addWidget(self.canvas)
         
+        # Establecer referencia del canvas en el sidebar para simulación
+        self.sidebar.set_canvas_reference(self.canvas)
+        
         # El canvas ocupa el espacio restante
     
     def setup_menubar(self):

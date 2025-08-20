@@ -10,6 +10,7 @@ from PyQt5.QtGui import QFont, QPixmap, QPainter, QColor, QPen, QBrush, QDrag
 from PyQt5.QtSvg import QSvgRenderer
 from utils.constants import DEFAULT_SIDEBAR_WIDTH
 from .simulation_panel import SimulationPanel
+from core.simulation_manager import SimulationManager
 import os
 
 
@@ -522,6 +523,11 @@ class SidebarPanel(QWidget):
         self.dark_theme = False
         self.device_items = []
         self.connection_item = None  # Referencia al item de conexión
+        self.canvas = None  # Referencia al canvas
+        
+        # Crear gestor de simulación
+        self.simulation_manager = SimulationManager()
+        
         self.setup_ui()
         self.populate_devices()
     
@@ -577,6 +583,11 @@ class SidebarPanel(QWidget):
         self.sim_panel.start_simulation.connect(self._handle_simulation_start)
         self.sim_panel.stop_simulation.connect(self._handle_simulation_stop)
         main_layout.addWidget(self.sim_panel)
+        
+        # Conectar señales del simulation manager
+        self.simulation_manager.simulation_started.connect(self.sim_panel.on_simulation_started)
+        self.simulation_manager.simulation_stopped.connect(self.sim_panel.on_simulation_stopped)
+        self.simulation_manager.simulation_finished.connect(self.sim_panel.on_simulation_finished)
         
         self.setLayout(main_layout)
         
@@ -731,42 +742,37 @@ class SidebarPanel(QWidget):
             device_item.setParent(None)
         self.device_items.clear()
     
+    def set_canvas_reference(self, canvas):
+        """Establecer referencia al canvas para acceso a dispositivos"""
+        self.canvas = canvas
+        if canvas and hasattr(canvas, 'device_manager'):
+            self.simulation_manager.set_device_manager(canvas.device_manager)
+    
     def _handle_simulation_start(self, params):
-        """Iniciar simulación en el OLT"""
-        if not hasattr(self, 'canvas') or not self.canvas:
-            print("No hay canvas disponible")
+        """Iniciar simulación usando el SimulationManager"""
+        if not self.canvas or not hasattr(self.canvas, 'device_manager'):
+            print("❌ No hay canvas o device manager disponible")
             return
         
         try:
-            olt = self.canvas.device_manager.get_devices_by_type("OLT")[0]
-            if not olt:
-                print("No se encontró un OLT")
-                return
+            # Inicializar simulación con parámetros
+            if self.simulation_manager.initialize_simulation(params):
+                # Iniciar simulación
+                success = self.simulation_manager.start_simulation()
+                if not success:
+                    print("❌ Error al iniciar la simulación")
+                    self.sim_panel.on_simulation_stopped()
+            else:
+                print("❌ Error al inicializar la simulación")
+                self.sim_panel.on_simulation_stopped()
                 
-            # Configurar ONUs
-            onus = self.canvas.device_manager.get_devices_by_type("ONU")
-            if not onus:
-                print("No se encontraron ONUs")
-                return
-                
-            # Configurar parámetros de simulación
-            for onu in onus:
-                onu.properties['traffic_profile'] = params.get('traffic_profile', 'constant')
-                onu.properties['mean_rate'] = params.get('mean_rate', 500)
-                
-            # Configurar y iniciar simulación
-            olt.scheduler.configure_simulation(params)
-            olt.scheduler.simulation_finished.connect(self.sim_panel.on_simulation_finished)
-            olt.scheduler.start_simulation()
-            
         except Exception as e:
-            print(f"Error al iniciar simulación: {e}")
+            print(f"❌ Error al iniciar simulación: {e}")
+            self.sim_panel.on_simulation_stopped()
     
     def _handle_simulation_stop(self):
         """Detener simulación en curso"""
-        if not self.canvas:
-            return
-            
-        olt = self.canvas.device_manager.get_devices_by_type("OLT")[0]
-        if olt:
-            olt.scheduler.stop_simulation()
+        try:
+            self.simulation_manager.stop_simulation()
+        except Exception as e:
+            print(f"❌ Error al detener simulación: {e}")
