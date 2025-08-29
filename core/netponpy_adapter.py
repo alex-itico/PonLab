@@ -19,9 +19,9 @@ try:
         RLDBAAlgorithm
     )
     NETPONPY_AVAILABLE = True
-    print("✅ netPONpy importado correctamente")
+    print("OK netPONpy importado correctamente")
 except ImportError as e:
-    print(f"❌ Error importando netPONpy: {e}")
+    print(f"Error importando netPONpy: {e}")
     NETPONPY_AVAILABLE = False
 
 class NetPONPyAdapter:
@@ -31,6 +31,8 @@ class NetPONPyAdapter:
         self.orchestrator = None
         self.is_available = NETPONPY_AVAILABLE
         self.current_algorithm = "FCFS"
+        self.detailed_logging = True
+        self.log_callback = None  # Callback para enviar logs detallados
         
         # Configuración por defecto
         self.default_config = {
@@ -43,9 +45,71 @@ class NetPONPyAdapter:
     def is_netponpy_available(self):
         """Verificar si netPONpy está disponible"""
         return self.is_available
+    
+    def set_log_callback(self, callback):
+        """Establecer callback para logs detallados"""
+        self.log_callback = callback
+        # Si ya existe el orquestador, propagarlo inmediatamente
+        if self.orchestrator and hasattr(self.orchestrator, 'set_log_callback'):
+            self.orchestrator.set_log_callback(callback)
         
+    def set_detailed_logging(self, enabled):
+        """Habilitar/deshabilitar logging detallado"""
+        self.detailed_logging = enabled
+    
+    def _log_event(self, category, message):
+        """Enviar evento al log callback si está disponible"""
+        if self.log_callback and self.detailed_logging:
+            formatted_message = f"[{category}] {message}"
+            self.log_callback(formatted_message)
+        
+    def initialize_orchestrator_from_topology(self, device_manager):
+        """Inicializar el orquestador basándose en la topología del canvas"""
+        if not self.is_available:
+            return False, "NetPONpy no está disponible"
+            
+        if not device_manager:
+            return False, "Device manager no disponible"
+            
+        # Verificar que hay OLT en la topología
+        olts = device_manager.get_devices_by_type("OLT")
+        if not olts:
+            return False, "No se encontró ningún OLT en la topología"
+            
+        if len(olts) > 1:
+            return False, "Solo se soporta un OLT por simulación"
+            
+        # Obtener número de ONUs de la topología
+        onus = device_manager.get_devices_by_type("ONU")
+        if not onus:
+            return False, "No se encontraron ONUs en la topología"
+            
+        num_onus = len(onus)
+        
+        try:
+            self.orchestrator = PONOrchestrator(
+                num_onus=num_onus,
+                traffic_scenario='residential_medium',
+                episode_duration=10.0,
+                simulation_timestep=0.1
+            )
+            
+            # Configurar algoritmo DBA por defecto (FCFS)
+            self.set_dba_algorithm("FCFS")
+            
+            # Configurar callback de logging detallado en el orquestador
+            if self.log_callback:
+                self.orchestrator.set_log_callback(self.log_callback)
+            
+            print(f"🚀 PONOrchestrator inicializado con {num_onus} ONUs desde topología")
+            return True, f"Orquestador inicializado con {num_onus} ONUs"
+            
+        except Exception as e:
+            print(f"❌ Error inicializando orchestrator: {e}")
+            return False, f"Error: {str(e)}"
+    
     def initialize_orchestrator(self, num_onus=4):
-        """Inicializar el orquestador de PON"""
+        """Inicializar el orquestador de PON (método legacy)"""
         if not self.is_available:
             return False
             
@@ -59,6 +123,10 @@ class NetPONPyAdapter:
             
             # Configurar algoritmo DBA por defecto (FCFS)
             self.set_dba_algorithm("FCFS")
+            
+            # Configurar callback de logging detallado en el orquestador
+            if self.log_callback:
+                self.orchestrator.set_log_callback(self.log_callback)
             
             print(f"🚀 PONOrchestrator inicializado con {num_onus} ONUs")
             return True
@@ -117,8 +185,9 @@ class NetPONPyAdapter:
             # Si no hay acción, usar None (algoritmos determinísticos)
             if action is None:
                 action = [0.25, 0.25, 0.25, 0.25]  # Distribución equitativa por defecto
-                
+            
             result = self.orchestrator.step(action)
+            
             return {
                 'status': result.status.name,
                 'done': result.done,
@@ -127,6 +196,7 @@ class NetPONPyAdapter:
             }
             
         except Exception as e:
+            self._log_event("ERROR", f"Error en simulación: {e}")
             print(f"❌ Error en paso de simulación: {e}")
             return None
             
@@ -156,4 +226,5 @@ class NetPONPyAdapter:
     def cleanup(self):
         """Limpiar recursos"""
         self.orchestrator = None
+        self.log_callback = None
         print("🧹 Adaptador NetPONpy limpiado")
