@@ -18,6 +18,7 @@ from utils.resource_manager import resource_manager
 from utils.config_manager import config_manager
 from .canvas import Canvas
 from .sidebar_panel import SidebarPanel
+from .netponpy_sidebar import NetPONPySidebar
 
 class MainWindow(QMainWindow):
     """Clase de la ventana principal para el simulador de redes pasivas ópticas"""
@@ -29,6 +30,7 @@ class MainWindow(QMainWindow):
         self.components_visible = config_manager.get_setting('components_visible', True)
         self.grid_visible = config_manager.get_setting('grid_visible', True)
         self.simulation_visible = config_manager.get_setting('simulation_visible', True)
+        self.netponpy_visible = config_manager.get_setting('netponpy_visible', True)
         # El origen siempre sigue el estado de la cuadrícula
         self.origin_visible = self.grid_visible
         self.dark_theme = config_manager.get_theme_settings()
@@ -61,12 +63,12 @@ class MainWindow(QMainWindow):
         main_layout.setContentsMargins(5, 5, 5, 5)
         main_layout.setSpacing(5)
         
-        # Crear el sidebar panel
+        # Crear el sidebar panel izquierdo
         self.sidebar = SidebarPanel()
         self.sidebar.device_selected.connect(self.on_device_selected)
         self.sidebar.connection_mode_toggled.connect(self.on_connection_mode_toggled)
         
-        # Agregar sidebar al layout si está visible
+        # Agregar sidebar izquierdo al layout si está visible
         if self.components_visible:
             main_layout.addWidget(self.sidebar)
         
@@ -74,6 +76,13 @@ class MainWindow(QMainWindow):
         self.canvas = Canvas()
         self.canvas.device_dropped.connect(self.on_device_dropped)
         main_layout.addWidget(self.canvas)
+        
+        # Crear el sidebar derecho para NetPONPy
+        self.netponpy_sidebar = NetPONPySidebar()
+        
+        # Agregar sidebar derecho al layout si está visible
+        if self.netponpy_visible:
+            main_layout.addWidget(self.netponpy_sidebar)
         
         # Establecer referencia del canvas en el sidebar para simulación
         self.sidebar.set_canvas_reference(self.canvas)
@@ -149,6 +158,15 @@ class MainWindow(QMainWindow):
         self.simulation_action.setStatusTip('Mostrar u ocultar panel de simulación')
         self.simulation_action.triggered.connect(self.toggle_simulation)
         view_menu.addAction(self.simulation_action)
+        
+        # Mostrar/Ocultar NetPONPy
+        self.netponpy_action = QAction('Mostrar/Ocultar &NetPONPy', self)
+        self.netponpy_action.setCheckable(True)
+        self.netponpy_action.setChecked(self.netponpy_visible)
+        self.netponpy_action.setShortcut('Ctrl+N')
+        self.netponpy_action.setStatusTip('Mostrar u ocultar panel NetPONPy (Ctrl+N)')
+        self.netponpy_action.triggered.connect(self.toggle_netponpy)
+        view_menu.addAction(self.netponpy_action)
         
         view_menu.addSeparator()
         
@@ -363,6 +381,21 @@ class MainWindow(QMainWindow):
         print(f"Simulación {'mostrada' if self.simulation_visible else 'oculta'}")
         # TODO: Implementar lógica para mostrar/ocultar simulación
     
+    def toggle_netponpy(self):
+        """Alternar visibilidad del panel NetPONPy"""
+        self.netponpy_visible = not self.netponpy_visible
+        
+        # Mostrar/ocultar sidebar derecho
+        if self.netponpy_visible:
+            self.netponpy_sidebar.show()
+        else:
+            self.netponpy_sidebar.hide()
+        
+        # Actualizar estado del menú
+        self.netponpy_action.setChecked(self.netponpy_visible)
+        
+        print(f"NetPONPy {'mostrado' if self.netponpy_visible else 'oculto'}")
+    
     def set_theme(self, dark_mode):
         """Establecer tema de la aplicación"""
         self.dark_theme = dark_mode
@@ -387,9 +420,13 @@ class MainWindow(QMainWindow):
             if self.canvas:
                 self.canvas.set_theme(dark_mode)
             
-            # Actualizar tema del sidebar si existe
+            # Actualizar tema del sidebar izquierdo si existe
             if hasattr(self, 'sidebar') and self.sidebar:
                 self.sidebar.set_theme(dark_mode)
+            
+            # Actualizar tema del sidebar derecho si existe
+            if hasattr(self, 'netponpy_sidebar') and self.netponpy_sidebar:
+                self.netponpy_sidebar.set_theme(dark_mode)
             
             # Actualizar mensaje en la barra de estado
             self.statusBar().showMessage(f'Tema {theme_name} aplicado', 2000)
@@ -554,6 +591,12 @@ class MainWindow(QMainWindow):
         
         # Guardar configuraciones de la UI
         config_manager.save_ui_settings(self)
+        
+        # Limpiar recursos de los sidebars si existen
+        if hasattr(self, 'sidebar') and self.sidebar:
+            self.sidebar.cleanup()
+        if hasattr(self, 'netponpy_sidebar') and self.netponpy_sidebar:
+            self.netponpy_sidebar.cleanup()
         
         # Permitir el cierre de la ventana
         event.accept()

@@ -776,3 +776,7 @@ class SidebarPanel(QWidget):
             self.simulation_manager.stop_simulation()
         except Exception as e:
             print(f"❌ Error al detener simulación: {e}")
+    
+    def cleanup(self):
+        """Limpiar recursos del sidebar panel"""
+        print("🧹 Sidebar panel limpiado")
