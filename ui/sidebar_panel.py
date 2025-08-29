@@ -9,7 +9,6 @@ from PyQt5.QtCore import Qt, pyqtSignal, QMimeData, QPoint
 from PyQt5.QtGui import QFont, QPixmap, QPainter, QColor, QPen, QBrush, QDrag
 from PyQt5.QtSvg import QSvgRenderer
 from utils.constants import DEFAULT_SIDEBAR_WIDTH
-from .simulation_panel import SimulationPanel
 from core.simulation_manager import SimulationManager
 import os
 
@@ -578,17 +577,7 @@ class SidebarPanel(QWidget):
         info_label.setFixedHeight(40)
         main_layout.addWidget(info_label)
         
-        # Agregar panel de simulación
-        self.sim_panel = SimulationPanel()
-        self.sim_panel.start_simulation.connect(self._handle_simulation_start)
-        self.sim_panel.stop_simulation.connect(self._handle_simulation_stop)
-        main_layout.addWidget(self.sim_panel)
-        
-        # Conectar señales del simulation manager
-        self.simulation_manager.simulation_started.connect(self.sim_panel.on_simulation_started)
-        self.simulation_manager.simulation_stopped.connect(self.sim_panel.on_simulation_stopped)
-        self.simulation_manager.simulation_finished.connect(self.sim_panel.on_simulation_finished)
-        
+
         self.setLayout(main_layout)
         
         # Aplicar tema inicial

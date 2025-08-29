@@ -144,6 +144,13 @@ class NetPONPySidebar(QWidget):
                 }
             """)
     
+    def set_canvas_reference(self, canvas):
+        """Establecer referencia al canvas para el panel NetPONPy"""
+        if hasattr(self, 'netponpy_panel') and self.netponpy_panel:
+            self.netponpy_panel.set_canvas_reference(canvas)
+            # Actualizar información de topología inicial
+            self.netponpy_panel.update_topology_info()
+    
     def cleanup(self):
         """Limpiar recursos del sidebar"""
         if hasattr(self, 'netponpy_panel') and self.netponpy_panel:

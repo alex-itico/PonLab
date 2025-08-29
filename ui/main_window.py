@@ -19,6 +19,7 @@ from utils.config_manager import config_manager
 from .canvas import Canvas
 from .sidebar_panel import SidebarPanel
 from .netponpy_sidebar import NetPONPySidebar
+from .log_panel import LogPanel
 
 class MainWindow(QMainWindow):
     """Clase de la ventana principal para el simulador de redes pasivas ópticas"""
@@ -31,6 +32,7 @@ class MainWindow(QMainWindow):
         self.grid_visible = config_manager.get_setting('grid_visible', True)
         self.simulation_visible = config_manager.get_setting('simulation_visible', True)
         self.netponpy_visible = config_manager.get_setting('netponpy_visible', True)
+        self.log_panel_visible = config_manager.get_setting('log_panel_visible', True)
         # El origen siempre sigue el estado de la cuadrícula
         self.origin_visible = self.grid_visible
         self.dark_theme = config_manager.get_theme_settings()
@@ -58,10 +60,14 @@ class MainWindow(QMainWindow):
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
         
-        # Crear layout principal
-        main_layout = QHBoxLayout(central_widget)
+        # Crear layout principal vertical
+        main_layout = QVBoxLayout(central_widget)
         main_layout.setContentsMargins(5, 5, 5, 5)
         main_layout.setSpacing(5)
+        
+        # Crear layout horizontal para canvas y sidebars
+        canvas_layout = QHBoxLayout()
+        canvas_layout.setSpacing(5)
         
         # Crear el sidebar panel izquierdo
         self.sidebar = SidebarPanel()
@@ -70,24 +76,52 @@ class MainWindow(QMainWindow):
         
         # Agregar sidebar izquierdo al layout si está visible
         if self.components_visible:
-            main_layout.addWidget(self.sidebar)
+            canvas_layout.addWidget(self.sidebar)
         
         # Crear el canvas principal
         self.canvas = Canvas()
         self.canvas.device_dropped.connect(self.on_device_dropped)
-        main_layout.addWidget(self.canvas)
+        canvas_layout.addWidget(self.canvas)
         
         # Crear el sidebar derecho para NetPONPy
         self.netponpy_sidebar = NetPONPySidebar()
         
         # Agregar sidebar derecho al layout si está visible
         if self.netponpy_visible:
-            main_layout.addWidget(self.netponpy_sidebar)
+            canvas_layout.addWidget(self.netponpy_sidebar)
+        
+        # Agregar layout del canvas al layout principal
+        main_layout.addLayout(canvas_layout)
+        
+        # Crear panel de log debajo del canvas
+        self.log_panel = LogPanel()
+        if self.log_panel_visible:
+            main_layout.addWidget(self.log_panel)
+        else:
+            self.log_panel.hide()
         
         # Establecer referencia del canvas en el sidebar para simulación
         self.sidebar.set_canvas_reference(self.canvas)
         
-        # El canvas ocupa el espacio restante
+        # Establecer referencia del canvas en el sidebar NetPONPy
+        self.netponpy_sidebar.set_canvas_reference(self.canvas)
+        
+        # Conectar el log panel con el panel NetPONPy (se hace después del setup completo)
+        self._connect_log_panel()
+        
+        # Conectar señales para actualizar automáticamente cuando cambie la topología
+        self.canvas.device_manager.devices_changed.connect(self.on_topology_changed)
+        
+        # El canvas ocupa el espacio restante verticalmente
+    
+    def _connect_log_panel(self):
+        """Conectar el panel de log con el panel NetPONPy"""
+        if (hasattr(self, 'log_panel') and self.log_panel and 
+            hasattr(self, 'netponpy_sidebar') and self.netponpy_sidebar and
+            hasattr(self.netponpy_sidebar, 'netponpy_panel') and 
+            self.netponpy_sidebar.netponpy_panel):
+            self.netponpy_sidebar.netponpy_panel.set_log_panel(self.log_panel)
+            print("Panel de log conectado con NetPONPy")
     
     def setup_menubar(self):
         """Configurar la barra de menú"""
@@ -167,6 +201,15 @@ class MainWindow(QMainWindow):
         self.netponpy_action.setStatusTip('Mostrar u ocultar panel NetPONPy (Ctrl+N)')
         self.netponpy_action.triggered.connect(self.toggle_netponpy)
         view_menu.addAction(self.netponpy_action)
+        
+        # Mostrar/Ocultar Panel de Log
+        self.log_panel_action = QAction('Mostrar/Ocultar &Log', self)
+        self.log_panel_action.setCheckable(True)
+        self.log_panel_action.setChecked(self.log_panel_visible)
+        self.log_panel_action.setShortcut('Ctrl+L')
+        self.log_panel_action.setStatusTip('Mostrar u ocultar panel de log de eventos (Ctrl+L)')
+        self.log_panel_action.triggered.connect(self.toggle_log_panel)
+        view_menu.addAction(self.log_panel_action)
         
         view_menu.addSeparator()
         
@@ -330,6 +373,22 @@ class MainWindow(QMainWindow):
         device_count = self.canvas.get_device_manager().get_device_count()
         print(f"📊 Total de dispositivos en canvas: {device_count}")
     
+    def on_topology_changed(self):
+        """Manejar cambios en la topología del canvas"""
+        # Notificar al panel NetPONPy que la topología cambió
+        if hasattr(self, 'netponpy_sidebar') and self.netponpy_sidebar:
+            if hasattr(self.netponpy_sidebar, 'netponpy_panel'):
+                # Resetear orquestrador cuando cambie la topología
+                self.netponpy_sidebar.netponpy_panel.reset_orchestrator()
+        
+        # Logs también en el panel principal si está disponible
+        if hasattr(self, 'log_panel') and self.log_panel:
+            device_count = self.canvas.get_device_manager().get_device_count() if self.canvas else 0
+            device_stats = self.canvas.get_device_manager().get_device_stats() if self.canvas else {}
+            olt_count = device_stats.get('olt_count', 0)
+            onu_count = device_stats.get('onu_count', 0)
+            self.log_panel.add_log_entry(f"🔄 Topología actualizada: {olt_count} OLT, {onu_count} ONUs")
+    
     def on_connection_mode_toggled(self, enabled):
         """Manejar cambio de modo conexión"""
         if self.canvas:
@@ -396,6 +455,24 @@ class MainWindow(QMainWindow):
         
         print(f"NetPONPy {'mostrado' if self.netponpy_visible else 'oculto'}")
     
+    def toggle_log_panel(self):
+        """Alternar visibilidad del panel de log"""
+        self.log_panel_visible = not self.log_panel_visible
+        
+        # Mostrar/ocultar panel de log
+        if self.log_panel_visible:
+            self.log_panel.show()
+        else:
+            self.log_panel.hide()
+        
+        # Actualizar estado del menú
+        self.log_panel_action.setChecked(self.log_panel_visible)
+        
+        # Guardar configuración
+        config_manager.set_setting('log_panel_visible', self.log_panel_visible)
+        
+        print(f"Panel de log {'mostrado' if self.log_panel_visible else 'oculto'}")
+    
     def set_theme(self, dark_mode):
         """Establecer tema de la aplicación"""
         self.dark_theme = dark_mode
@@ -427,6 +504,10 @@ class MainWindow(QMainWindow):
             # Actualizar tema del sidebar derecho si existe
             if hasattr(self, 'netponpy_sidebar') and self.netponpy_sidebar:
                 self.netponpy_sidebar.set_theme(dark_mode)
+            
+            # Actualizar tema del panel de log si existe
+            if hasattr(self, 'log_panel') and self.log_panel:
+                self.log_panel.set_theme(dark_mode)
             
             # Actualizar mensaje en la barra de estado
             self.statusBar().showMessage(f'Tema {theme_name} aplicado', 2000)
