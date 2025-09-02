@@ -546,3 +546,43 @@ class DeviceManager(QObject):
             # Actualizar connection points
             if hasattr(graphics_item, 'update_theme'):
                 graphics_item.update_theme(dark_theme)
+    
+    def update_device_properties(self, device_id, new_properties):
+        """Actualizar propiedades de un dispositivo específico"""
+        try:
+            if device_id not in self.devices:
+                print(f"❌ Dispositivo {device_id} no encontrado")
+                return False
+            
+            device = self.devices[device_id]
+            
+            # Actualizar propiedades del dispositivo
+            if 'name' in new_properties:
+                device.name = new_properties['name']
+            
+            if 'x' in new_properties and 'y' in new_properties:
+                device.set_position(new_properties['x'], new_properties['y'])
+            elif 'x' in new_properties:
+                device.set_position(new_properties['x'], device.y)
+            elif 'y' in new_properties:
+                device.set_position(device.x, new_properties['y'])
+            
+            # Actualizar otras propiedades si existen
+            for key, value in new_properties.items():
+                if key not in ['name', 'x', 'y'] and hasattr(device, key):
+                    setattr(device, key, value)
+            
+            # Actualizar gráficos
+            if device_id in self.graphics_items:
+                graphics_item = self.graphics_items[device_id]
+                graphics_item.update_graphics()
+            
+            # Emitir señal de cambio
+            self.devices_changed.emit()
+            
+            print(f"✅ Propiedades actualizadas para dispositivo {device_id}: {new_properties}")
+            return True
+            
+        except Exception as e:
+            print(f"❌ Error actualizando propiedades del dispositivo {device_id}: {e}")
+            return False

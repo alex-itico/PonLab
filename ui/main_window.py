@@ -490,7 +490,6 @@ class MainWindow(QMainWindow):
             
             <p><b>Repositorio GitHub:</b><br>
             <a href="https://github.com/alex-itico/PonLab">https://github.com/alex-itico/PonLab</a><br>
-            <i>(Repositorio oficial - próximamente actualizado)</i></p>
             
             <p>© 2025 - Desarrollado con PyQt5</p>'''
         )

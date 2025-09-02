@@ -914,6 +914,63 @@ Tamaño de cuadrícula: {self.grid_size}px
         else:
             super().mouseReleaseEvent(event)
     
+    def mouseDoubleClickEvent(self, event):
+        """Manejar doble clic del mouse - abrir propiedades de dispositivo"""
+        if event.button() == Qt.LeftButton:
+            # Convertir posición a coordenadas de escena
+            scene_pos = self.mapToScene(event.pos())
+            
+            # Buscar dispositivo en la posición del doble clic
+            device = self.device_manager.get_device_at_position(scene_pos.x(), scene_pos.y())
+            
+            if device:
+                # Abrir diálogo de propiedades
+                self.open_device_properties(device)
+                event.accept()
+                return
+        
+        # Si no se hizo clic sobre un dispositivo, manejar normalmente
+        super().mouseDoubleClickEvent(event)
+    
+    def open_device_properties(self, device):
+        """Abrir ventana de propiedades para un dispositivo"""
+        try:
+            from .device_properties_dialog import DevicePropertiesDialog
+            
+            # Crear diálogo de propiedades
+            dialog = DevicePropertiesDialog(device, self.connection_manager, self)
+            
+            # Conectar señal para actualizar propiedades
+            dialog.properties_updated.connect(self.update_device_properties)
+            
+            # Mostrar diálogo modal
+            dialog.exec_()
+            
+        except Exception as e:
+            print(f"❌ Error abriendo propiedades del dispositivo: {e}")
+            from PyQt5.QtWidgets import QMessageBox
+            QMessageBox.warning(self, "Error", 
+                              f"No se pudo abrir la ventana de propiedades:\n{str(e)}")
+    
+    def update_device_properties(self, device_id, new_properties):
+        """Actualizar propiedades de un dispositivo"""
+        try:
+            # Actualizar dispositivo a través del DeviceManager
+            if self.device_manager.update_device_properties(device_id, new_properties):
+                print(f"✅ Propiedades actualizadas para dispositivo {device_id}")
+                
+                # Refrescar canvas para mostrar cambios
+                self.update()
+                
+                # Actualizar auto-guardado
+                self.auto_save_project()
+                
+            else:
+                print(f"❌ Error actualizando propiedades del dispositivo {device_id}")
+                
+        except Exception as e:
+            print(f"❌ Error en update_device_properties: {e}")
+    
     def wheelEvent(self, event):
         """Manejar zoom con rueda del mouse (optimizado)"""
         zoom_in_factor = 1.15
