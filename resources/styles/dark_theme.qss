@@ -145,3 +145,70 @@ QMessageBox {
 QMessageBox QPushButton {
     min-width: 80px;
 }
+
+/* Panel de Propiedades de Dispositivo */
+DevicePropertiesPanel {
+    background-color: #3c3c3c;
+    border: 1px solid #555555;
+    border-radius: 5px;
+}
+
+DevicePropertiesPanel QGroupBox {
+    font-weight: bold;
+    color: #ffffff;
+    border: 1px solid #555555;
+    border-radius: 3px;
+    margin-top: 10px;
+    padding-top: 5px;
+}
+
+DevicePropertiesPanel QGroupBox::title {
+    subcontrol-origin: margin;
+    left: 8px;
+    padding: 0 3px 0 3px;
+    color: #ffffff;
+}
+
+DevicePropertiesPanel QLabel {
+    color: #ffffff;
+    background-color: transparent;
+}
+
+DevicePropertiesPanel QLineEdit {
+    background-color: #404040;
+    color: #ffffff;
+    border: 1px solid #555555;
+    border-radius: 3px;
+    padding: 2px 4px;
+}
+
+DevicePropertiesPanel QLineEdit:focus {
+    border-color: #0088ff;
+    background-color: #4a4a4a;
+}
+
+DevicePropertiesPanel QLineEdit:disabled {
+    background-color: #2a2a2a;
+    color: #666666;
+    border-color: #444444;
+}
+
+DevicePropertiesPanel QPushButton {
+    background-color: #404040;
+    color: #ffffff;
+    border: 1px solid #555555;
+    border-radius: 3px;
+    padding: 4px;
+    font-weight: bold;
+}
+
+DevicePropertiesPanel QPushButton:hover {
+    background-color: #4a4a4a;
+    border-color: #0088ff;
+}
+
+DevicePropertiesPanel QPushButton:disabled {
+    background-color: #2a2a2a;
+    color: #666666;
+    border-color: #444444;
+}

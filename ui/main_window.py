@@ -65,6 +65,8 @@ class MainWindow(QMainWindow):
         self.sidebar = SidebarPanel()
         self.sidebar.device_selected.connect(self.on_device_selected)
         self.sidebar.connection_mode_toggled.connect(self.on_connection_mode_toggled)
+        self.sidebar.edit_device_requested.connect(self.on_edit_device_from_sidebar)
+        self.sidebar.device_properties_changed.connect(self.on_device_properties_changed_from_sidebar)
         
         # Agregar sidebar al layout si está visible
         if self.components_visible:
@@ -73,6 +75,8 @@ class MainWindow(QMainWindow):
         # Crear el canvas principal
         self.canvas = Canvas()
         self.canvas.device_dropped.connect(self.on_device_dropped)
+        self.canvas.device_selected.connect(self.on_device_selected_in_canvas)
+        self.canvas.device_deselected.connect(self.on_device_deselected_in_canvas)
         main_layout.addWidget(self.canvas)
         
         # El canvas ocupa el espacio restante
@@ -617,3 +621,28 @@ class MainWindow(QMainWindow):
                 QMessageBox.No
             )
             return reply
+    
+    def on_edit_device_from_sidebar(self, device_id):
+        """Manejar solicitud de edición de dispositivo desde el sidebar"""
+        if self.canvas:
+            # Delegar al canvas para abrir el diálogo de propiedades
+            self.canvas.open_device_properties_by_id(device_id)
+    
+    def on_device_selected_in_canvas(self, device):
+        """Manejar selección de dispositivo en el canvas"""
+        if self.sidebar:
+            # Actualizar el panel de propiedades del sidebar
+            connection_manager = getattr(self.canvas, 'connection_manager', None)
+            self.sidebar.update_device_properties(device, connection_manager)
+    
+    def on_device_deselected_in_canvas(self):
+        """Manejar deselección de dispositivo en el canvas"""
+        if self.sidebar:
+            # Limpiar el panel de propiedades del sidebar
+            self.sidebar.clear_device_selection()
+    
+    def on_device_properties_changed_from_sidebar(self, device_id, new_properties):
+        """Manejar cambio de propiedades desde el sidebar editable"""
+        if self.canvas:
+            # Delegar al canvas para actualizar las propiedades del dispositivo
+            self.canvas.update_device_properties(device_id, new_properties)
