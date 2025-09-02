@@ -171,9 +171,7 @@ python main.py
 | `Ctrl+I` | **Panel Info**        | Muestra/oculta el panel de información              |
 | `Ctrl+S` | **Guardar**           | Guarda el proyecto actual                           |
 | `Ctrl+O` | **Abrir**             | Abre un proyecto existente                          |
-| `Ctrl+Q` | **Salir**             | Cierra la aplicación                                |
 | `Delete` | **Eliminar**          | Elimina dispositivos/conexiones seleccionados       |
-| `F11`    | **Pantalla Completa** | Alterna modo pantalla completa                      |
 
 ### **🖱️ Controles de Mouse**
 
@@ -308,73 +306,6 @@ PonLab/
 
 > _Panel lateral con dispositivos disponibles para drag & drop_
 
-## 🔧 Casos de Uso
-
-### **🏢 Para Ingenieros de Telecomunicaciones**
-
-- Diseño de topologías PON para nuevos desarrollos
-- Análisis de infraestructura existente
-- Planificación de ampliaciones de red
-- Documentación técnica de proyectos
-
-### **🎓 Para Educación**
-
-- Enseñanza de conceptos de redes ópticas
-- Simulación de escenarios reales
-- Prácticas de laboratorio virtual
-- Proyectos estudiantiles
-
-### **🏗️ Para Planificación Urbana**
-
-- Mapeo de infraestructura de fibra óptica
-- Coordinación con otras utilidades
-- Visualización geográfica de redes
-- Análisis de cobertura
-
-## 🤝 Contribución
-
-¡Las contribuciones son bienvenidas! Sigue estos pasos:
-
-### **🔄 Proceso de Contribución**
-
-1. **Fork el repositorio**
-
-   ```bash
-   # Click en "Fork" en GitHub
-   git clone https://github.com/tu-usuario/PonLab.git
-   ```
-
-2. **Crear rama para tu feature**
-
-   ```bash
-   git checkout -b feature/nueva-funcionalidad
-   ```
-
-3. **Hacer commits descriptivos**
-
-   ```bash
-   git commit -m "feat: agregar nuevo tipo de dispositivo DWDM"
-   ```
-
-4. **Push y crear Pull Request**
-   ```bash
-   git push origin feature/nueva-funcionalidad
-   # Crear PR en GitHub
-   ```
-
-### **📋 Guías de Contribución**
-
-- **Estilo de Código**: Seguir PEP 8 para Python
-- **Documentación**: Documentar todas las funciones y clases
-- **Tests**: Incluir tests para nuevas funcionalidades
-- **Commits**: Usar conventional commits (feat:, fix:, docs:, etc.)
-
-### **🐛 Reportar Bugs**
-
-- Usar el sistema de Issues de GitHub
-- Incluir pasos para reproducir el bug
-- Adjuntar logs y capturas de pantalla
-- Especificar versión de Python y sistema operativo
 
 ## 📋 Roadmap y Funcionalidades Futuras
 
