@@ -4,7 +4,8 @@ Panel lateral que contiene dispositivos y controles para el simulador de redes p
 """
 
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, 
-                             QScrollArea, QFrame, QPushButton, QSizePolicy, QApplication)
+                             QScrollArea, QFrame, QPushButton, QSizePolicy, QApplication, 
+                             QGroupBox, QFormLayout, QLineEdit)
 from PyQt5.QtCore import Qt, pyqtSignal, QMimeData, QPoint
 from PyQt5.QtGui import QFont, QPixmap, QPainter, QColor, QPen, QBrush, QDrag
 from PyQt5.QtSvg import QSvgRenderer
@@ -509,11 +510,237 @@ class ConnectionItem(QFrame):
         self.setup_connection_icon()
 
 
+
+class DevicePropertiesPanel(QFrame):
+    """Panel de propiedades de dispositivo en el sidebar"""
+    
+    edit_device_requested = pyqtSignal(str)  # device_id para abrir diálogo completo
+    device_properties_changed = pyqtSignal(str, dict)  # device_id, new_properties
+    
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.current_device = None
+        self.connection_manager = None
+        self.dark_theme = False
+        self.setup_ui()
+    
+    def setup_ui(self):
+        """Configurar interfaz del panel de propiedades"""
+        self.setFrameStyle(QFrame.StyledPanel)
+        self.setLineWidth(1)
+        self.setFixedHeight(180)  # Altura fija
+        
+        # Layout principal
+        main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(8, 8, 8, 8)
+        main_layout.setSpacing(5)
+        
+        # Título del panel
+        title_label = QLabel("📱 Propiedades")
+        title_font = QFont()
+        title_font.setBold(True)
+        title_font.setPointSize(10)
+        title_label.setFont(title_font)
+        title_label.setAlignment(Qt.AlignCenter)
+        main_layout.addWidget(title_label)
+        
+        # Crear contenedor de propiedades
+        self.properties_group = QGroupBox("")
+        props_layout = QFormLayout(self.properties_group)
+        props_layout.setContentsMargins(5, 5, 5, 5)
+        props_layout.setSpacing(3)
+        
+        # Campos editables
+        self.device_name_edit = QLineEdit()
+        self.device_name_edit.setPlaceholderText("Nombre del dispositivo")
+        self.device_name_edit.textChanged.connect(self.on_name_changed)
+        
+        self.device_id_label = QLabel("--")  # ID no editable
+        self.device_id_label.setWordWrap(True)
+        
+        # Campos de coordenadas editables
+        coords_widget = QWidget()
+        coords_layout = QHBoxLayout(coords_widget)
+        coords_layout.setContentsMargins(0, 0, 0, 0)
+        coords_layout.setSpacing(5)
+        
+        self.x_coord_edit = QLineEdit()
+        self.x_coord_edit.setPlaceholderText("X")
+        self.x_coord_edit.setFixedWidth(50)
+        self.x_coord_edit.textChanged.connect(self.on_coords_changed)
+        
+        self.y_coord_edit = QLineEdit()
+        self.y_coord_edit.setPlaceholderText("Y")
+        self.y_coord_edit.setFixedWidth(50)
+        self.y_coord_edit.textChanged.connect(self.on_coords_changed)
+        
+        coords_layout.addWidget(QLabel("X:"))
+        coords_layout.addWidget(self.x_coord_edit)
+        coords_layout.addWidget(QLabel("Y:"))
+        coords_layout.addWidget(self.y_coord_edit)
+        coords_layout.addStretch()
+        
+        self.specific_info_label = QLabel("--")  # Info específica no editable
+        self.specific_info_label.setWordWrap(True)
+        
+        # Agregar campos al formulario
+        props_layout.addRow("Nombre:", self.device_name_edit)
+        props_layout.addRow("ID:", self.device_id_label)
+        props_layout.addRow("Posición:", coords_widget)
+        props_layout.addRow("Info:", self.specific_info_label)
+        
+        main_layout.addWidget(self.properties_group)
+        
+        # Botón para edición completa
+        self.edit_button = QPushButton("✏️ Editar Completo")
+        self.edit_button.setFixedHeight(25)
+        self.edit_button.clicked.connect(self.on_edit_requested)
+        main_layout.addWidget(self.edit_button)
+        
+        # Estado inicial
+        self.show_no_selection()
+    
+    def show_no_selection(self):
+        """Mostrar estado sin dispositivo seleccionado"""
+        self.properties_group.setTitle("Sin selección")
+        self.device_name_edit.setText("")
+        self.device_name_edit.setPlaceholderText("Selecciona un dispositivo")
+        self.device_name_edit.setEnabled(False)
+        
+        self.device_id_label.setText("para ver sus propiedades")
+        
+        self.x_coord_edit.setText("")
+        self.x_coord_edit.setEnabled(False)
+        self.y_coord_edit.setText("")
+        self.y_coord_edit.setEnabled(False)
+        
+        self.specific_info_label.setText("")
+        self.edit_button.setEnabled(False)
+        self.current_device = None
+    
+    def update_device_properties(self, device, connection_manager=None):
+        """Actualizar propiedades mostradas para un dispositivo"""
+        self.current_device = device
+        self.connection_manager = connection_manager
+        
+        if not device:
+            self.show_no_selection()
+            return
+        
+        # Información básica (editable)
+        self.properties_group.setTitle(f"{device.device_type} Seleccionado")
+        
+        # Temporalmente desconectar señales para evitar cambios durante actualización
+        self.device_name_edit.textChanged.disconnect()
+        self.x_coord_edit.textChanged.disconnect()
+        self.y_coord_edit.textChanged.disconnect()
+        
+        # Actualizar campos editables
+        self.device_name_edit.setText(device.name)
+        self.device_name_edit.setPlaceholderText("Nombre del dispositivo")
+        self.device_name_edit.setEnabled(True)
+        
+        self.device_id_label.setText(device.id)
+        
+        self.x_coord_edit.setText(f"{device.x:.1f}")
+        self.x_coord_edit.setEnabled(True)
+        self.y_coord_edit.setText(f"{device.y:.1f}")
+        self.y_coord_edit.setEnabled(True)
+        
+        # Reconectar señales
+        self.device_name_edit.textChanged.connect(self.on_name_changed)
+        self.x_coord_edit.textChanged.connect(self.on_coords_changed)
+        self.y_coord_edit.textChanged.connect(self.on_coords_changed)
+        
+        # Información específica por tipo (no editable)
+        if device.device_type == "OLT":
+            connected_onus = self.calculate_connected_onus(device)
+            self.specific_info_label.setText(f"ONUs conectadas: {connected_onus}")
+        elif device.device_type == "ONU":
+            olt_distance = self.calculate_olt_distance(device)
+            distance_text = f"{olt_distance:.1f}m" if olt_distance is not None else "No conectada"
+            self.specific_info_label.setText(f"Distancia OLT: {distance_text}")
+        else:
+            self.specific_info_label.setText("--")
+        
+        self.edit_button.setEnabled(True)
+    
+    def calculate_connected_onus(self, olt_device):
+        """Calcular ONUs conectadas a una OLT"""
+        if not self.connection_manager:
+            return 0
+        
+        count = 0
+        for connection in self.connection_manager.connections:
+            if (connection.device_a.id == olt_device.id and connection.device_b.device_type == "ONU") or \
+               (connection.device_b.id == olt_device.id and connection.device_a.device_type == "ONU"):
+                count += 1
+        return count
+    
+    def calculate_olt_distance(self, onu_device):
+        """Calcular distancia de ONU a OLT conectada"""
+        if not self.connection_manager:
+            return None
+        
+        for connection in self.connection_manager.connections:
+            if connection.device_a.id == onu_device.id and connection.device_b.device_type == "OLT":
+                return connection.calculate_distance()
+            elif connection.device_b.id == onu_device.id and connection.device_a.device_type == "OLT":
+                return connection.calculate_distance()
+        return None
+    
+    def on_edit_requested(self):
+        """Solicitar edición completa del dispositivo"""
+        if self.current_device:
+            self.edit_device_requested.emit(self.current_device.id)
+    
+    def on_name_changed(self):
+        """Manejar cambio de nombre del dispositivo"""
+        if self.current_device and self.device_name_edit.text().strip():
+            new_name = self.device_name_edit.text().strip()
+            if new_name != self.current_device.name:
+                self.emit_property_change({'name': new_name})
+    
+    def on_coords_changed(self):
+        """Manejar cambio de coordenadas del dispositivo"""
+        if not self.current_device:
+            return
+            
+        try:
+            x_text = self.x_coord_edit.text().strip()
+            y_text = self.y_coord_edit.text().strip()
+            
+            if x_text and y_text:
+                new_x = float(x_text)
+                new_y = float(y_text)
+                
+                if new_x != self.current_device.x or new_y != self.current_device.y:
+                    self.emit_property_change({'x': new_x, 'y': new_y})
+        except ValueError:
+            # Ignorar valores inválidos
+            pass
+    
+    def emit_property_change(self, properties):
+        """Emitir señal de cambio de propiedades"""
+        if self.current_device:
+            self.device_properties_changed.emit(self.current_device.id, properties)
+    
+    def set_theme(self, dark_theme):
+        """Aplicar tema al panel - Los estilos están en los archivos CSS globales"""
+        self.dark_theme = dark_theme
+        # Los estilos para DevicePropertiesPanel están definidos en:
+        # - resources/styles/dark_theme.qss
+        # - resources/styles/light_theme.qss
+        # No necesitamos setStyleSheet aquí, se aplican automáticamente
+
+
 class SidebarPanel(QWidget):
     """Panel lateral con dispositivos y controles"""
     
     device_selected = pyqtSignal(str, str)  # nombre_dispositivo, tipo_dispositivo
     connection_mode_toggled = pyqtSignal(bool)  # True cuando se activa modo conexión
+    edit_device_requested = pyqtSignal(str)  # device_id para edición completa
+    device_properties_changed = pyqtSignal(str, dict)  # device_id, new_properties
     
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -569,6 +796,12 @@ class SidebarPanel(QWidget):
         info_label.setFont(info_font)
         info_label.setFixedHeight(40)
         main_layout.addWidget(info_label)
+        
+        # Panel de propiedades de dispositivo
+        self.properties_panel = DevicePropertiesPanel(self)
+        self.properties_panel.edit_device_requested.connect(self.on_edit_device_requested)
+        self.properties_panel.device_properties_changed.connect(self.on_device_properties_changed)
+        main_layout.addWidget(self.properties_panel)
         
         # Aplicar tema inicial
         self.set_theme(self.dark_theme)
@@ -701,6 +934,10 @@ class SidebarPanel(QWidget):
         # Actualizar tema del item de conexión
         if hasattr(self, 'connection_item') and self.connection_item:
             self.connection_item.set_theme(dark_theme)
+        
+        # Actualizar tema del panel de propiedades
+        if hasattr(self, 'properties_panel'):
+            self.properties_panel.set_theme(dark_theme)
     
     def add_device(self, device_name, device_type):
         """Agregar un nuevo dispositivo al panel"""
@@ -720,3 +957,21 @@ class SidebarPanel(QWidget):
         for device_item in self.device_items:
             device_item.setParent(None)
         self.device_items.clear()
+    
+    def update_device_properties(self, device, connection_manager=None):
+        """Actualizar el panel de propiedades con un dispositivo seleccionado"""
+        self.properties_panel.update_device_properties(device, connection_manager)
+    
+    def clear_device_selection(self):
+        """Limpiar selección de dispositivo"""
+        self.properties_panel.show_no_selection()
+    
+    def on_edit_device_requested(self, device_id):
+        """Manejar solicitud de edición completa del dispositivo"""
+        # Emitir señal que será capturada por el canvas para abrir el diálogo
+        self.edit_device_requested.emit(device_id)
+    
+    def on_device_properties_changed(self, device_id, new_properties):
+        """Manejar cambio de propiedades desde el panel editable"""
+        # Reenviar señal al nivel superior para actualizar el dispositivo
+        self.device_properties_changed.emit(device_id, new_properties)

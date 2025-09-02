@@ -20,6 +20,8 @@ class Canvas(QGraphicsView):
     
     # Señales
     device_dropped = pyqtSignal(str, str, float, float)  # device_name, device_type, x, y
+    device_selected = pyqtSignal(object)  # device object para mostrar propiedades
+    device_deselected = pyqtSignal()  # cuando no hay dispositivo seleccionado
     
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -863,6 +865,19 @@ Tamaño de cuadrícula: {self.grid_size}px
             # Ocultar vértices al usar menú contextual
             self.device_manager.deselect_all()
             event.accept()
+        elif event.button() == Qt.LeftButton:
+            # Click izquierdo - detectar selección de dispositivo
+            scene_pos = self.mapToScene(event.pos())
+            device = self.device_manager.get_device_at_position(scene_pos.x(), scene_pos.y())
+            
+            if device:
+                # Dispositivo encontrado - emitir señal de selección
+                self.device_selected.emit(device)
+            else:
+                # Click en área vacía - deseleccionar
+                self.device_deselected.emit()
+            
+            super().mousePressEvent(event)
         else:
             super().mousePressEvent(event)
     
@@ -970,6 +985,17 @@ Tamaño de cuadrícula: {self.grid_size}px
                 
         except Exception as e:
             print(f"❌ Error en update_device_properties: {e}")
+    
+    def open_device_properties_by_id(self, device_id):
+        """Abrir propiedades de dispositivo por ID (para uso desde sidebar)"""
+        try:
+            device = self.device_manager.get_device(device_id)
+            if device:
+                self.open_device_properties(device)
+            else:
+                print(f"❌ Dispositivo con ID '{device_id}' no encontrado")
+        except Exception as e:
+            print(f"❌ Error abriendo propiedades por ID: {e}")
     
     def wheelEvent(self, event):
         """Manejar zoom con rueda del mouse (optimizado)"""
