@@ -56,3 +56,4 @@ temp/
 # Archivos auto-generados por VS Code/extensiones
 ui/buttons.py
 ui/panel_design_view.py
+simulation_results
