@@ -44,7 +44,7 @@ class NetPONPyTestPanel(QWidget):
         layout.setContentsMargins(8, 8, 8, 8)
         
         # Título más compacto
-        title = QLabel("🔬 NetPONPy")
+        title = QLabel("NetPONPy")
         title_font = QFont()
         title_font.setPointSize(10)
         title_font.setBold(True)
