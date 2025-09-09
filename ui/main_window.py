@@ -77,18 +77,24 @@ class MainWindow(QMainWindow):
         # Agregar sidebar izquierdo al layout si está visible
         if self.components_visible:
             canvas_layout.addWidget(self.sidebar)
+            canvas_layout.setStretchFactor(self.sidebar, 0)  # Sidebar izq no stretch
         
         # Crear el canvas principal
         self.canvas = Canvas()
         self.canvas.device_dropped.connect(self.on_device_dropped)
         canvas_layout.addWidget(self.canvas)
+        canvas_layout.setStretchFactor(self.canvas, 1)  # Canvas stretch principal
         
         # Crear el sidebar derecho para NetPONPy
         self.netponpy_sidebar = NetPONPySidebar()
         
+        # Conectar señales del sistema de gráficos automáticos
+        self.setup_automatic_graphics_connections()
+        
         # Agregar sidebar derecho al layout si está visible
         if self.netponpy_visible:
             canvas_layout.addWidget(self.netponpy_sidebar)
+            canvas_layout.setStretchFactor(self.netponpy_sidebar, 0)  # Sidebar der sin stretch limitante
         
         # Agregar layout del canvas al layout principal
         main_layout.addLayout(canvas_layout)
@@ -335,7 +341,7 @@ class MainWindow(QMainWindow):
         # Intentar guardar
         if self.canvas.save_project_as(file_path):
             self.statusBar().showMessage(f'Proyecto guardado: {file_path}', 4000)
-            print(f"💾 Proyecto guardado en: {file_path}")
+            print(f"Proyecto guardado en: {file_path}")
         else:
             QMessageBox.warning(
                 self,
@@ -396,9 +402,9 @@ class MainWindow(QMainWindow):
             
             # Actualizar status bar
             if enabled:
-                self.statusBar().showMessage("🔗 Modo Conexión ACTIVO - Selecciona dos dispositivos para conectar", 0)
+                self.statusBar().showMessage("Modo Conexion ACTIVO - Selecciona dos dispositivos para conectar", 0)
             else:
-                self.statusBar().showMessage("🔗 Modo Conexión DESACTIVADO", 2000)
+                self.statusBar().showMessage("Modo Conexion DESACTIVADO", 2000)
     
     def toggle_grid(self):
         """Alternar visibilidad de la cuadrícula y el origen"""
@@ -733,7 +739,7 @@ class MainWindow(QMainWindow):
         # Intentar guardar
         if self.canvas and self.canvas.save_project_as(file_path):
             self.statusBar().showMessage(f'Proyecto guardado: {file_path}', 3000)
-            print(f"💾 Proyecto guardado en: {file_path}")
+            print(f"Proyecto guardado en: {file_path}")
             return QMessageBox.Yes  # Proceder con el cierre
         else:
             # Si falla el guardado, preguntar qué hacer
@@ -745,3 +751,49 @@ class MainWindow(QMainWindow):
                 QMessageBox.No
             )
             return reply
+
+    def setup_automatic_graphics_connections(self):
+        """Configurar conexiones para el sistema de gráficos automáticos"""
+        try:
+            # Acceder al panel integrado de PON que tiene el sistema de gráficos
+            if hasattr(self.netponpy_sidebar, 'netponpy_panel'):
+                panel = self.netponpy_sidebar.netponpy_panel
+                
+                # Conectar señales de simulación terminada
+                if hasattr(panel, 'simulation_finished'):
+                    panel.simulation_finished.connect(self.on_simulation_graphics_ready)
+                
+                # Conectar señales de gráficos guardados
+                if hasattr(panel, 'graphics_saver') and hasattr(panel.graphics_saver, 'graphics_saved'):
+                    panel.graphics_saver.graphics_saved.connect(self.on_graphics_saved)
+                
+                # Configurar opciones automáticas: solo ventana emergente y guardado
+                if hasattr(panel, 'auto_save_checkbox'):
+                    panel.auto_save_checkbox.setChecked(True)  # Guardar automáticamente
+                if hasattr(panel, 'popup_window_checkbox'):
+                    panel.popup_window_checkbox.setChecked(True)  # Ventana emergente
+                if hasattr(panel, 'auto_charts_checkbox'):
+                    panel.auto_charts_checkbox.setChecked(False)  # NO mostrar en panel
+                
+                print("OK Sistema de graficos automaticos conectado al main UI")
+                
+        except Exception as e:
+            print(f"WARNING Error conectando sistema de graficos automaticos: {e}")
+    
+    def on_simulation_graphics_ready(self):
+        """Callback cuando la simulación termina y los gráficos están listos"""
+        try:
+            self.statusBar().showMessage("Simulacion completada - Graficos generados automaticamente", 5000)
+            print("INFO Simulacion terminada, graficos automaticos procesados")
+            
+        except Exception as e:
+            print(f"ERROR en callback de simulacion terminada: {e}")
+    
+    def on_graphics_saved(self, session_directory):
+        """Callback cuando los gráficos se han guardado automáticamente"""
+        try:
+            self.statusBar().showMessage(f"Graficos guardados en: {session_directory}", 8000)
+            print(f"OK Graficos guardados automaticamente en: {session_directory}")
+            
+        except Exception as e:
+            print(f"ERROR en callback de graficos guardados: {e}")

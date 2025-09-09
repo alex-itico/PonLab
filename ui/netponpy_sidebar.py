@@ -4,10 +4,10 @@ Panel lateral derecho específico para NetPONPy
 """
 
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QLabel, QScrollArea, QFrame, QSizePolicy)
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtGui import QFont
 from utils.constants import DEFAULT_SIDEBAR_WIDTH
-from .netponpy_test_panel import NetPONPyTestPanel
+from .integrated_pon_test_panel import IntegratedPONTestPanel
 
 
 class NetPONPySidebar(QWidget):
@@ -21,10 +21,11 @@ class NetPONPySidebar(QWidget):
     
     def setup_ui(self):
         """Configurar la interfaz del sidebar derecho"""
-        # Configurar widget principal con ancho fijo pero contenido responsive
-        self.setMinimumWidth(220)
-        self.setMaximumWidth(280)
-        self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Expanding)
+        # Configurar widget principal más compacto - solo controles
+        self.setMinimumWidth(280)  # Más compacto solo para controles
+        self.setMaximumWidth(350)  # Máximo reducido sin panel de resultados
+        # Permitir que se expanda horizontalmente cuando hay espacio
+        self.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Expanding)
         
         # Layout principal
         main_layout = QVBoxLayout(self)
@@ -62,10 +63,13 @@ class NetPONPySidebar(QWidget):
         content_layout.setContentsMargins(2, 2, 2, 2)
         content_layout.setSpacing(4)
         
-        # Panel de NetPONPy
-        self.netponpy_panel = NetPONPyTestPanel()
+        # Panel de NetPONPy integrado con gráficos automáticos
+        self.netponpy_panel = IntegratedPONTestPanel()
         self.netponpy_panel.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         content_layout.addWidget(self.netponpy_panel)
+        
+        # Ajustar ancho después de añadir el panel
+        QTimer.singleShot(100, self.adjust_width_for_content)  # Pequeño delay para que se renderice
         
         # Agregar stretch al final
         content_layout.addStretch()
@@ -151,8 +155,25 @@ class NetPONPySidebar(QWidget):
             # Actualizar información de topología inicial
             self.netponpy_panel.update_topology_info()
     
+    def adjust_width_for_content(self):
+        """Ajustar ancho del sidebar según su contenido"""
+        try:
+            # Calcular ancho necesario basado en el contenido del panel
+            if hasattr(self, 'netponpy_panel') and self.netponpy_panel:
+                # Obtener hint de tamaño del panel interno
+                hint = self.netponpy_panel.sizeHint()
+                optimal_width = min(max(hint.width() + 20, 280), 350)  # Entre 280-350px
+                
+                # Actualizar ancho mínimo si es necesario
+                if optimal_width > self.minimumWidth():
+                    self.setMinimumWidth(optimal_width)
+                    print(f"Ancho del sidebar ajustado a: {optimal_width}px")
+                
+        except Exception as e:
+            print(f"Warning ajustando ancho del sidebar: {e}")
+    
     def cleanup(self):
         """Limpiar recursos del sidebar"""
         if hasattr(self, 'netponpy_panel') and self.netponpy_panel:
             self.netponpy_panel.cleanup()
-        print("🧹 NetPONPy sidebar limpiado")
+        print("NetPONPy sidebar limpiado")

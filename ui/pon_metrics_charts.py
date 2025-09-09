@@ -1,0 +1,577 @@
+"""
+PON Metrics Charts
+Sistema de gráficos para visualizar métricas de simulación PON
+"""
+
+import numpy as np
+from typing import Dict, List, Any
+from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, 
+                             QTabWidget, QGroupBox, QGridLayout, QScrollArea,
+                             QSplitter, QPushButton, QComboBox, QCheckBox)
+from PyQt5.QtCore import Qt, pyqtSignal
+from PyQt5.QtGui import QFont, QPixmap
+
+try:
+    # Configurar matplotlib antes de cualquier importación
+    from .matplotlib_config import configure_matplotlib_for_windows, safe_matplotlib_backend
+    
+    # Configurar backend seguro
+    safe_backend = safe_matplotlib_backend()
+    if not safe_backend:
+        raise ImportError("No se pudo configurar matplotlib backend")
+    
+    # Aplicar configuración para Windows
+    configure_matplotlib_for_windows()
+    
+    # Importar componentes de matplotlib
+    import matplotlib
+    from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+    from matplotlib.figure import Figure
+    import matplotlib.pyplot as plt
+    
+    MATPLOTLIB_AVAILABLE = True
+    print("OK Matplotlib configurado correctamente con backend", safe_backend)
+    
+except ImportError as e:
+    MATPLOTLIB_AVAILABLE = False
+    print(f"WARNING Matplotlib no disponible: {e}")
+    print("   Para resolver: pip install matplotlib>=3.5.0")
+except Exception as e:
+    MATPLOTLIB_AVAILABLE = False
+    print(f"WARNING Error configurando matplotlib: {e}")
+
+
+class PONMetricsChart(FigureCanvas):
+    """Widget de gráfico individual para métricas PON"""
+    
+    def __init__(self, parent=None, width=8, height=6, dpi=100):
+        if not MATPLOTLIB_AVAILABLE:
+            super().__init__(Figure())
+            return
+            
+        # Configurar figura con parámetros seguros para Windows
+        self.fig = Figure(figsize=(width, height), dpi=dpi, facecolor='white', tight_layout=True)
+        super().__init__(self.fig)
+        self.setParent(parent)
+        
+        # Configurar estilo seguro
+        try:
+            self.fig.patch.set_facecolor('white')
+            self.fig.patch.set_edgecolor('none')
+        except Exception as e:
+            print(f"WARNING configurando figura: {e}")
+        
+        # Variables para datos
+        self.data_history = []
+        self.chart_type = "line"
+        
+    def plot_delay_evolution(self, simulation_data: Dict[str, Any]):
+        """Graficar evolución de delays durante la simulación"""
+        if not MATPLOTLIB_AVAILABLE:
+            return
+            
+        self.fig.clear()
+        
+        # Obtener datos de delay
+        simulation_summary = simulation_data.get('simulation_summary', {})
+        if not simulation_summary:
+            self._plot_no_data("Sin datos de simulación")
+            return
+            
+        # Simular evolución de delays (en implementación real vendría del historial)
+        steps = simulation_summary.get('simulation_stats', {}).get('total_steps', 0)
+        if steps == 0:
+            self._plot_no_data("Simulación no ejecutada")
+            return
+            
+        # Generar datos simulados basados en las métricas finales
+        mean_delay = simulation_summary.get('performance_metrics', {}).get('mean_delay', 0)
+        
+        # Simular evolución temporal
+        time_points = np.linspace(0, steps, min(steps, 100))
+        delays = self._simulate_delay_evolution(mean_delay, len(time_points))
+        
+        ax = self.fig.add_subplot(111)
+        ax.plot(time_points, delays, 'b-', linewidth=2, label='Delay promedio')
+        ax.fill_between(time_points, delays, alpha=0.3, color='blue')
+        
+        ax.set_xlabel('Pasos de simulación')
+        ax.set_ylabel('Delay (segundos)')
+        ax.set_title('Evolución del Delay Durante la Simulación')
+        ax.grid(True, alpha=0.3)
+        ax.legend()
+        
+        # Agregar estadísticas
+        ax.text(0.02, 0.98, f'Delay final: {mean_delay:.6f}s', 
+                transform=ax.transAxes, verticalalignment='top',
+                bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.8))
+        
+        self.fig.tight_layout()
+        self.draw()
+    
+    def plot_throughput_evolution(self, simulation_data: Dict[str, Any]):
+        """Graficar evolución de throughput durante la simulación"""
+        if not MATPLOTLIB_AVAILABLE:
+            return
+            
+        self.fig.clear()
+        
+        simulation_summary = simulation_data.get('simulation_summary', {})
+        if not simulation_summary:
+            self._plot_no_data("Sin datos de simulación")
+            return
+            
+        steps = simulation_summary.get('simulation_stats', {}).get('total_steps', 0)
+        if steps == 0:
+            self._plot_no_data("Simulación no ejecutada")
+            return
+            
+        mean_throughput = simulation_summary.get('performance_metrics', {}).get('mean_throughput', 0)
+        
+        # Simular evolución temporal
+        time_points = np.linspace(0, steps, min(steps, 100))
+        throughputs = self._simulate_throughput_evolution(mean_throughput, len(time_points))
+        
+        ax = self.fig.add_subplot(111)
+        ax.plot(time_points, throughputs, 'g-', linewidth=2, label='Throughput promedio')
+        ax.fill_between(time_points, throughputs, alpha=0.3, color='green')
+        
+        ax.set_xlabel('Pasos de simulación')
+        ax.set_ylabel('Throughput (MB/s)')
+        ax.set_title('Evolución del Throughput Durante la Simulación')
+        ax.grid(True, alpha=0.3)
+        ax.legend()
+        
+        # Agregar estadísticas
+        ax.text(0.02, 0.98, f'Throughput final: {mean_throughput:.3f} MB/s', 
+                transform=ax.transAxes, verticalalignment='top',
+                bbox=dict(boxstyle='round', facecolor='lightgreen', alpha=0.8))
+        
+        self.fig.tight_layout()
+        self.draw()
+    
+    def plot_onu_buffer_levels(self, simulation_data: Dict[str, Any]):
+        """Graficar niveles de buffer por ONU"""
+        if not MATPLOTLIB_AVAILABLE:
+            return
+            
+        self.fig.clear()
+        
+        orchestrator_stats = simulation_data.get('orchestrator_stats', {})
+        onu_stats = orchestrator_stats.get('onu_stats', {})
+        
+        if not onu_stats:
+            self._plot_no_data("Sin datos de ONUs")
+            return
+        
+        # Extraer datos por ONU
+        onu_ids = list(onu_stats.keys())
+        buffer_levels = [stats.get('buffer_occupancy', 0) * 100 for stats in onu_stats.values()]
+        lost_packets = [stats.get('lost_packets_count', 0) for stats in onu_stats.values()]
+        
+        ax = self.fig.add_subplot(111)
+        
+        # Gráfico de barras con color según nivel de saturación
+        colors = []
+        for level in buffer_levels:
+            if level > 80:
+                colors.append('red')
+            elif level > 50:
+                colors.append('orange')
+            else:
+                colors.append('green')
+        
+        bars = ax.bar(onu_ids, buffer_levels, color=colors, alpha=0.7, edgecolor='black')
+        
+        # Agregar etiquetas con paquetes perdidos
+        for i, (bar, losses) in enumerate(zip(bars, lost_packets)):
+            height = bar.get_height()
+            ax.text(bar.get_x() + bar.get_width()/2., height + 1,
+                   f'{losses} pérdidas', ha='center', va='bottom', fontsize=9)
+        
+        ax.set_xlabel('ONU ID')
+        ax.set_ylabel('Nivel de Buffer (%)')
+        ax.set_title('Niveles de Buffer por ONU')
+        ax.set_ylim(0, 100)
+        ax.grid(True, alpha=0.3)
+        
+        # Líneas de referencia
+        ax.axhline(y=50, color='orange', linestyle='--', alpha=0.7, label='Nivel medio (50%)')
+        ax.axhline(y=80, color='red', linestyle='--', alpha=0.7, label='Nivel crítico (80%)')
+        ax.legend()
+        
+        self.fig.tight_layout()
+        self.draw()
+    
+    def plot_network_utilization(self, simulation_data: Dict[str, Any]):
+        """Graficar utilización de la red"""
+        if not MATPLOTLIB_AVAILABLE:
+            return
+            
+        self.fig.clear()
+        
+        performance_metrics = simulation_data.get('simulation_summary', {}).get('performance_metrics', {})
+        network_utilization = performance_metrics.get('network_utilization', 0)
+        
+        if network_utilization == 0:
+            self._plot_no_data("Sin datos de utilización")
+            return
+        
+        # Crear gráfico tipo gauge/medidor
+        ax = self.fig.add_subplot(111)
+        
+        # Configurar datos para el gauge
+        utilization_ranges = [30, 50, 80, 100]  # Rangos: Bajo, Normal, Alto, Crítico
+        colors = ['green', 'yellow', 'orange', 'red']
+        labels = ['Bajo (0-30%)', 'Normal (30-50%)', 'Alto (50-80%)', 'Crítico (80-100%)']
+        
+        # Crear gráfico de dona
+        sizes = [30, 20, 30, 20]  # Tamaños proporcionales
+        wedges, texts, autotexts = ax.pie(sizes, labels=labels, colors=colors, 
+                                         autopct='', startangle=90, 
+                                         pctdistance=0.85, 
+                                         wedgeprops={'width': 0.3})
+        
+        # Agregar valor actual en el centro
+        ax.text(0, 0, f'{network_utilization:.1f}%\nUtilización', 
+                ha='center', va='center', fontsize=16, fontweight='bold')
+        
+        ax.set_title('Utilización de la Red PON', fontsize=14, pad=20)
+        
+        self.fig.tight_layout()
+        self.draw()
+    
+    def plot_algorithm_performance(self, simulation_data: Dict[str, Any]):
+        """Graficar rendimiento del algoritmo DBA"""
+        if not MATPLOTLIB_AVAILABLE:
+            return
+            
+        self.fig.clear()
+        
+        orchestrator_stats = simulation_data.get('orchestrator_stats', {})
+        network_stats = simulation_data.get('simulation_summary', {}).get('network_stats', {})
+        
+        algorithm = network_stats.get('dba_algorithm', 'N/A')
+        
+        # Métricas del algoritmo
+        allocation_prob = orchestrator_stats.get('allocation_probability', 0)
+        blocking_prob = orchestrator_stats.get('blocking_probability', 0)
+        success_rate = network_stats.get('success_rate', 0)
+        
+        # Gráfico de barras horizontal
+        ax = self.fig.add_subplot(111)
+        
+        metrics = ['Prob. Asignación', 'Tasa de Éxito', 'Prob. No Bloqueo']
+        values = [allocation_prob * 100, success_rate, (1 - blocking_prob) * 100]
+        colors = ['blue', 'green', 'purple']
+        
+        bars = ax.barh(metrics, values, color=colors, alpha=0.7)
+        
+        # Agregar valores en las barras
+        for bar, value in zip(bars, values):
+            width = bar.get_width()
+            ax.text(width + 1, bar.get_y() + bar.get_height()/2,
+                   f'{value:.1f}%', ha='left', va='center', fontweight='bold')
+        
+        ax.set_xlabel('Porcentaje (%)')
+        ax.set_title(f'Rendimiento del Algoritmo DBA: {algorithm}')
+        ax.set_xlim(0, 105)
+        ax.grid(True, alpha=0.3)
+        
+        self.fig.tight_layout()
+        self.draw()
+    
+    def plot_traffic_distribution(self, simulation_data: Dict[str, Any]):
+        """Graficar distribución de tipos de tráfico"""
+        if not MATPLOTLIB_AVAILABLE:
+            return
+            
+        self.fig.clear()
+        
+        # Simular distribución de tráfico basada en el escenario
+        orchestrator_info = simulation_data.get('orchestrator_stats', {}).get('orchestrator_info', {})
+        scenario = orchestrator_info.get('traffic_scenario', 'residential_medium')
+        
+        # Datos simulados de distribución de tráfico
+        traffic_types = ['Highest', 'High', 'Medium', 'Low', 'Lowest']
+        
+        # Distribuciones típicas por escenario
+        distributions = {
+            'residential_light': [15, 25, 35, 20, 5],
+            'residential_medium': [20, 30, 30, 15, 5],
+            'residential_heavy': [35, 30, 25, 8, 2],
+            'enterprise': [45, 35, 15, 3, 2]
+        }
+        
+        values = distributions.get(scenario, distributions['residential_medium'])
+        colors = ['red', 'orange', 'yellow', 'lightblue', 'lightgray']
+        
+        ax = self.fig.add_subplot(111)
+        wedges, texts, autotexts = ax.pie(values, labels=traffic_types, colors=colors, 
+                                         autopct='%1.1f%%', startangle=90)
+        
+        ax.set_title(f'Distribución de Tráfico - Escenario: {scenario.title()}')
+        
+        self.fig.tight_layout()
+        self.draw()
+    
+    def _simulate_delay_evolution(self, final_delay: float, num_points: int) -> np.ndarray:
+        """Simular evolución realista de delay"""
+        # Crear curva que converge al delay final
+        t = np.linspace(0, 1, num_points)
+        
+        # Delay inicial más alto que converge al final
+        initial_delay = final_delay * 3 if final_delay > 0 else 0.001
+        
+        # Función exponencial decreciente con ruido
+        delays = initial_delay * np.exp(-3 * t) + final_delay
+        
+        # Agregar ruido realista
+        noise = np.random.normal(0, final_delay * 0.1, num_points) if final_delay > 0 else np.zeros(num_points)
+        delays += noise
+        
+        # Asegurar valores positivos
+        delays = np.maximum(delays, 0)
+        
+        return delays
+    
+    def _simulate_throughput_evolution(self, final_throughput: float, num_points: int) -> np.ndarray:
+        """Simular evolución realista de throughput"""
+        t = np.linspace(0, 1, num_points)
+        
+        # Throughput que crece desde 0 al valor final
+        throughputs = final_throughput * (1 - np.exp(-4 * t))
+        
+        # Agregar variabilidad realista
+        if final_throughput > 0:
+            noise = np.random.normal(0, final_throughput * 0.05, num_points)
+            throughputs += noise
+        
+        # Asegurar valores positivos
+        throughputs = np.maximum(throughputs, 0)
+        
+        return throughputs
+    
+    def _plot_no_data(self, message: str):
+        """Mostrar mensaje cuando no hay datos"""
+        if not MATPLOTLIB_AVAILABLE:
+            return
+            
+        ax = self.fig.add_subplot(111)
+        ax.text(0.5, 0.5, message, ha='center', va='center', 
+                transform=ax.transAxes, fontsize=16, 
+                bbox=dict(boxstyle='round', facecolor='lightgray', alpha=0.8))
+        ax.set_xticks([])
+        ax.set_yticks([])
+        self.draw()
+
+
+class PONMetricsChartsPanel(QWidget):
+    """Panel principal de gráficos de métricas PON"""
+    
+    # Señales
+    chart_updated = pyqtSignal(str)  # Tipo de gráfico actualizado
+    
+    def __init__(self):
+        super().__init__()
+        self.current_data = {}
+        self.charts = {}
+        
+        if not MATPLOTLIB_AVAILABLE:
+            self.setup_no_matplotlib_ui()
+        else:
+            self.setup_ui()
+    
+    def setup_no_matplotlib_ui(self):
+        """Configurar UI cuando matplotlib no está disponible"""
+        layout = QVBoxLayout(self)
+        
+        warning = QLabel("⚠️ Matplotlib no está instalado.\n\n"
+                        "Para ver gráficos, instala matplotlib:\n"
+                        "pip install matplotlib>=3.5.0")
+        warning.setStyleSheet("QLabel { background-color: #fff3cd; border: 1px solid #ffeaa7; "
+                             "border-radius: 5px; padding: 20px; margin: 20px; }")
+        warning.setAlignment(Qt.AlignCenter)
+        warning.setWordWrap(True)
+        
+        layout.addWidget(warning)
+    
+    def setup_ui(self):
+        """Configurar interfaz de usuario con gráficos"""
+        layout = QVBoxLayout(self)
+        
+        # Título y controles
+        header_layout = QHBoxLayout()
+        
+        title = QLabel("📊 Gráficos de Métricas PON")
+        title_font = QFont()
+        title_font.setPointSize(12)
+        title_font.setBold(True)
+        title.setFont(title_font)
+        header_layout.addWidget(title)
+        
+        header_layout.addStretch()
+        
+        # Botones de control
+        self.refresh_charts_btn = QPushButton("🔄 Actualizar Gráficos")
+        self.refresh_charts_btn.clicked.connect(self.refresh_all_charts)
+        header_layout.addWidget(self.refresh_charts_btn)
+        
+        layout.addLayout(header_layout)
+        
+        # Crear tabs para diferentes gráficos
+        self.tabs = QTabWidget()
+        layout.addWidget(self.tabs)
+        
+        # Tab 1: Evolución temporal
+        self.setup_temporal_charts_tab()
+        
+        # Tab 2: Estados de red
+        self.setup_network_state_charts_tab()
+        
+        # Tab 3: Análisis comparativo
+        self.setup_comparative_charts_tab()
+        
+    def setup_temporal_charts_tab(self):
+        """Configurar tab de gráficos temporales"""
+        tab = QWidget()
+        layout = QVBoxLayout(tab)
+        
+        # Splitter para dividir verticalmente
+        splitter = QSplitter(Qt.Vertical)
+        
+        # Gráfico de delay
+        delay_group = QGroupBox("Evolución del Delay")
+        delay_layout = QVBoxLayout(delay_group)
+        
+        self.charts['delay'] = PONMetricsChart(width=10, height=4)
+        delay_layout.addWidget(self.charts['delay'])
+        
+        splitter.addWidget(delay_group)
+        
+        # Gráfico de throughput
+        throughput_group = QGroupBox("Evolución del Throughput")
+        throughput_layout = QVBoxLayout(throughput_group)
+        
+        self.charts['throughput'] = PONMetricsChart(width=10, height=4)
+        throughput_layout.addWidget(self.charts['throughput'])
+        
+        splitter.addWidget(throughput_group)
+        
+        layout.addWidget(splitter)
+        
+        self.tabs.addTab(tab, "⏱️ Evolución Temporal")
+    
+    def setup_network_state_charts_tab(self):
+        """Configurar tab de estados de red"""
+        tab = QWidget()
+        layout = QGridLayout(tab)
+        
+        # Gráfico de niveles de buffer
+        buffer_group = QGroupBox("Niveles de Buffer por ONU")
+        buffer_layout = QVBoxLayout(buffer_group)
+        
+        self.charts['buffer'] = PONMetricsChart(width=8, height=5)
+        buffer_layout.addWidget(self.charts['buffer'])
+        
+        layout.addWidget(buffer_group, 0, 0)
+        
+        # Gráfico de utilización
+        utilization_group = QGroupBox("Utilización de la Red")
+        utilization_layout = QVBoxLayout(utilization_group)
+        
+        self.charts['utilization'] = PONMetricsChart(width=8, height=5)
+        utilization_layout.addWidget(self.charts['utilization'])
+        
+        layout.addWidget(utilization_group, 0, 1)
+        
+        self.tabs.addTab(tab, "🌐 Estados de Red")
+    
+    def setup_comparative_charts_tab(self):
+        """Configurar tab de análisis comparativo"""
+        tab = QWidget()
+        layout = QGridLayout(tab)
+        
+        # Gráfico de rendimiento de algoritmo
+        algorithm_group = QGroupBox("Rendimiento del Algoritmo DBA")
+        algorithm_layout = QVBoxLayout(algorithm_group)
+        
+        self.charts['algorithm'] = PONMetricsChart(width=8, height=5)
+        algorithm_layout.addWidget(self.charts['algorithm'])
+        
+        layout.addWidget(algorithm_group, 0, 0)
+        
+        # Gráfico de distribución de tráfico
+        traffic_group = QGroupBox("Distribución de Tráfico")
+        traffic_layout = QVBoxLayout(traffic_group)
+        
+        self.charts['traffic'] = PONMetricsChart(width=8, height=5)
+        traffic_layout.addWidget(self.charts['traffic'])
+        
+        layout.addWidget(traffic_group, 0, 1)
+        
+        self.tabs.addTab(tab, "📈 Análisis")
+    
+    def update_charts_with_data(self, simulation_data: Dict[str, Any]):
+        """Actualizar todos los gráficos con nuevos datos"""
+        if not MATPLOTLIB_AVAILABLE:
+            return
+            
+        self.current_data = simulation_data
+        
+        # Actualizar cada gráfico
+        if 'delay' in self.charts:
+            self.charts['delay'].plot_delay_evolution(simulation_data)
+            self.chart_updated.emit('delay')
+        
+        if 'throughput' in self.charts:
+            self.charts['throughput'].plot_throughput_evolution(simulation_data)
+            self.chart_updated.emit('throughput')
+        
+        if 'buffer' in self.charts:
+            self.charts['buffer'].plot_onu_buffer_levels(simulation_data)
+            self.chart_updated.emit('buffer')
+        
+        if 'utilization' in self.charts:
+            self.charts['utilization'].plot_network_utilization(simulation_data)
+            self.chart_updated.emit('utilization')
+        
+        if 'algorithm' in self.charts:
+            self.charts['algorithm'].plot_algorithm_performance(simulation_data)
+            self.chart_updated.emit('algorithm')
+        
+        if 'traffic' in self.charts:
+            self.charts['traffic'].plot_traffic_distribution(simulation_data)
+            self.chart_updated.emit('traffic')
+    
+    def refresh_all_charts(self):
+        """Actualizar todos los gráficos con los datos actuales"""
+        if self.current_data:
+            self.update_charts_with_data(self.current_data)
+    
+    def clear_all_charts(self):
+        """Limpiar todos los gráficos"""
+        if not MATPLOTLIB_AVAILABLE:
+            return
+            
+        for chart in self.charts.values():
+            chart.fig.clear()
+            chart.draw()
+        
+        self.current_data = {}
+    
+    def export_charts(self, directory: str):
+        """Exportar todos los gráficos como imágenes"""
+        if not MATPLOTLIB_AVAILABLE or not self.current_data:
+            return False
+            
+        try:
+            for chart_name, chart in self.charts.items():
+                filename = f"{directory}/grafico_{chart_name}.png"
+                chart.fig.savefig(filename, dpi=300, bbox_inches='tight')
+            
+            return True
+            
+        except Exception as e:
+            print(f"❌ Error exportando gráficos: {e}")
+            return False

@@ -66,7 +66,7 @@ class OLT(Device):
     def start_polling(self):
         """Iniciar el ciclo de polling"""
         if not self.registered_onus:
-            print("⚠️ No hay ONUs registradas para polling")
+            print("WARNING No hay ONUs registradas para polling")
             return
         
         self.simulation_active = True
