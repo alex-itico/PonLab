@@ -460,11 +460,14 @@ class IntegratedPONTestPanel(QWidget):
                 return  # No hacer nada si no hay opciones habilitadas
             
             # Obtener datos completos de la simulación
-            simulation_data = {
+            # El adapter ya retorna la estructura correcta con 'simulation_summary'
+            simulation_data = self.adapter.get_simulation_summary()
+            
+            # Agregar datos adicionales
+            simulation_data.update({
                 'current_state': self.adapter.get_current_state(),
-                'simulation_summary': self.adapter.get_simulation_summary(),
                 'orchestrator_stats': self.adapter.get_orchestrator_stats()
-            }
+            })
             
             # Recopilar información de la sesión
             session_info = {

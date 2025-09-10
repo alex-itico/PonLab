@@ -151,54 +151,80 @@ class PONMetricsChart(FigureCanvas):
         self.draw()
     
     def plot_onu_buffer_levels(self, simulation_data: Dict[str, Any]):
-        """Graficar niveles de buffer por ONU"""
+        """Graficar evolución temporal de los niveles de buffer por ONU"""
         if not MATPLOTLIB_AVAILABLE:
             return
             
         self.fig.clear()
         
-        orchestrator_stats = simulation_data.get('orchestrator_stats', {})
-        onu_stats = orchestrator_stats.get('onu_stats', {})
+        # Obtener datos históricos de buffer
+        # Primero intentar desde simulation_summary.episode_metrics (estructura más común)
+        simulation_summary = simulation_data.get('simulation_summary', {})
+        episode_metrics = simulation_summary.get('episode_metrics', {})
+        buffer_history = episode_metrics.get('buffer_levels_history', [])
         
-        if not onu_stats:
-            self._plot_no_data("Sin datos de ONUs")
+        # Si no hay datos, intentar desde la raíz (estructura alternativa)
+        if not buffer_history:
+            episode_metrics_root = simulation_data.get('episode_metrics', {})
+            buffer_history = episode_metrics_root.get('buffer_levels_history', [])
+        
+        if not buffer_history:
+            self._plot_no_data("Sin historial de buffer")
             return
-        
-        # Extraer datos por ONU
-        onu_ids = list(onu_stats.keys())
-        buffer_levels = [stats.get('buffer_occupancy', 0) * 100 for stats in onu_stats.values()]
-        lost_packets = [stats.get('lost_packets_count', 0) for stats in onu_stats.values()]
         
         ax = self.fig.add_subplot(111)
         
-        # Gráfico de barras con color según nivel de saturación
-        colors = []
-        for level in buffer_levels:
-            if level > 80:
-                colors.append('red')
-            elif level > 50:
-                colors.append('orange')
-            else:
-                colors.append('green')
+        # Verificar estructura de datos
+        if not buffer_history or len(buffer_history) == 0:
+            self._plot_no_data("Historial de buffer vacío")
+            return
         
-        bars = ax.bar(onu_ids, buffer_levels, color=colors, alpha=0.7, edgecolor='black')
+        # Obtener número de ONUs desde la primera entrada
+        first_entry = buffer_history[0]
+        if not isinstance(first_entry, dict):
+            self._plot_no_data("Formato de datos de buffer inválido")
+            return
         
-        # Agregar etiquetas con paquetes perdidos
-        for i, (bar, losses) in enumerate(zip(bars, lost_packets)):
-            height = bar.get_height()
-            ax.text(bar.get_x() + bar.get_width()/2., height + 1,
-                   f'{losses} pérdidas', ha='center', va='bottom', fontsize=9)
+        onu_ids = list(first_entry.keys())
+        num_steps = len(buffer_history)
         
-        ax.set_xlabel('ONU ID')
-        ax.set_ylabel('Nivel de Buffer (%)')
-        ax.set_title('Niveles de Buffer por ONU')
+        # Crear eje temporal (pasos de simulación)
+        time_steps = np.arange(num_steps)
+        
+        # Colores distintivos para cada ONU
+        colors = ['blue', 'red', 'green', 'orange', 'purple', 'brown', 'pink', 'gray', 'olive', 'cyan']
+        
+        # Graficar una línea por cada ONU
+        for i, onu_id in enumerate(onu_ids):
+            # Extraer niveles de buffer para esta ONU a lo largo del tiempo
+            buffer_levels = []
+            for step_data in buffer_history:
+                buffer_level = step_data.get(onu_id, 0) * 100  # Convertir a porcentaje
+                buffer_levels.append(buffer_level)
+            
+            # Usar color cíclico si hay más ONUs que colores
+            color = colors[i % len(colors)]
+            
+            # Graficar línea para esta ONU
+            ax.plot(time_steps, buffer_levels, 
+                   color=color, linewidth=2, marker='o', markersize=3,
+                   label=f'ONU {onu_id}', alpha=0.8)
+        
+        ax.set_xlabel('Pasos de Simulación')
+        ax.set_ylabel('Ocupación del Buffer (%)')
+        ax.set_title('Evolución Temporal de los Niveles de Buffer por ONU')
         ax.set_ylim(0, 100)
         ax.grid(True, alpha=0.3)
         
         # Líneas de referencia
         ax.axhline(y=50, color='orange', linestyle='--', alpha=0.7, label='Nivel medio (50%)')
         ax.axhline(y=80, color='red', linestyle='--', alpha=0.7, label='Nivel crítico (80%)')
-        ax.legend()
+        
+        # Leyenda - manejar muchas ONUs
+        if len(onu_ids) <= 8:
+            ax.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
+        else:
+            ax.legend(bbox_to_anchor=(1.05, 1), loc='upper left', ncol=2, fontsize=8)
         
         self.fig.tight_layout()
         self.draw()

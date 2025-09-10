@@ -66,15 +66,24 @@ class FCFSDBAAlgorithm(DBAAlgorithmInterface):
     
     def allocate_bandwidth(self, onu_requests: Dict[str, float], 
                           total_bandwidth: float, action: Any = None) -> Dict[str, float]:
-        """Asignación FCFS: da ancho de banda completo a la ONU con solicitud más antigua"""
+        """Asignación FCFS realista: distribuye ancho de banda a todas las ONUs con requests"""
         allocations = {}
         
-        # Dar ancho de banda completo solo a la primera ONU (asumiendo que tiene la solicitud más antigua)
-        # La lógica real de FCFS sucede en select_next_request()
-        if onu_requests:
-            first_onu = next(iter(onu_requests))
-            allocations[first_onu] = min(onu_requests[first_onu], total_bandwidth)
+        if not onu_requests:
+            return allocations
             
+        # Calcular total solicitado
+        total_requested = sum(onu_requests.values())
+        
+        if total_requested <= total_bandwidth:
+            # Si hay suficiente ancho de banda, dar a cada ONU lo que pidió
+            allocations = onu_requests.copy()
+        else:
+            # Si no hay suficiente, distribuir proporcionalmente
+            for onu_id, requested in onu_requests.items():
+                proportion = requested / total_requested
+                allocations[onu_id] = total_bandwidth * proportion
+                
         return allocations
     
     def select_next_request(self, available_requests: Dict[str, List[Request]], 
