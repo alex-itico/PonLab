@@ -24,9 +24,16 @@ def get_traffic_scenario(scenario_name: str) -> dict:
                 "low": (0.4, 0.7),       # Tráfico de fondo
                 "lowest": (0.1, 0.3)     # Telemetría/IoT
             },
+            "traffic_sizes_mb": {
+                "highest": (0.050, 0.100),  # 50-100KB: VoIP, control
+                "high": (0.020, 0.050),     # 20-50KB: aplicaciones importantes
+                "medium": (0.010, 0.025),   # 10-25KB: navegación web
+                "low": (0.005, 0.015),      # 5-15KB: background apps
+                "lowest": (0.001, 0.005)    # 1-5KB: IoT/telemetría
+            },
             "sla_range": (50, 150),          # Mbps
             "target_utilization": 0.5,       # 50% del SLA
-            "request_size_mb": 0.012,        # 12KB por solicitud
+            "request_size_mb": 0.012,        # 12KB promedio por solicitud
             "inter_arrival_ms_target": 25    # ~40 req/s
         },
         
@@ -39,9 +46,16 @@ def get_traffic_scenario(scenario_name: str) -> dict:
                 "low": (0.3, 0.6),       # Apps de fondo
                 "lowest": (0.1, 0.3)     # IoT/Actualizaciones
             },
+            "traffic_sizes_mb": {
+                "highest": (0.100, 0.200),  # 100-200KB: streaming HD
+                "high": (0.040, 0.080),     # 40-80KB: videollamadas
+                "medium": (0.015, 0.030),   # 15-30KB: navegación web
+                "low": (0.008, 0.020),      # 8-20KB: apps de fondo
+                "lowest": (0.002, 0.008)    # 2-8KB: IoT/updates
+            },
             "sla_range": (100, 300),         # Mbps
             "target_utilization": 0.6,       # 60% del SLA
-            "request_size_mb": 0.015,        # 15KB por solicitud
+            "request_size_mb": 0.015,        # 15KB promedio por solicitud
             "inter_arrival_ms_target": 15   # ~67 req/s
         },
         
@@ -54,9 +68,16 @@ def get_traffic_scenario(scenario_name: str) -> dict:
                 "low": (0.3, 0.6),       # Tráfico de fondo
                 "lowest": (0.2, 0.4)     # IoT
             },
+            "traffic_sizes_mb": {
+                "highest": (0.200, 0.500),  # 200-500KB: streaming 4K
+                "high": (0.080, 0.150),     # 80-150KB: gaming/video
+                "medium": (0.025, 0.050),   # 25-50KB: múltiples streams
+                "low": (0.010, 0.025),      # 10-25KB: background
+                "lowest": (0.003, 0.010)    # 3-10KB: IoT
+            },
             "sla_range": (200, 500),         # Mbps
             "target_utilization": 0.7,       # 70% del SLA
-            "request_size_mb": 0.018,        # 18KB por solicitud
+            "request_size_mb": 0.018,        # 18KB promedio por solicitud
             "inter_arrival_ms_target": 10   # ~100 req/s
         },
         
@@ -69,9 +90,16 @@ def get_traffic_scenario(scenario_name: str) -> dict:
                 "low": (0.4, 0.7),       # Respaldos
                 "lowest": (0.3, 0.5)     # Monitoreo
             },
+            "traffic_sizes_mb": {
+                "highest": (0.080, 0.150),  # 80-150KB: aplicaciones críticas
+                "high": (0.030, 0.080),     # 30-80KB: VoIP/videoconf
+                "medium": (0.020, 0.040),   # 20-40KB: apps de negocio
+                "low": (0.050, 0.200),      # 50-200KB: respaldos
+                "lowest": (0.001, 0.005)    # 1-5KB: monitoreo/telemetría
+            },
             "sla_range": (300, 800),         # Mbps
             "target_utilization": 0.8,       # 80% del SLA
-            "request_size_mb": 0.020,        # 20KB por solicitud
+            "request_size_mb": 0.020,        # 20KB promedio por solicitud
             "inter_arrival_ms_target": 8    # ~125 req/s
         }
     }

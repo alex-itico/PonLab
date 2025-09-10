@@ -143,7 +143,8 @@ class PONOrchestrator:
                 service_level_agreement=sla,
                 buffer_size=500,
                 mean_arrival_rate=lambda_rate,
-                avg_request_size_mb=scenario_config["request_size_mb"]
+                avg_request_size_mb=scenario_config["request_size_mb"],
+                traffic_sizes_mb=scenario_config.get("traffic_sizes_mb", None)
             )
         
         self._log_event("ONUS", f"{self.num_onus} ONUs creadas con escenario {self.traffic_scenario}")

@@ -31,6 +31,7 @@ class ONU:
         buffer_size: int = 512,  # Número máximo de solicitudes en buffer
         mean_arrival_rate: Optional[float] = None,  # requests/second
         avg_request_size_mb: float = 0.015,  # 15KB por request por defecto
+        traffic_sizes_mb: Optional[Dict[str, tuple]] = None,  # Tamaños por tipo
     ):
         """
         Inicializar ONU con generación de tráfico realista
@@ -50,6 +51,13 @@ class ONU:
         self.traffic_transmition_probs = traffic_transmition_probs
         self.buffer_size = buffer_size
         self.avg_request_size_mb = avg_request_size_mb
+        self.traffic_sizes_mb = traffic_sizes_mb or {
+            "highest": (0.050, 0.100),  # 50-100KB por defecto
+            "high": (0.030, 0.070),     # 30-70KB
+            "medium": (0.010, 0.025),   # 10-25KB
+            "low": (0.005, 0.015),      # 5-15KB
+            "lowest": (0.001, 0.005)    # 1-5KB
+        }
         self.transmition_rate = transmition_rate
         self.service_level_agreement = service_level_agreement
         
@@ -97,7 +105,11 @@ class ONU:
         for traffic_type, probability in self.traffic_transmition_probs.items():
             should_transmit = np.random.choice([0, 1], p=[1 - probability, probability])
             if should_transmit:
-                traffic[traffic_type] = self.avg_request_size_mb
+                # Usar tamaño variable según tipo de tráfico
+                size_range = self.traffic_sizes_mb.get(traffic_type, (self.avg_request_size_mb, self.avg_request_size_mb))
+                min_size, max_size = size_range
+                traffic_size = np.random.uniform(min_size, max_size)
+                traffic[traffic_type] = traffic_size
         
         # Obtener evento de la cola (tiempo de llegada)
         event = self.queue.get()
