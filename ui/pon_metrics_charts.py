@@ -197,28 +197,39 @@ class PONMetricsChart(FigureCanvas):
         # Graficar una línea por cada ONU
         for i, onu_id in enumerate(onu_ids):
             # Extraer niveles de buffer para esta ONU a lo largo del tiempo
-            buffer_levels = []
+            buffer_levels_percent = []
             for step_data in buffer_history:
-                buffer_level = step_data.get(onu_id, 0) * 100  # Convertir a porcentaje
-                buffer_levels.append(buffer_level)
+                onu_buffer_data = step_data.get(onu_id, {})
+                
+                # Manejar formato nuevo (dict con utilization_percent) y formato antiguo (número)
+                if isinstance(onu_buffer_data, dict):
+                    # Usar directamente el porcentaje de utilización
+                    buffer_percent = onu_buffer_data.get('utilization_percent', 0)
+                else:
+                    # Formato antiguo (ya es porcentaje o fracción)
+                    buffer_percent = onu_buffer_data * 100 if onu_buffer_data <= 1 else onu_buffer_data
+                
+                buffer_levels_percent.append(buffer_percent)
             
             # Usar color cíclico si hay más ONUs que colores
             color = colors[i % len(colors)]
             
             # Graficar línea para esta ONU
-            ax.plot(time_steps, buffer_levels, 
+            ax.plot(time_steps, buffer_levels_percent, 
                    color=color, linewidth=2, marker='o', markersize=3,
                    label=f'ONU {onu_id}', alpha=0.8)
         
         ax.set_xlabel('Pasos de Simulación')
         ax.set_ylabel('Ocupación del Buffer (%)')
         ax.set_title('Evolución Temporal de los Niveles de Buffer por ONU')
-        ax.set_ylim(0, 100)
+        ax.set_ylim(0, 100)  # Porcentaje de 0 a 100%
         ax.grid(True, alpha=0.3)
         
-        # Líneas de referencia
-        ax.axhline(y=50, color='orange', linestyle='--', alpha=0.7, label='Nivel medio (50%)')
-        ax.axhline(y=80, color='red', linestyle='--', alpha=0.7, label='Nivel crítico (80%)')
+        # Líneas de referencia en porcentaje
+        ax.axhline(y=50, color='orange', linestyle='--', alpha=0.7, 
+                  label='Nivel medio (50%)')
+        ax.axhline(y=80, color='red', linestyle='--', alpha=0.7, 
+                  label='Nivel crítico (80%)')
         
         # Leyenda - manejar muchas ONUs
         if len(onu_ids) <= 8:
@@ -636,15 +647,26 @@ class PONMetricsChartsPanel(QWidget):
         
         episode_metrics = hybrid_data.get('simulation_summary', {}).get('episode_metrics', {})
         
-        # Convertir buffer levels: los valores híbridos ya están en 0-1, convertir a 0-100
+        # Convertir buffer levels: mantener formato nuevo con MB
         buffer_history = episode_metrics.get('buffer_levels_history', [])
         if buffer_history:
             converted_buffer_history = []
             for step_data in buffer_history:
                 converted_step = {}
-                for onu_id, level in step_data.items():
-                    # Convertir de fracción decimal a porcentaje
-                    converted_step[onu_id] = level * 100
+                for onu_id, level_data in step_data.items():
+                    # Manejar formato nuevo (dict) y antiguo (número)
+                    if isinstance(level_data, dict):
+                        # Ya está en formato nuevo con MB - mantener
+                        converted_step[onu_id] = level_data
+                    else:
+                        # Formato antiguo (fracción/porcentaje) - convertir a formato MB
+                        # Estimar 3.5MB total por ONU (512KB + 512KB + 1MB + 1MB + 256KB)
+                        used_mb = level_data * 3.5 if level_data <= 1 else level_data * 3.5 / 100
+                        converted_step[onu_id] = {
+                            'used_mb': used_mb,
+                            'capacity_mb': 3.5,
+                            'utilization_percent': level_data * 100 if level_data <= 1 else level_data
+                        }
                 converted_buffer_history.append(converted_step)
             
             # Actualizar en la estructura convertida

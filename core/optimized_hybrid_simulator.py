@@ -362,16 +362,23 @@ class OptimizedHybridPONSimulator:
         self.olt.handle_transmission_complete(event.data, event.timestamp)
     
     def _update_buffer_metrics(self):
-        """Actualizar métricas de buffer con muestreo reducido"""
+        """Actualizar métricas de buffer en MB reales"""
         buffer_levels = {}
         
         for onu_id, onu in self.onus.items():
-            # Calcular nivel total de buffer como % de capacidad máxima
+            # Calcular nivel total de buffer en MB reales
             total_bytes = sum(queue.total_bytes for queue in onu.queues.values())
             max_capacity = sum(queue.max_bytes for queue in onu.queues.values())
             
-            buffer_level = (total_bytes / max_capacity) * 100 if max_capacity > 0 else 0
-            buffer_levels[onu_id] = buffer_level
+            # Convertir bytes a MB para métricas
+            buffer_level_mb = total_bytes / (1024 * 1024)  # Bytes a MB
+            max_capacity_mb = max_capacity / (1024 * 1024)  # Bytes a MB
+            
+            buffer_levels[onu_id] = {
+                'used_mb': buffer_level_mb,
+                'capacity_mb': max_capacity_mb,
+                'utilization_percent': (total_bytes / max_capacity) * 100 if max_capacity > 0 else 0
+            }
         
         self.metrics['buffer_levels_history'].append(buffer_levels)
     
@@ -463,13 +470,21 @@ class OptimizedHybridPONSimulator:
         self.olt.set_dba_algorithm(dba_algorithm)
     
     def get_current_state(self) -> Dict[str, Any]:
-        """Obtener estado actual (compatible con interfaz existente)"""
+        """Obtener estado actual con buffer en MB"""
         buffer_levels = []
         for onu in self.onus.values():
             total_bytes = sum(queue.total_bytes for queue in onu.queues.values())
             max_capacity = sum(queue.max_bytes for queue in onu.queues.values())
-            level = total_bytes / max_capacity if max_capacity > 0 else 0
-            buffer_levels.append(level)
+            
+            # Retornar en MB en lugar de porcentaje
+            used_mb = total_bytes / (1024 * 1024)
+            capacity_mb = max_capacity / (1024 * 1024)
+            
+            buffer_levels.append({
+                'used_mb': used_mb,
+                'capacity_mb': capacity_mb,
+                'utilization_percent': (total_bytes / max_capacity) * 100 if max_capacity > 0 else 0
+            })
         
         return {
             'buffer_levels': buffer_levels,
