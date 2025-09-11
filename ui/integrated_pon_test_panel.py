@@ -46,6 +46,9 @@ class IntegratedPONTestPanel(QWidget):
         self.setup_ui()
         self.check_pon_status()
         
+        # Inicializar estado de controles
+        self.on_architecture_changed()
+        
     def setup_ui(self):
         """Configurar interfaz de usuario"""
         # Configurar política de tamaño del widget principal
@@ -120,13 +123,30 @@ class IntegratedPONTestPanel(QWidget):
             self.scenario_combo.addItems(self.adapter.get_available_traffic_scenarios())
         config_layout.addWidget(self.scenario_combo, 2, 1)
         
-        # Pasos de simulación
-        config_layout.addWidget(QLabel("Pasos:"), 3, 0)
+        # Arquitectura de simulación
+        config_layout.addWidget(QLabel("Arquitectura:"), 3, 0)
+        self.hybrid_checkbox = QCheckBox("Híbrida Event-Driven")
+        self.hybrid_checkbox.setChecked(True)  # Por defecto usar híbrida
+        self.hybrid_checkbox.setToolTip("Usar arquitectura híbrida con control temporal estricto")
+        self.hybrid_checkbox.toggled.connect(self.on_architecture_changed)
+        config_layout.addWidget(self.hybrid_checkbox, 3, 1)
+        
+        # Tiempo de simulación (para arquitectura híbrida)
+        config_layout.addWidget(QLabel("Tiempo (s):"), 4, 0)
+        self.duration_spinbox = QSpinBox()
+        self.duration_spinbox.setRange(1, 120)
+        self.duration_spinbox.setValue(10)
+        self.duration_spinbox.setToolTip("Duración en segundos (solo arquitectura híbrida)")
+        config_layout.addWidget(self.duration_spinbox, 4, 1)
+        
+        # Pasos de simulación (para arquitectura clásica)
+        config_layout.addWidget(QLabel("Pasos:"), 5, 0)
         self.steps_spinbox = QSpinBox()
         self.steps_spinbox.setRange(100, 10000)
         self.steps_spinbox.setValue(1000)
         self.steps_spinbox.setSingleStep(100)
-        config_layout.addWidget(self.steps_spinbox, 3, 1)
+        self.steps_spinbox.setToolTip("Número de pasos (solo arquitectura clásica)")
+        config_layout.addWidget(self.steps_spinbox, 5, 1)
         
         layout.addWidget(config_group)
         
@@ -245,10 +265,37 @@ class IntegratedPONTestPanel(QWidget):
         if self.orchestrator_initialized:
             algorithm = self.algorithm_combo.currentText()
             if algorithm != self.last_algorithm:
-                success = self.adapter.set_dba_algorithm(algorithm)
+                if self.hybrid_checkbox.isChecked():
+                    success, msg = self.adapter.set_hybrid_dba_algorithm(algorithm)
+                else:
+                    success = self.adapter.set_dba_algorithm(algorithm)
+                    msg = f"Algoritmo cambiado a: {algorithm}" if success else "Error cambiando algoritmo"
+                
                 if success:
                     self.last_algorithm = algorithm
-                    self.results_panel.add_log_message(f"Algoritmo cambiado a: {algorithm}")
+                    self.results_panel.add_log_message(msg)
+                else:
+                    self.results_panel.add_log_message(f"Error: {msg}")
+    
+    def on_architecture_changed(self):
+        """Manejar cambio de arquitectura"""
+        use_hybrid = self.hybrid_checkbox.isChecked()
+        self.adapter.set_use_hybrid_architecture(use_hybrid)
+        
+        # Actualizar visibilidad de controles
+        self.duration_spinbox.setEnabled(use_hybrid)
+        self.steps_spinbox.setEnabled(not use_hybrid)
+        
+        # Si está inicializado, requerir reinicialización
+        if self.orchestrator_initialized:
+            self.status_label.setText("⚠️ Arquitectura cambiada - reinicializar")
+            self.status_label.setStyleSheet("color: orange;")
+            self.orchestrator_initialized = False
+            self.start_btn.setEnabled(False)
+            self.step_btn.setEnabled(False)
+        
+        arch_name = "híbrida event-driven" if use_hybrid else "clásica timesteps"
+        self.results_panel.add_log_message(f"Arquitectura cambiada a: {arch_name}")
     
     def toggle_detailed_logging(self, enabled):
         """Activar/desactivar logging detallado"""
@@ -259,30 +306,46 @@ class IntegratedPONTestPanel(QWidget):
         if not self.adapter.is_pon_available():
             return
         
-        self.results_panel.add_log_message("🚀 Inicializando simulación...")
-        
         # Obtener configuración
         num_onus = self.onu_spinbox.value()
+        scenario = self.scenario_combo.currentText()
+        algorithm = self.algorithm_combo.currentText()
+        use_hybrid = self.hybrid_checkbox.isChecked()
         
-        # Usar topología del canvas si está disponible
-        if self.canvas_reference:
-            success, message = self.adapter.initialize_orchestrator_from_topology(
-                self.canvas_reference.device_manager
+        if use_hybrid:
+            self.results_panel.add_log_message("🚀 Inicializando simulación híbrida...")
+            success, message = self.adapter.initialize_hybrid_simulator(
+                num_onus=num_onus,
+                traffic_scenario=scenario,
+                channel_capacity_mbps=1024.0
             )
         else:
-            success = self.adapter.initialize_orchestrator(num_onus)
-            message = f"Orquestador inicializado con {num_onus} ONUs"
+            self.results_panel.add_log_message("🚀 Inicializando simulación clásica...")
+            
+            # Usar topología del canvas si está disponible
+            if self.canvas_reference:
+                success, message = self.adapter.initialize_orchestrator_from_topology(
+                    self.canvas_reference.device_manager
+                )
+            else:
+                success = self.adapter.initialize_orchestrator(num_onus)
+                message = f"Orquestador inicializado con {num_onus} ONUs"
         
         if success:
             self.orchestrator_initialized = True
             self.last_onu_count = num_onus
-            
-            # Configurar algoritmo
-            algorithm = self.algorithm_combo.currentText()
-            self.adapter.set_dba_algorithm(algorithm)
             self.last_algorithm = algorithm
             
-            self.status_label.setText("✅ Simulación inicializada")
+            # Configurar algoritmo
+            if use_hybrid:
+                success_alg, msg_alg = self.adapter.set_hybrid_dba_algorithm(algorithm)
+                if not success_alg:
+                    self.results_panel.add_log_message(f"Warning: {msg_alg}")
+            else:
+                self.adapter.set_dba_algorithm(algorithm)
+            
+            arch_type = "híbrida" if use_hybrid else "clásica"
+            self.status_label.setText(f"✅ Simulación {arch_type} inicializada")
             self.status_label.setStyleSheet("color: green;")
             
             self.start_btn.setEnabled(True)
@@ -299,43 +362,105 @@ class IntegratedPONTestPanel(QWidget):
         if not self.orchestrator_initialized:
             return
         
-        steps = self.steps_spinbox.value()
-        
-        # Mostrar barra de progreso
-        self.progress_bar.setVisible(True)
-        self.progress_bar.setRange(0, steps)
-        self.progress_bar.setValue(0)
+        use_hybrid = self.hybrid_checkbox.isChecked()
         
         # Deshabilitar botones durante simulación
         self.start_btn.setEnabled(False)
         self.step_btn.setEnabled(False)
         
-        self.results_panel.add_log_message(f"🏃 Ejecutando simulación completa: {steps} pasos...")
-        
-        # Callback para monitoreo de progreso
-        def simulation_callback(event_type, data):
-            if event_type == "init":
-                self.results_panel.add_log_message("Simulacion NetSim iniciada")
-                
-            elif event_type == "update":
-                current_step = data.get('steps', 0)
-                if current_step % 100 == 0:  # Actualizar cada 100 pasos
-                    self.progress_bar.setValue(current_step)
+        if use_hybrid:
+            # Simulación híbrida por tiempo
+            duration = self.duration_spinbox.value()
+            
+            # Configurar barra de progreso (estimación)
+            self.progress_bar.setVisible(True)
+            self.progress_bar.setRange(0, 100)
+            self.progress_bar.setValue(0)
+            
+            self.results_panel.add_log_message(f"🏃 Ejecutando simulación híbrida: {duration}s...")
+            
+            # Callback para simulación híbrida
+            def hybrid_callback(event_type, data):
+                if event_type == "update":
+                    # Actualizar progreso basado en tiempo simulado
+                    sim_time = data.get('sim_time', 0)
+                    progress = min(int((sim_time / duration) * 100), 100)
+                    self.progress_bar.setValue(progress)
                     
-                    # Actualizar métricas en tiempo real
-                    self.update_realtime_metrics(data)
+                    # Log eventos importantes
+                    if data.get('event_type') == 'polling_cycle':
+                        cycle_num = data.get('data', {}).get('cycle_number', 0)
+                        if cycle_num % 100 == 0:  # Log cada 100 ciclos
+                            self.results_panel.add_log_message(f"Ciclo DBA: {cycle_num}")
                     
-            elif event_type == "end":
-                self.progress_bar.setValue(steps)
-                self.results_panel.add_log_message("✅ Simulación NetSim completada")
+                elif event_type == "end":
+                    self.progress_bar.setValue(100)
+                    self.results_panel.add_log_message("✅ Simulación híbrida completada")
+                    self.process_hybrid_results(data)
+                    self.on_simulation_finished()
+            
+            # Ejecutar simulación híbrida
+            success, result = self.adapter.run_hybrid_simulation(
+                duration_seconds=duration, 
+                callback=hybrid_callback
+            )
+            
+            if not success:
+                self.results_panel.add_log_message(f"❌ Error en simulación híbrida: {result}")
                 self.on_simulation_finished()
-        
-        # Ejecutar simulación
-        success = self.adapter.run_netsim_simulation(timesteps=steps, callback=simulation_callback)
-        
-        if not success:
-            self.results_panel.add_log_message("❌ Error en simulación")
-            self.on_simulation_finished()
+        else:
+            # Simulación clásica por pasos
+            steps = self.steps_spinbox.value()
+            
+            # Mostrar barra de progreso
+            self.progress_bar.setVisible(True)
+            self.progress_bar.setRange(0, steps)
+            self.progress_bar.setValue(0)
+            
+            self.results_panel.add_log_message(f"🏃 Ejecutando simulación clásica: {steps} pasos...")
+            
+            # Callback para monitoreo de progreso
+            def simulation_callback(event_type, data):
+                if event_type == "init":
+                    self.results_panel.add_log_message("Simulacion NetSim iniciada")
+                    
+                elif event_type == "update":
+                    current_step = data.get('steps', 0)
+                    if current_step % 100 == 0:  # Actualizar cada 100 pasos
+                        self.progress_bar.setValue(current_step)
+                        
+                        # Actualizar métricas en tiempo real
+                        self.update_realtime_metrics(data)
+                        
+                elif event_type == "end":
+                    self.progress_bar.setValue(steps)
+                    self.results_panel.add_log_message("✅ Simulación clásica completada")
+                    self.on_simulation_finished()
+            
+            # Ejecutar simulación clásica
+            success = self.adapter.run_netsim_simulation(timesteps=steps, callback=simulation_callback)
+            
+            if not success:
+                self.results_panel.add_log_message("❌ Error en simulación clásica")
+                self.on_simulation_finished()
+    
+    def process_hybrid_results(self, results):
+        """Procesar resultados de simulación híbrida"""
+        try:
+            # Convertir formato de resultados híbridos al formato esperado por el panel de resultados
+            if results and isinstance(results, dict):
+                # El simulador híbrido devuelve resultados completos
+                self.results_panel.update_simulation_results(results)
+                self.results_panel.add_log_message("📊 Resultados procesados y gráficos generados")
+                
+                # Mostrar ventana emergente si está habilitada
+                if hasattr(self, 'show_popup_checkbox') and self.show_popup_checkbox.isChecked():
+                    self.show_graphics_popup()
+            else:
+                self.results_panel.add_log_message("⚠️ No se recibieron resultados válidos")
+                
+        except Exception as e:
+            self.results_panel.add_log_message(f"❌ Error procesando resultados híbridos: {str(e)}")
     
     def toggle_step_simulation(self):
         """Activar/desactivar simulación paso a paso"""

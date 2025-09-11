@@ -13,6 +13,8 @@ try:
     )
     from .pon_netsim_realistic import RealisticNetSim, EventEvaluator as RealisticEventEvaluator
     from .traffic_scenarios import get_available_scenarios, print_scenario_info
+    # Nueva arquitectura híbrida optimizada
+    from .optimized_hybrid_simulator import OptimizedHybridPONSimulator
     PONCORE_AVAILABLE = True
     print("OK PON Core integrado correctamente")
 except ImportError as e:
@@ -26,17 +28,21 @@ class IntegratedPONAdapter:
     def __init__(self):
         self.orchestrator = None
         self.realistic_netsim = None
+        self.hybrid_simulator = None  # Nueva arquitectura híbrida
+        self.last_hybrid_results = None  # Almacenar últimos resultados híbridos
         self.is_available = PONCORE_AVAILABLE
         self.current_algorithm = "FCFS"
         self.detailed_logging = True
         self.log_callback = None  # Callback para enviar logs detallados
+        self.use_hybrid_architecture = True  # Por defecto usar arquitectura híbrida
         
         # Configuración por defecto
         self.default_config = {
             'num_onus': 4,
             'traffic_scenario': 'residential_medium',
             'episode_duration': 10.0,  # 10 segundos por defecto
-            'simulation_timestep': 0.1  # 100ms por paso
+            'simulation_timestep': 0.1,  # 100ms por paso (solo para arquitectura clásica)
+            'channel_capacity_mbps': 1024.0  # Capacidad del canal PON
         }
         
     def is_pon_available(self):
@@ -387,21 +393,68 @@ class IntegratedPONAdapter:
             return {}
     
     def get_simulation_summary(self):
-        """Obtener resumen completo de la simulación realista"""
+        """Obtener resumen completo de la simulación (híbrida o realista)"""
         print(f"DEBUG: get_simulation_summary llamado")
         
-        if not self.realistic_netsim:
-            print("ERROR DEBUG: realistic_netsim es None")
-            return {}
-            
-        try:
-            summary = self.realistic_netsim.get_simulation_summary()
-            print(f"DEBUG: Datos obtenidos de realistic_netsim:")
-            print(f"   - Keys principales: {list(summary.keys())}")
-            print(f"   - Tiene simulation_summary: {'simulation_summary' in summary}")
-            if 'simulation_summary' in summary:
-                sim_summary = summary['simulation_summary']
-                sim_stats = sim_summary.get('simulation_stats', {})
+        # Verificar si tenemos simulador híbrido
+        if self.hybrid_simulator:
+            print("DEBUG: Usando simulador híbrido")
+            try:
+                # Verificar si tenemos resultados almacenados de la última simulación
+                if hasattr(self, 'last_hybrid_results') and self.last_hybrid_results:
+                    print("DEBUG: Usando resultados híbridos completos almacenados")
+                    return self.last_hybrid_results
+                
+                # Fallback: Obtener estado actual del simulador híbrido
+                print("DEBUG: No hay resultados almacenados, usando estado actual")
+                current_state = self.hybrid_simulator.get_current_state()
+                
+                # Crear resumen básico compatible
+                summary = {
+                    'simulation_summary': {
+                        'simulation_stats': {
+                            'simulation_time': current_state.get('sim_time', 0),
+                            'total_requests': current_state.get('total_requests', 0),
+                            'successful_requests': current_state.get('total_requests', 0),  # Simplificado para compatibilidad
+                            'total_steps': current_state.get('events_processed', 0)
+                        },
+                        'performance_metrics': {
+                            'total_transmitted': current_state.get('total_transmitted', 0),
+                            'network_utilization': 0  # Sin datos históricos disponibles
+                        },
+                        'episode_metrics': {
+                            'delays': [],
+                            'throughputs': [], 
+                            'buffer_levels_history': [],
+                            'total_transmitted': current_state.get('total_transmitted', 0),
+                            'total_requests': current_state.get('total_requests', 0)
+                        }
+                    },
+                    'mode': 'hybrid'
+                }
+                
+                print(f"DEBUG: Resumen híbrido básico creado:")
+                print(f"   - Tiempo simulado: {summary['simulation_summary']['simulation_stats']['simulation_time']}")
+                print(f"   - Total requests: {summary['simulation_summary']['simulation_stats']['total_requests']}")
+                print(f"   - Total transmitted: {summary['simulation_summary']['performance_metrics']['total_transmitted']}")
+                
+                return summary
+                
+            except Exception as e:
+                print(f"ERROR DEBUG: Error obteniendo datos híbridos: {e}")
+                return {}
+        
+        # Fallback a simulador realista clásico
+        elif self.realistic_netsim:
+            print("DEBUG: Usando simulador realista clásico")
+            try:
+                summary = self.realistic_netsim.get_simulation_summary()
+                print(f"DEBUG: Datos obtenidos de realistic_netsim:")
+                print(f"   - Keys principales: {list(summary.keys())}")
+                print(f"   - Tiene simulation_summary: {'simulation_summary' in summary}")
+                if 'simulation_summary' in summary:
+                    sim_summary = summary['simulation_summary']
+                    sim_stats = sim_summary.get('simulation_stats', {})
                 perf_metrics = sim_summary.get('performance_metrics', {})
                 episode_metrics = sim_summary.get('episode_metrics', {})
                 
@@ -417,11 +470,16 @@ class IntegratedPONAdapter:
                 if buffer_history:
                     print(f"   - Primera entrada buffer: {buffer_history[0]}")
                     
-            return summary
-        except Exception as e:
-            print(f"ERROR obteniendo resumen realista: {e}")
-            import traceback
-            traceback.print_exc()
+                return summary
+            except Exception as e:
+                print(f"ERROR obteniendo resumen realista: {e}")
+                import traceback
+                traceback.print_exc()
+                return {}
+        
+        # No hay simulador disponible
+        else:
+            print("DEBUG: No hay simulador disponible (ni híbrido ni realista)")
             return {}
     
     def get_orchestrator_stats(self):
@@ -453,10 +511,172 @@ class IntegratedPONAdapter:
             self.realistic_netsim.reset_simulation()
             self.realistic_netsim = None
         
+        if self.hybrid_simulator:
+            self.hybrid_simulator = None
+        
         self.orchestrator = None
         self.log_callback = None
         print("Adaptador PON integrado limpiado")
         
     def get_simulation_mode(self) -> str:
         """Obtener modo de simulación actual"""
-        return "realistic" if self.realistic_netsim else "none"
+        if self.hybrid_simulator:
+            return "hybrid"
+        elif self.realistic_netsim:
+            return "realistic"
+        else:
+            return "none"
+
+    # ===== MÉTODOS PARA ARQUITECTURA HÍBRIDA =====
+    
+    def set_use_hybrid_architecture(self, use_hybrid: bool):
+        """Seleccionar si usar arquitectura híbrida o clásica"""
+        self.use_hybrid_architecture = use_hybrid
+        self._log_event("CONFIG", f"Arquitectura cambiada a: {'híbrida' if use_hybrid else 'clásica'}")
+    
+    def initialize_hybrid_simulator(self, num_onus=4, traffic_scenario='residential_medium', 
+                                   channel_capacity_mbps=1024.0):
+        """Inicializar simulador híbrido"""
+        if not self.is_available:
+            return False, "PON Core no está disponible"
+            
+        try:
+            # Obtener algoritmo DBA
+            dba_algorithm = self._get_dba_algorithm()
+            
+            # Crear simulador híbrido optimizado
+            self.hybrid_simulator = OptimizedHybridPONSimulator(
+                num_onus=num_onus,
+                traffic_scenario=traffic_scenario,
+                dba_algorithm=dba_algorithm,
+                channel_capacity_mbps=channel_capacity_mbps
+            )
+            
+            self._log_event("INIT", f"Simulador híbrido inicializado: {num_onus} ONUs, escenario '{traffic_scenario}'")
+            return True, "Simulador híbrido inicializado exitosamente"
+            
+        except Exception as e:
+            error_msg = f"Error inicializando simulador híbrido: {str(e)}"
+            self._log_event("ERROR", error_msg)
+            return False, error_msg
+    
+    def run_hybrid_simulation(self, duration_seconds=10.0, callback=None):
+        """Ejecutar simulación híbrida por tiempo específico"""
+        if not self.hybrid_simulator:
+            success, msg = self.initialize_hybrid_simulator()
+            if not success:
+                return False, msg
+        
+        try:
+            self._log_event("START", f"Iniciando simulación híbrida por {duration_seconds}s")
+            
+            # Crear callback wrapper si se proporciona
+            if callback:
+                def event_callback(event, sim_time):
+                    # Convertir evento a formato compatible
+                    callback("update", {
+                        'sim_time': sim_time,
+                        'event_type': event.event_type.value,
+                        'onu_id': event.onu_id,
+                        'data': event.data
+                    })
+            else:
+                event_callback = None
+            
+            # Ejecutar simulación
+            results = self.hybrid_simulator.run_simulation(duration_seconds, event_callback)
+            
+            # Almacenar resultados para uso posterior
+            self.last_hybrid_results = results
+            
+            # Callback final
+            if callback:
+                callback("end", results)
+            
+            self._log_event("END", "Simulación híbrida completada exitosamente")
+            return True, results
+            
+        except Exception as e:
+            error_msg = f"Error en simulación híbrida: {str(e)}"
+            self._log_event("ERROR", error_msg)
+            return False, error_msg
+    
+    def get_hybrid_current_state(self):
+        """Obtener estado actual del simulador híbrido"""
+        if not self.hybrid_simulator:
+            return None
+            
+        return self.hybrid_simulator.get_current_state()
+    
+    def reset_hybrid_simulation(self):
+        """Reiniciar simulación híbrida"""
+        if self.hybrid_simulator:
+            self.hybrid_simulator.reset_simulation()
+            self._log_event("RESET", "Simulación híbrida reiniciada")
+    
+    def set_hybrid_dba_algorithm(self, algorithm_name):
+        """Cambiar algoritmo DBA del simulador híbrido"""
+        if not self.hybrid_simulator:
+            return False, "Simulador híbrido no inicializado"
+            
+        try:
+            dba_algorithm = self._get_dba_algorithm_by_name(algorithm_name)
+            self.hybrid_simulator.set_dba_algorithm(dba_algorithm)
+            self.current_algorithm = algorithm_name
+            self._log_event("CONFIG", f"Algoritmo DBA cambiado a: {algorithm_name}")
+            return True, f"Algoritmo cambiado a {algorithm_name}"
+            
+        except Exception as e:
+            error_msg = f"Error cambiando algoritmo DBA: {str(e)}"
+            self._log_event("ERROR", error_msg)
+            return False, error_msg
+    
+    def _get_dba_algorithm(self):
+        """Obtener algoritmo DBA actual"""
+        return self._get_dba_algorithm_by_name(self.current_algorithm)
+    
+    def _get_dba_algorithm_by_name(self, algorithm_name):
+        """Obtener instancia de algoritmo DBA por nombre"""
+        algorithms = {
+            "FCFS": FCFSDBAAlgorithm,
+            "Priority": PriorityDBAAlgorithm,
+            "RL-DBA": RLDBAAlgorithm
+        }
+        
+        if algorithm_name not in algorithms:
+            raise ValueError(f"Algoritmo desconocido: {algorithm_name}")
+            
+        return algorithms[algorithm_name]()
+    
+    def cleanup_hybrid(self):
+        """Limpiar recursos híbridos"""
+        if self.hybrid_simulator:
+            self.hybrid_simulator = None
+            self._log_event("CLEANUP", "Simulador híbrido limpiado")
+    
+    def get_hybrid_simulation_summary(self):
+        """Obtener resumen de simulación híbrida"""
+        if not self.hybrid_simulator:
+            return None
+        
+        # Verificar si tenemos resultados almacenados de la última simulación
+        if hasattr(self, 'last_hybrid_results') and self.last_hybrid_results:
+            print("DEBUG: Usando resultados híbridos almacenados")
+            return self.last_hybrid_results
+        
+        # Fallback al estado actual si no hay resultados almacenados
+        current_state = self.hybrid_simulator.get_current_state()
+        
+        # Formato compatible con el sistema existente
+        return {
+            'simulation_summary': {
+                'simulation_stats': {
+                    'simulation_time': current_state.get('sim_time', 0),
+                    'total_requests': current_state.get('total_requests', 0)
+                },
+                'performance_metrics': {
+                    'total_transmitted': current_state.get('total_transmitted', 0)
+                }
+            },
+            'mode': 'hybrid'
+        }

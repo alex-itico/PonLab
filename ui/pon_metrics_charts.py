@@ -402,6 +402,7 @@ class PONMetricsChartsPanel(QWidget):
         super().__init__()
         self.current_data = {}
         self.charts = {}
+        self.simulation_format = 'classic'  # Formato por defecto
         
         if not MATPLOTLIB_AVAILABLE:
             self.setup_no_matplotlib_ui()
@@ -544,22 +545,26 @@ class PONMetricsChartsPanel(QWidget):
             return
             
         self.current_data = simulation_data
+        self._detect_simulation_format(simulation_data)
         
-        # Actualizar cada gráfico
+        # Normalizar datos si es necesario
+        normalized_data = self._normalize_data_format(simulation_data)
+        
+        # Actualizar cada gráfico usando datos normalizados
         if 'delay' in self.charts:
-            self.charts['delay'].plot_delay_evolution(simulation_data)
+            self.charts['delay'].plot_delay_evolution(normalized_data)
             self.chart_updated.emit('delay')
         
         if 'throughput' in self.charts:
-            self.charts['throughput'].plot_throughput_evolution(simulation_data)
+            self.charts['throughput'].plot_throughput_evolution(normalized_data)
             self.chart_updated.emit('throughput')
         
         if 'buffer' in self.charts:
-            self.charts['buffer'].plot_onu_buffer_levels(simulation_data)
+            self.charts['buffer'].plot_onu_buffer_levels(normalized_data)
             self.chart_updated.emit('buffer')
         
         if 'utilization' in self.charts:
-            self.charts['utilization'].plot_network_utilization(simulation_data)
+            self.charts['utilization'].plot_network_utilization(normalized_data)
             self.chart_updated.emit('utilization')
         
         if 'algorithm' in self.charts:
@@ -601,3 +606,56 @@ class PONMetricsChartsPanel(QWidget):
         except Exception as e:
             print(f"❌ Error exportando gráficos: {e}")
             return False
+    
+    def _detect_simulation_format(self, simulation_data: Dict[str, Any]):
+        """Detectar si los datos provienen de simulación híbrida o clásica"""
+        # Detectar formato híbrido por la presencia de timestamps en delays/throughputs
+        episode_metrics = simulation_data.get('simulation_summary', {}).get('episode_metrics', {})
+        delays = episode_metrics.get('delays', [])
+        
+        if delays and isinstance(delays[0], dict) and 'timestamp' in delays[0]:
+            self.simulation_format = 'hybrid'
+        else:
+            self.simulation_format = 'classic'
+    
+    def _normalize_data_format(self, simulation_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Normalizar datos de simulación para compatibilidad con gráficos"""
+        if not hasattr(self, 'simulation_format'):
+            self._detect_simulation_format(simulation_data)
+        
+        if self.simulation_format == 'hybrid':
+            # Convertir formato híbrido al formato esperado por gráficos clásicos
+            return self._convert_hybrid_to_classic_format(simulation_data)
+        else:
+            # Datos clásicos, devolverlos tal como están
+            return simulation_data
+    
+    def _convert_hybrid_to_classic_format(self, hybrid_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Convertir datos híbridos al formato clásico para compatibilidad"""
+        converted_data = hybrid_data.copy()
+        
+        episode_metrics = hybrid_data.get('simulation_summary', {}).get('episode_metrics', {})
+        
+        # Convertir buffer levels: los valores híbridos ya están en 0-1, convertir a 0-100
+        buffer_history = episode_metrics.get('buffer_levels_history', [])
+        if buffer_history:
+            converted_buffer_history = []
+            for step_data in buffer_history:
+                converted_step = {}
+                for onu_id, level in step_data.items():
+                    # Convertir de fracción decimal a porcentaje
+                    converted_step[onu_id] = level * 100
+                converted_buffer_history.append(converted_step)
+            
+            # Actualizar en la estructura convertida
+            if 'simulation_summary' not in converted_data:
+                converted_data['simulation_summary'] = {}
+            if 'episode_metrics' not in converted_data['simulation_summary']:
+                converted_data['simulation_summary']['episode_metrics'] = {}
+            
+            converted_data['simulation_summary']['episode_metrics']['buffer_levels_history'] = converted_buffer_history
+        
+        # Los delays y throughputs híbridos ya tienen formato compatible
+        # (incluso mejor con timestamp, onu_id, tcont_id)
+        
+        return converted_data
