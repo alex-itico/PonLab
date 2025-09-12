@@ -110,14 +110,14 @@ class IntegratedPONTestPanel(QWidget):
         config_group = QGroupBox("Configuración")
         config_layout = QGridLayout(config_group)
         
-        # Número de ONUs (automático desde topología)
-        config_layout.addWidget(QLabel("ONUs detectadas:"), 0, 0)
+        # Número de ONUs conectadas (automático desde topología)
+        config_layout.addWidget(QLabel("ONUs conectadas:"), 0, 0)
         
         # Layout horizontal para el conteo y botón de actualización
         onu_layout = QHBoxLayout()
         self.onu_count_label = QLabel("0")
         self.onu_count_label.setStyleSheet("font-weight: bold; color: #2563eb; padding: 4px; background-color: #f0f4ff; border-radius: 4px;")
-        self.onu_count_label.setToolTip("Número de ONUs detectadas automáticamente de la topología")
+        self.onu_count_label.setToolTip("Número de ONUs conectadas a OLTs detectadas automáticamente")
         onu_layout.addWidget(self.onu_count_label)
         
         onu_widget = QWidget()
@@ -263,23 +263,58 @@ class IntegratedPONTestPanel(QWidget):
         QTimer.singleShot(500, self.initialize_simulation)
     
     def get_onu_count_from_topology(self):
-        """Obtener número de ONUs desde la topología del canvas"""
+        """Obtener número de ONUs conectadas a OLTs desde la topología del canvas"""
         try:
-            if self.canvas_reference and hasattr(self.canvas_reference, 'device_manager'):
-                device_stats = self.canvas_reference.device_manager.get_device_stats()
-                onu_count = device_stats.get('onu_count', 0)
-                total_devices = device_stats.get('total_devices', 0)
-                olt_count = device_stats.get('olt_count', 0)
-                
-                print(f"DEBUG Estadísticas del canvas: Total={total_devices}, OLTs={olt_count}, ONUs={onu_count}")
-                return onu_count
-            else:
+            if not (self.canvas_reference and hasattr(self.canvas_reference, 'device_manager')):
                 print(f"DEBUG Canvas reference: {self.canvas_reference}")
                 if self.canvas_reference:
                     print(f"DEBUG Canvas tiene device_manager: {hasattr(self.canvas_reference, 'device_manager')}")
                 return 0
+            
+            # Obtener estadísticas básicas
+            device_stats = self.canvas_reference.device_manager.get_device_stats()
+            total_devices = device_stats.get('total_devices', 0)
+            olt_count = device_stats.get('olt_count', 0)
+            total_onus = device_stats.get('onu_count', 0)
+            
+            # Si no hay conexiones, ninguna ONU está conectada
+            if not hasattr(self.canvas_reference, 'connection_manager'):
+                print(f"DEBUG Canvas no tiene connection_manager")
+                return 0
+            
+            connection_manager = self.canvas_reference.connection_manager
+            
+            # Obtener todas las ONUs y OLTs
+            all_onus = self.canvas_reference.device_manager.get_devices_by_type("ONU")
+            all_olts = self.canvas_reference.device_manager.get_devices_by_type("OLT")
+            
+            print(f"DEBUG Dispositivos encontrados: {len(all_olts)} OLTs, {len(all_onus)} ONUs totales")
+            
+            # Contar ONUs conectadas a cualquier OLT
+            connected_onus = 0
+            connected_onu_names = []
+            
+            for onu in all_onus:
+                # Verificar si esta ONU está conectada a alguna OLT
+                is_connected = False
+                for olt in all_olts:
+                    connection = connection_manager.get_connection_between(onu, olt)
+                    if connection:
+                        is_connected = True
+                        connected_onu_names.append(f"{onu.name}↔{olt.name}")
+                        break
+                
+                if is_connected:
+                    connected_onus += 1
+            
+            print(f"DEBUG Estadísticas: Total={total_devices}, OLTs={olt_count}, ONUs totales={total_onus}, ONUs conectadas={connected_onus}")
+            if connected_onu_names:
+                print(f"DEBUG ONUs conectadas: {connected_onu_names}")
+            
+            return connected_onus
+            
         except Exception as e:
-            print(f"ERROR obteniendo conteo de ONUs: {e}")
+            print(f"ERROR obteniendo conteo de ONUs conectadas: {e}")
             import traceback
             traceback.print_exc()
             return 0
@@ -298,16 +333,16 @@ class IntegratedPONTestPanel(QWidget):
             # Cambiar estilo según el número detectado
             if current_onus == 0:
                 self.onu_count_label.setStyleSheet("font-weight: bold; color: #dc2626; padding: 4px; background-color: #fef2f2; border-radius: 4px;")
-                self.onu_count_label.setToolTip("No se detectaron ONUs en la topología")
-                print("DEBUG Estilo aplicado: ROJO (0 ONUs)")
+                self.onu_count_label.setToolTip("No se detectaron ONUs conectadas a OLTs")
+                print("DEBUG Estilo aplicado: ROJO (0 ONUs conectadas)")
             elif current_onus < 2:
                 self.onu_count_label.setStyleSheet("font-weight: bold; color: #f59e0b; padding: 4px; background-color: #fffbeb; border-radius: 4px;")
-                self.onu_count_label.setToolTip("Se requieren al menos 2 ONUs para simulación")
-                print("DEBUG Estilo aplicado: AMARILLO (< 2 ONUs)")
+                self.onu_count_label.setToolTip("Se requieren al menos 2 ONUs conectadas para simulación")
+                print("DEBUG Estilo aplicado: AMARILLO (< 2 ONUs conectadas)")
             else:
                 self.onu_count_label.setStyleSheet("font-weight: bold; color: #059669; padding: 4px; background-color: #ecfdf5; border-radius: 4px;")
-                self.onu_count_label.setToolTip(f"{current_onus} ONUs detectadas - listo para simular")
-                print("DEBUG Estilo aplicado: VERDE (≥ 2 ONUs)")
+                self.onu_count_label.setToolTip(f"{current_onus} ONUs conectadas - listo para simular")
+                print("DEBUG Estilo aplicado: VERDE (≥ 2 ONUs conectadas)")
             
             # Detectar cambios y reinicializar si es necesario
             if self.orchestrator_initialized and current_onus != self.last_onu_count:
@@ -395,12 +430,12 @@ class IntegratedPONTestPanel(QWidget):
             if onu_count >= 2:
                 self.status_label.setText("🚀 Inicialización automática inicial...")
                 self.status_label.setStyleSheet("color: blue;")
-                self.results_panel.add_log_message(f"🎯 Iniciando configuración automática inicial con {onu_count} ONUs...")
+                self.results_panel.add_log_message(f"🎯 Iniciando configuración automática inicial con {onu_count} ONUs conectadas...")
                 QTimer.singleShot(500, self.initialize_simulation)
             else:
                 self.status_label.setText("⏳ Esperando topología válida...")
                 self.status_label.setStyleSheet("color: orange;")
-                self.results_panel.add_log_message(f"⏳ Esperando al menos 2 ONUs en topología (actual: {onu_count})")
+                self.results_panel.add_log_message(f"⏳ Esperando al menos 2 ONUs conectadas a OLTs (actual: {onu_count})")
     
     def initialize_simulation(self):
         """Inicializar simulación"""
@@ -418,12 +453,12 @@ class IntegratedPONTestPanel(QWidget):
         
         print(f"DEBUG Configuración: ONUs={num_onus}, Escenario={scenario}, Algoritmo={algorithm}, Híbrido={use_hybrid}")
         
-        # Validar que hay ONUs suficientes
+        # Validar que hay ONUs conectadas suficientes
         if num_onus < 2:
-            print(f"DEBUG ONUs insuficientes: {num_onus} < 2")
-            self.status_label.setText("❌ Se requieren al menos 2 ONUs en la topología")
+            print(f"DEBUG ONUs conectadas insuficientes: {num_onus} < 2")
+            self.status_label.setText("❌ Se requieren al menos 2 ONUs conectadas a OLTs")
             self.status_label.setStyleSheet("color: red;")
-            self.results_panel.add_log_message(f"⚠️ Topología insuficiente: {num_onus} ONUs (se requieren mínimo 2)")
+            self.results_panel.add_log_message(f"⚠️ Topología insuficiente: {num_onus} ONUs conectadas (se requieren mínimo 2)")
             return
         
         if use_hybrid:
@@ -727,10 +762,27 @@ class IntegratedPONTestPanel(QWidget):
             
             # Conectar nueva señal
             canvas.device_manager.devices_changed.connect(self.on_devices_changed)
+        
+        # También conectar señal de cambios de conexiones
+        if canvas and hasattr(canvas, 'connection_manager'):
+            print("DEBUG Conectando señal connections_changed")
+            # Desconectar señal anterior si existe para evitar duplicados
+            try:
+                canvas.connection_manager.connections_changed.disconnect(self.on_connections_changed)
+            except:
+                pass  # No estaba conectada
+            
+            # Conectar nueva señal
+            canvas.connection_manager.connections_changed.connect(self.on_connections_changed)
     
     def on_devices_changed(self):
         """Callback cuando cambian los dispositivos en el canvas"""
         print("DEBUG Dispositivos cambiaron - actualizando conteo de ONUs")
+        self.update_onu_count_display()
+    
+    def on_connections_changed(self):
+        """Callback cuando cambian las conexiones en el canvas"""
+        print("DEBUG Conexiones cambiaron - actualizando conteo de ONUs conectadas")
         self.update_onu_count_display()
     
     def periodic_onu_update(self):
@@ -751,8 +803,9 @@ class IntegratedPONTestPanel(QWidget):
         # Mostrar información de debug al usuario
         if self.canvas_reference:
             all_devices = self.canvas_reference.device_manager.get_all_devices()
-            onu_devices = [d for d in all_devices if d.device_type == "ONU"]
-            self.results_panel.add_log_message(f"🔍 Actualización manual: {len(onu_devices)} ONUs encontradas de {len(all_devices)} dispositivos totales")
+            all_onus = self.canvas_reference.device_manager.get_devices_by_type("ONU")
+            connected_count = self.get_onu_count_from_topology()
+            self.results_panel.add_log_message(f"🔍 Actualización manual: {connected_count} ONUs conectadas de {len(all_onus)} ONUs totales ({len(all_devices)} dispositivos)")
         else:
             self.results_panel.add_log_message("⚠️ No hay referencia al canvas para contar dispositivos")
     
