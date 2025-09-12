@@ -241,39 +241,83 @@ class PONMetricsChart(FigureCanvas):
         self.draw()
     
     def plot_network_utilization(self, simulation_data: Dict[str, Any]):
-        """Graficar utilización de la red"""
+        """Graficar distribución de tráfico real en formato dona"""
         if not MATPLOTLIB_AVAILABLE:
             return
             
         self.fig.clear()
         
+        # Obtener datos de utilización para el centro
         performance_metrics = simulation_data.get('simulation_summary', {}).get('performance_metrics', {})
         network_utilization = performance_metrics.get('network_utilization', 0)
         
-        if network_utilization == 0:
-            self._plot_no_data("Sin datos de utilización")
+        # Obtener datos reales de tráfico desde episode_metrics
+        episode_metrics = simulation_data.get('simulation_summary', {}).get('episode_metrics', {})
+        throughputs = episode_metrics.get('throughputs', [])
+        
+        if not throughputs:
+            # Si no hay datos, usar estructura alternativa
+            episode_metrics_root = simulation_data.get('episode_metrics', {})
+            throughputs = episode_metrics_root.get('throughputs', [])
+        
+        if not throughputs:
+            self._plot_no_data("Sin datos de tráfico")
             return
         
-        # Crear gráfico tipo gauge/medidor
-        ax = self.fig.add_subplot(111)
+        # Calcular distribución real de tipos de tráfico basada en throughputs
+        tcont_counts = {'highest': 0, 'high': 0, 'medium': 0, 'low': 0, 'lowest': 0}
         
-        # Configurar datos para el gauge
-        utilization_ranges = [30, 50, 80, 100]  # Rangos: Bajo, Normal, Alto, Crítico
-        colors = ['green', 'yellow', 'orange', 'red']
-        labels = ['Bajo (0-30%)', 'Normal (30-50%)', 'Alto (50-80%)', 'Crítico (80-100%)']
+        for throughput_entry in throughputs:
+            tcont_type = throughput_entry.get('tcont_id', 'medium').lower()
+            if tcont_type in tcont_counts:
+                tcont_counts[tcont_type] += 1
+        
+        # Convertir a porcentajes
+        total_entries = sum(tcont_counts.values())
+        if total_entries == 0:
+            self._plot_no_data("Sin datos de tipos de tráfico")
+            return
+        
+        # Calcular porcentajes reales
+        traffic_types = ['Highest', 'High', 'Medium', 'Low', 'Lowest']
+        tcont_keys = ['highest', 'high', 'medium', 'low', 'lowest']
+        values = [(tcont_counts[key] / total_entries) * 100 for key in tcont_keys]
+        
+        # Filtrar tipos de tráfico con valores > 0 para el gráfico
+        filtered_types = []
+        filtered_values = []
+        filtered_colors = []
+        base_colors = ['#ff4444', '#ff8800', '#ffdd00', '#4488ff', '#888888']
+        
+        for i, (traffic_type, value) in enumerate(zip(traffic_types, values)):
+            if value > 0:
+                filtered_types.append(traffic_type)
+                filtered_values.append(value)
+                filtered_colors.append(base_colors[i])
+        
+        if not filtered_values:
+            self._plot_no_data("Sin tipos de tráfico detectados")
+            return
         
         # Crear gráfico de dona
-        sizes = [30, 20, 30, 20]  # Tamaños proporcionales
-        wedges, texts, autotexts = ax.pie(sizes, labels=labels, colors=colors, 
-                                         autopct='', startangle=90, 
-                                         pctdistance=0.85, 
-                                         wedgeprops={'width': 0.3})
+        ax = self.fig.add_subplot(111)
+        wedges, texts, autotexts = ax.pie(filtered_values, labels=filtered_types, colors=filtered_colors, 
+                                         autopct='%1.1f%%', startangle=90, 
+                                         pctdistance=0.85,
+                                         wedgeprops={'width': 0.4})
         
-        # Agregar valor actual en el centro
-        ax.text(0, 0, f'{network_utilization:.1f}%\nUtilización', 
-                ha='center', va='center', fontsize=16, fontweight='bold')
+        # Agregar porcentaje de utilización en el centro
+        if network_utilization > 0:
+            ax.text(0, 0, f'{network_utilization:.1f}%\nUtilización', 
+                    ha='center', va='center', fontsize=16, fontweight='bold')
+        else:
+            ax.text(0, 0, 'N/A\nUtilización', 
+                    ha='center', va='center', fontsize=16, fontweight='bold')
         
-        ax.set_title('Utilización de la Red PON', fontsize=14, pad=20)
+        # Título con información adicional
+        total_packets = len(throughputs)
+        ax.set_title(f'{network_utilization:.1f}% - Distribución de Tráfico Real\n({total_packets} paquetes analizados)', 
+                    fontsize=14, pad=20)
         
         self.fig.tight_layout()
         self.draw()
@@ -319,35 +363,83 @@ class PONMetricsChart(FigureCanvas):
         self.draw()
     
     def plot_traffic_distribution(self, simulation_data: Dict[str, Any]):
-        """Graficar distribución de tipos de tráfico"""
+        """Graficar distribución de tráfico real en formato dona"""
         if not MATPLOTLIB_AVAILABLE:
             return
             
         self.fig.clear()
         
-        # Simular distribución de tráfico basada en el escenario
-        orchestrator_info = simulation_data.get('orchestrator_stats', {}).get('orchestrator_info', {})
-        scenario = orchestrator_info.get('traffic_scenario', 'residential_medium')
+        # Obtener datos de utilización para el centro
+        performance_metrics = simulation_data.get('simulation_summary', {}).get('performance_metrics', {})
+        network_utilization = performance_metrics.get('network_utilization', 0)
         
-        # Datos simulados de distribución de tráfico
+        # Obtener datos reales de tráfico desde episode_metrics
+        episode_metrics = simulation_data.get('simulation_summary', {}).get('episode_metrics', {})
+        throughputs = episode_metrics.get('throughputs', [])
+        
+        if not throughputs:
+            # Si no hay datos, usar estructura alternativa
+            episode_metrics_root = simulation_data.get('episode_metrics', {})
+            throughputs = episode_metrics_root.get('throughputs', [])
+        
+        if not throughputs:
+            self._plot_no_data("Sin datos de tráfico")
+            return
+        
+        # Calcular distribución real de tipos de tráfico basada en throughputs
+        tcont_counts = {'highest': 0, 'high': 0, 'medium': 0, 'low': 0, 'lowest': 0}
+        
+        for throughput_entry in throughputs:
+            tcont_type = throughput_entry.get('tcont_id', 'medium').lower()
+            if tcont_type in tcont_counts:
+                tcont_counts[tcont_type] += 1
+        
+        # Convertir a porcentajes
+        total_entries = sum(tcont_counts.values())
+        if total_entries == 0:
+            self._plot_no_data("Sin datos de tipos de tráfico")
+            return
+        
+        # Calcular porcentajes reales
         traffic_types = ['Highest', 'High', 'Medium', 'Low', 'Lowest']
+        tcont_keys = ['highest', 'high', 'medium', 'low', 'lowest']
+        values = [(tcont_counts[key] / total_entries) * 100 for key in tcont_keys]
         
-        # Distribuciones típicas por escenario
-        distributions = {
-            'residential_light': [15, 25, 35, 20, 5],
-            'residential_medium': [20, 30, 30, 15, 5],
-            'residential_heavy': [35, 30, 25, 8, 2],
-            'enterprise': [45, 35, 15, 3, 2]
-        }
+        # Filtrar tipos de tráfico con valores > 0 para el gráfico
+        filtered_types = []
+        filtered_values = []
+        filtered_colors = []
+        base_colors = ['#ff4444', '#ff8800', '#ffdd00', '#4488ff', '#888888']
         
-        values = distributions.get(scenario, distributions['residential_medium'])
-        colors = ['red', 'orange', 'yellow', 'lightblue', 'lightgray']
+        for i, (traffic_type, value) in enumerate(zip(traffic_types, values)):
+            if value > 0:
+                filtered_types.append(traffic_type)
+                filtered_values.append(value)
+                filtered_colors.append(base_colors[i])
         
+        if not filtered_values:
+            self._plot_no_data("Sin tipos de tráfico detectados")
+            return
+        
+        # Crear gráfico de dona
         ax = self.fig.add_subplot(111)
-        wedges, texts, autotexts = ax.pie(values, labels=traffic_types, colors=colors, 
-                                         autopct='%1.1f%%', startangle=90)
+        wedges, texts, autotexts = ax.pie(filtered_values, labels=filtered_types, colors=filtered_colors, 
+                                         autopct='%1.1f%%', startangle=90, 
+                                         pctdistance=0.85,
+                                         wedgeprops={'width': 0.4})
         
-        ax.set_title(f'Distribución de Tráfico - Escenario: {scenario.title()}')
+        # Agregar porcentaje de utilización en el centro
+        if network_utilization > 0:
+            ax.text(0, 0, f'{network_utilization:.1f}%\nUtilización', 
+                    ha='center', va='center', fontsize=16, fontweight='bold')
+        else:
+            ax.text(0, 0, 'N/A\nUtilización', 
+                    ha='center', va='center', fontsize=16, fontweight='bold')
+        
+        # Título con información adicional
+        total_packets = len(throughputs)
+        ax.set_title(f'{network_utilization:.1f}% - Distribución de Tráfico Real\n({total_packets} paquetes analizados)', 
+                    fontsize=14, pad=20)
         
         self.fig.tight_layout()
         self.draw()
@@ -585,6 +677,7 @@ class PONMetricsChartsPanel(QWidget):
         if 'traffic' in self.charts:
             self.charts['traffic'].plot_traffic_distribution(simulation_data)
             self.chart_updated.emit('traffic')
+        
     
     def refresh_all_charts(self):
         """Actualizar todos los gráficos con los datos actuales"""
