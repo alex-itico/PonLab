@@ -120,13 +120,6 @@ class IntegratedPONTestPanel(QWidget):
         self.onu_count_label.setToolTip("Número de ONUs detectadas automáticamente de la topología")
         onu_layout.addWidget(self.onu_count_label)
         
-        # Botón pequeño para forzar actualización
-        self.refresh_onus_btn = QPushButton("🔄")
-        self.refresh_onus_btn.setMaximumWidth(30)
-        self.refresh_onus_btn.setToolTip("Actualizar manualmente el conteo de ONUs")
-        self.refresh_onus_btn.clicked.connect(self.force_onu_count_update)
-        onu_layout.addWidget(self.refresh_onus_btn)
-        
         onu_widget = QWidget()
         onu_widget.setLayout(onu_layout)
         config_layout.addWidget(onu_widget, 0, 1)
