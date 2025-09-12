@@ -212,21 +212,6 @@ class IntegratedPONTestPanel(QWidget):
         
         layout.addWidget(sim_group)
         
-        # Métricas en tiempo real
-        metrics_group = QGroupBox("Métricas en Tiempo Real")
-        metrics_layout = QGridLayout(metrics_group)
-        
-        self.steps_label = QLabel("Pasos: 0")
-        self.requests_label = QLabel("Solicitudes: 0")
-        self.delay_label = QLabel("Delay: 0.000s")
-        self.throughput_label = QLabel("Throughput: 0.00 MB/s")
-        
-        metrics_layout.addWidget(self.steps_label, 0, 0)
-        metrics_layout.addWidget(self.requests_label, 0, 1)
-        metrics_layout.addWidget(self.delay_label, 1, 0)
-        metrics_layout.addWidget(self.throughput_label, 1, 1)
-        
-        layout.addWidget(metrics_group)
         
         layout.addStretch()
         
@@ -497,7 +482,7 @@ class IntegratedPONTestPanel(QWidget):
             self.step_count += 1
             
             # Actualizar métricas básicas
-            self.steps_label.setText(f"Pasos: {self.step_count}")
+            # self.steps_label.setText(f"Pasos: {self.step_count}")  # Removed metrics display
             
             # Verificar si debe terminar
             if result.get('done', False) or self.step_count >= self.steps_spinbox.value():
@@ -513,10 +498,11 @@ class IntegratedPONTestPanel(QWidget):
         delay = data.get('mean_delay', 0)
         throughput = data.get('mean_throughput', 0)
         
-        self.steps_label.setText(f"Pasos: {steps}")
-        self.requests_label.setText(f"Solicitudes: {requests}")
-        self.delay_label.setText(f"Delay: {delay:.6f}s")
-        self.throughput_label.setText(f"Throughput: {throughput:.2f} MB/s")
+        # Real-time metrics display removed
+        # self.steps_label.setText(f"Pasos: {steps}")
+        # self.requests_label.setText(f"Solicitudes: {requests}")
+        # self.delay_label.setText(f"Delay: {delay:.6f}s")
+        # self.throughput_label.setText(f"Throughput: {throughput:.2f} MB/s")
     
     def on_simulation_finished(self):
         """Callback cuando termina la simulación"""
@@ -559,10 +545,11 @@ class IntegratedPONTestPanel(QWidget):
         self.step_btn.setText("👣 Paso a Paso")
         
         # Limpiar métricas
-        self.steps_label.setText("Pasos: 0")
-        self.requests_label.setText("Solicitudes: 0")
-        self.delay_label.setText("Delay: 0.000s")
-        self.throughput_label.setText("Throughput: 0.00 MB/s")
+        # Real-time metrics display removed
+        # self.steps_label.setText("Pasos: 0")
+        # self.requests_label.setText("Solicitudes: 0")
+        # self.delay_label.setText("Delay: 0.000s")
+        # self.throughput_label.setText("Throughput: 0.00 MB/s")
         
         # Actualizar estado
         self.status_label.setText("🔄 Sistema reiniciado")
