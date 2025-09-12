@@ -730,11 +730,11 @@ Tamaño de cuadrícula: {self.grid_size}px
         if enabled:
             # Cambiar cursor a modo conexión
             self.setCursor(Qt.CrossCursor)
-            print("🔗 Modo conexión ACTIVADO - Selecciona dos dispositivos para conectar")
+            print(f"Conexion:")
         else:
             # Restaurar cursor normal
             self.setCursor(self.original_cursor)
-            print("🔗 Modo conexión DESACTIVADO")
+            print(f"Conexion:")
     
     def is_connection_mode_active(self):
         """Verificar si el modo conexión está activo"""
@@ -748,7 +748,7 @@ Tamaño de cuadrícula: {self.grid_size}px
         if self.connection_source_device is None:
             # Primer dispositivo seleccionado
             self.connection_source_device = device
-            print(f"🔗 Dispositivo origen seleccionado: {device.name}")
+            print(f"Conexion:")
             return True
         else:
             # Segundo dispositivo seleccionado - intentar crear conexión
@@ -762,7 +762,7 @@ Tamaño de cuadrícula: {self.grid_size}px
             connection = self.connection_manager.create_connection(source_device, target_device)
             
             if connection:
-                print(f"🔗✅ Conexión creada: {source_device.name} <-> {target_device.name}")
+                print(f"Conexion:")
             
             return True
     
@@ -783,9 +783,9 @@ Tamaño de cuadrícula: {self.grid_size}px
                     sidebar.connection_item.set_connection_mode(new_mode)
                     
             if new_mode:
-                print("🔗⌨️ Modo conexión ACTIVADO (tecla L)")
+                print(f"Conexion:")
             else:
-                print("🔗⌨️ Modo conexión DESACTIVADO (tecla L)")
+                print(f"Conexion:")
                 
         except Exception as e:
             print(f"Error en shortcut conexión: {e}")
@@ -802,7 +802,7 @@ Tamaño de cuadrícula: {self.grid_size}px
                 sidebar = main_window.sidebar
                 if hasattr(sidebar, 'connection_item') and sidebar.connection_item:
                     sidebar.connection_item.set_connection_mode(False)
-                    print("🔗 Sidebar notificado: modo conexión desactivado")
+                    print(f"Conexion:")
         except Exception as e:
             print(f"Error notificando al sidebar: {e}")
 
@@ -1073,7 +1073,7 @@ Tamaño de cuadrícula: {self.grid_size}px
         if main_window and hasattr(main_window, 'toggle_components'):
             main_window.toggle_components()
         else:
-            print("⚠️ No se pudo encontrar el método toggle_components en la ventana principal")
+            print("No se pudo encontrar el método toggle_components en la ventana principal")
     
     # Atajos de teclado (backup - los shortcuts QShortcut tienen prioridad)
     def keyPressEvent(self, event):
@@ -1081,7 +1081,7 @@ Tamaño de cuadrícula: {self.grid_size}px
         try:
             # Escape - ocultar vértices y desactivar modo conexión
             if event.key() == Qt.Key_Escape:
-                print("🚫 Ocultando vértices y desactivando modo conexión")
+                print(f"Bloqueado:")
                 self.device_manager.deselect_all()
                 
                 # Desactivar modo conexión si está activo
@@ -1093,31 +1093,31 @@ Tamaño de cuadrícula: {self.grid_size}px
                 event.accept()
             # Los QShortcut manejan estos, pero mantenemos como backup
             elif event.key() == Qt.Key_C and not (event.modifiers() & Qt.ControlModifier):
-                print("🎯 Backup shortcut: C")
+                print(f"Centro:")
                 self.center_view()
                 # Ocultar vértices al centrar (acción no relacionada con dispositivos)
                 self.device_manager.deselect_all()
                 event.accept()
             elif event.key() == Qt.Key_R and not (event.modifiers() & Qt.ControlModifier):
-                print("🔄 Backup shortcut: R")
+                print(f"Reset:")
                 self.reset_view()
                 # Ocultar vértices al resetear (acción no relacionada con dispositivos)
                 self.device_manager.deselect_all()
                 event.accept()
             elif event.key() == Qt.Key_I and event.modifiers() == Qt.ControlModifier:
-                print("🔄 Backup shortcut: Ctrl+I")
+                print(f"Reset:")
                 self.toggle_info_panel()
                 # Ocultar vértices al alternar panel info
                 self.device_manager.deselect_all()
                 event.accept()
             elif event.key() == Qt.Key_P and event.modifiers() == Qt.ControlModifier:
-                print("📋 Backup shortcut: Ctrl+P")
+                print(f"Panel:")
                 self.toggle_sidebar_panel()
                 # Ocultar vértices al alternar panel lateral
                 self.device_manager.deselect_all()
                 event.accept()
             elif event.key() == Qt.Key_L and not (event.modifiers() & Qt.ControlModifier):
-                print("🔗 Backup shortcut: L")
+                print(f"Conexion:")
                 self.toggle_connection_mode_shortcut()
                 event.accept()
             elif event.key() in (Qt.Key_Delete, Qt.Key_Backspace):
@@ -1127,7 +1127,7 @@ Tamaño de cuadrícula: {self.grid_size}px
                 # Primero intentar eliminar dispositivos
                 selected_device = self.device_manager.get_selected_device()
                 if selected_device:
-                    print(f"🗑️ Eliminando dispositivo: {selected_device.name}")
+                    print(f"Eliminando:")
                     self.device_manager.remove_device(selected_device.id)
                     deleted_something = True
                 
@@ -1141,7 +1141,7 @@ Tamaño de cuadrícula: {self.grid_size}px
                         deleted_something = True
                 
                 if connections_deleted > 0:
-                    print(f"🗑️ {connections_deleted} conexion(es) eliminada(s)")
+                    print(f"Eliminando:")
                 
                 if deleted_something:
                     event.accept()
@@ -1280,9 +1280,9 @@ Tamaño de cuadrícula: {self.grid_size}px
             
             if new_size != current_size:
                 selected_device.set_icon_size(new_size)
-                print(f"📏 Dispositivo {selected_device.device_type} redimensionado: {current_size}px → {new_size}px")
+                print(f"Redimensionado:")
         else:
-            print("⚠️  Selecciona un dispositivo para redimensionar")
+            print("Selecciona un dispositivo para redimensionar")
     
     def decrease_selected_device_size(self):
         """Disminuir tamaño del dispositivo seleccionado (tecla -)"""
@@ -1293,9 +1293,9 @@ Tamaño de cuadrícula: {self.grid_size}px
             
             if new_size != current_size:
                 selected_device.set_icon_size(new_size)
-                print(f"📏 Dispositivo {selected_device.device_type} redimensionado: {current_size}px → {new_size}px")
+                print(f"Redimensionado:")
         else:
-            print("⚠️  Selecciona un dispositivo para redimensionar")
+            print("Selecciona un dispositivo para redimensionar")
     
     # ===== MÉTODOS DE GESTIÓN DE PROYECTOS =====
     
@@ -1311,7 +1311,7 @@ Tamaño de cuadrícula: {self.grid_size}px
         # NO cargar proyecto previo automáticamente
         # self.project_manager.load_auto_save()
         
-        print("🗂️ Gestor de proyectos inicializado (sin carga automática)")
+        print("Gestor de proyectos inicializado (sin carga automática)")
     
     def auto_save_project(self):
         """Guardar automáticamente el estado actual del proyecto"""
@@ -1329,12 +1329,12 @@ Tamaño de cuadrícula: {self.grid_size}px
             self.project_manager.update_project_data(devices_data, connections_data, canvas_data)
             
         except Exception as e:
-            print(f"❌ Error en auto-save del proyecto: {e}")
+            print(f"Error en auto-save del proyecto: {e}")
     
     def load_project_data(self, project_data: dict):
         """Cargar datos del proyecto en el canvas - solo dispositivos y conexiones"""
         try:
-            print("📂 Cargando dispositivos y conexiones...")
+            print(f"Cargando:")
             
             # Limpiar canvas actual
             self.clear_canvas()
