@@ -506,11 +506,63 @@ class PONMetricsChartsPanel(QWidget):
         self.current_data = {}
         self.charts = {}
         self.simulation_format = 'classic'  # Formato por defecto
+        self.dark_theme = False  # Estado del tema
         
         if not MATPLOTLIB_AVAILABLE:
             self.setup_no_matplotlib_ui()
         else:
             self.setup_ui()
+            
+    def set_theme(self, dark_theme):
+        """Aplicar tema al panel de gráficos"""
+        self.dark_theme = dark_theme
+        
+        # Actualizar colores de matplotlib si está disponible
+        if MATPLOTLIB_AVAILABLE:
+            self.update_matplotlib_theme(dark_theme)
+            
+        # El estilo QSS se aplicará automáticamente desde la ventana principal
+        
+    def update_matplotlib_theme(self, dark_theme):
+        """Actualizar tema de matplotlib para todos los gráficos"""
+        if not MATPLOTLIB_AVAILABLE:
+            return
+            
+        # Colores para tema oscuro y claro
+        if dark_theme:
+            bg_color = '#2b2b2b'
+            text_color = '#ffffff'
+            grid_color = '#555555'
+        else:
+            bg_color = '#ffffff'
+            text_color = '#333333'
+            grid_color = '#cccccc'
+            
+        # Actualizar todos los gráficos existentes
+        for chart_name, chart in self.charts.items():
+            if hasattr(chart, 'fig'):
+                try:
+                    chart.fig.patch.set_facecolor(bg_color)
+                    
+                    # Actualizar ejes
+                    for ax in chart.fig.get_axes():
+                        ax.set_facecolor(bg_color)
+                        ax.tick_params(colors=text_color)
+                        ax.xaxis.label.set_color(text_color)
+                        ax.yaxis.label.set_color(text_color)
+                        ax.title.set_color(text_color)
+                        ax.grid(True, color=grid_color, alpha=0.3)
+                        
+                        # Actualizar leyenda si existe
+                        legend = ax.get_legend()
+                        if legend:
+                            legend.get_frame().set_facecolor(bg_color)
+                            for text in legend.get_texts():
+                                text.set_color(text_color)
+                    
+                    chart.draw()
+                except Exception as e:
+                    print(f"Error actualizando tema del gráfico {chart_name}: {e}")
     
     def setup_no_matplotlib_ui(self):
         """Configurar UI cuando matplotlib no está disponible"""
@@ -534,6 +586,7 @@ class PONMetricsChartsPanel(QWidget):
         header_layout = QHBoxLayout()
         
         title = QLabel("📊 Gráficos de Métricas PON")
+        title.setObjectName("pon_charts_title")  # Identificador para QSS
         title_font = QFont()
         title_font.setPointSize(12)
         title_font.setBold(True)
@@ -544,6 +597,7 @@ class PONMetricsChartsPanel(QWidget):
         
         # Botones de control
         self.refresh_charts_btn = QPushButton("🔄 Actualizar Gráficos")
+        self.refresh_charts_btn.setObjectName("pon_charts_button")  # Identificador para QSS
         self.refresh_charts_btn.clicked.connect(self.refresh_all_charts)
         header_layout.addWidget(self.refresh_charts_btn)
         
@@ -572,6 +626,7 @@ class PONMetricsChartsPanel(QWidget):
         
         # Gráfico de delay
         delay_group = QGroupBox("Evolución del Delay")
+        delay_group.setObjectName("pon_charts_group")
         delay_layout = QVBoxLayout(delay_group)
         
         self.charts['delay'] = PONMetricsChart(width=10, height=4)
@@ -581,6 +636,7 @@ class PONMetricsChartsPanel(QWidget):
         
         # Gráfico de throughput
         throughput_group = QGroupBox("Evolución del Throughput")
+        throughput_group.setObjectName("pon_charts_group")
         throughput_layout = QVBoxLayout(throughput_group)
         
         self.charts['throughput'] = PONMetricsChart(width=10, height=4)
@@ -599,6 +655,7 @@ class PONMetricsChartsPanel(QWidget):
         
         # Gráfico de niveles de buffer
         buffer_group = QGroupBox("Niveles de Buffer por ONU")
+        buffer_group.setObjectName("pon_charts_group")
         buffer_layout = QVBoxLayout(buffer_group)
         
         self.charts['buffer'] = PONMetricsChart(width=8, height=5)
@@ -608,6 +665,7 @@ class PONMetricsChartsPanel(QWidget):
         
         # Gráfico de utilización
         utilization_group = QGroupBox("Utilización de la Red")
+        utilization_group.setObjectName("pon_charts_group")
         utilization_layout = QVBoxLayout(utilization_group)
         
         self.charts['utilization'] = PONMetricsChart(width=8, height=5)
@@ -624,6 +682,7 @@ class PONMetricsChartsPanel(QWidget):
         
         # Gráfico de rendimiento de algoritmo
         algorithm_group = QGroupBox("Rendimiento del Algoritmo DBA")
+        algorithm_group.setObjectName("pon_charts_group")
         algorithm_layout = QVBoxLayout(algorithm_group)
         
         self.charts['algorithm'] = PONMetricsChart(width=8, height=5)
@@ -633,6 +692,7 @@ class PONMetricsChartsPanel(QWidget):
         
         # Gráfico de distribución de tráfico
         traffic_group = QGroupBox("Distribución de Tráfico")
+        traffic_group.setObjectName("pon_charts_group")
         traffic_layout = QVBoxLayout(traffic_group)
         
         self.charts['traffic'] = PONMetricsChart(width=8, height=5)

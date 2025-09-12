@@ -56,19 +56,12 @@ class GraphicsPopupWindow(QDialog):
     def setup_header(self, layout):
         """Configurar header con información de la simulación"""
         header_frame = QFrame()
-        header_frame.setStyleSheet("""
-            QFrame {
-                background-color: #f0f0f0;
-                border: 1px solid #d0d0d0;
-                border-radius: 5px;
-                margin: 5px;
-                padding: 10px;
-            }
-        """)
+        header_frame.setObjectName("popup_header_frame")  # Identificador para QSS
         header_layout = QHBoxLayout(header_frame)
         
         # Título principal
         self.title_label = QLabel("🎉 ¡Simulación Completada Exitosamente!")
+        self.title_label.setObjectName("popup_title_label")  # Identificador para QSS
         title_font = QFont()
         title_font.setPointSize(14)
         title_font.setBold(True)
@@ -79,7 +72,7 @@ class GraphicsPopupWindow(QDialog):
         
         # Información de sesión
         self.session_info_label = QLabel("📁 Guardado en: [pendiente]")
-        self.session_info_label.setStyleSheet("color: #666; font-size: 10pt;")
+        self.session_info_label.setObjectName("popup_session_label")  # Identificador para QSS
         header_layout.addWidget(self.session_info_label)
         
         layout.addWidget(header_frame)
@@ -87,6 +80,7 @@ class GraphicsPopupWindow(QDialog):
     def setup_main_area(self, layout):
         """Configurar área principal con tabs"""
         self.tabs = QTabWidget()
+        self.tabs.setObjectName("popup_tabs")  # Identificador para QSS
         
         # Tab 1: Gráficos principales
         self.setup_graphics_tab()
@@ -120,9 +114,11 @@ class GraphicsPopupWindow(QDialog):
         
         # Resumen textual
         summary_group = QGroupBox("📋 Resumen de Simulación")
+        summary_group.setObjectName("popup_group")  # Identificador para QSS
         summary_layout = QVBoxLayout(summary_group)
         
         self.summary_text = QTextEdit()
+        self.summary_text.setObjectName("popup_text_edit")  # Identificador para QSS
         self.summary_text.setReadOnly(True)
         self.summary_text.setMaximumHeight(200)
         summary_layout.addWidget(self.summary_text)
@@ -131,6 +127,7 @@ class GraphicsPopupWindow(QDialog):
         
         # Métricas principales en grid
         metrics_group = QGroupBox("📈 Métricas Principales")
+        metrics_group.setObjectName("popup_group")  # Identificador para QSS
         self.metrics_layout = QGridLayout(metrics_group)
         layout.addWidget(metrics_group)
         
@@ -145,9 +142,11 @@ class GraphicsPopupWindow(QDialog):
         
         # Información de archivos
         files_group = QGroupBox("📁 Archivos Generados")
+        files_group.setObjectName("popup_group")  # Identificador para QSS
         files_layout = QVBoxLayout(files_group)
         
         self.files_text = QTextEdit()
+        self.files_text.setObjectName("popup_text_edit")  # Identificador para QSS
         self.files_text.setReadOnly(True)
         self.files_text.setMaximumHeight(150)
         files_layout.addWidget(self.files_text)
@@ -156,10 +155,12 @@ class GraphicsPopupWindow(QDialog):
         buttons_layout = QHBoxLayout()
         
         self.open_folder_btn = QPushButton("📂 Abrir Carpeta")
+        self.open_folder_btn.setObjectName("popup_button")  # Identificador para QSS
         self.open_folder_btn.clicked.connect(self.open_session_folder)
         buttons_layout.addWidget(self.open_folder_btn)
         
         self.open_graphics_btn = QPushButton("🖼️ Ver Gráficos Guardados")
+        self.open_graphics_btn.setObjectName("popup_button")  # Identificador para QSS
         self.open_graphics_btn.clicked.connect(self.open_graphics_folder)
         buttons_layout.addWidget(self.open_graphics_btn)
         
@@ -170,6 +171,7 @@ class GraphicsPopupWindow(QDialog):
         
         # Instrucciones
         instructions_group = QGroupBox("💡 Instrucciones")
+        instructions_group.setObjectName("popup_group")  # Identificador para QSS
         instructions_layout = QVBoxLayout(instructions_group)
         
         instructions = QLabel("""
@@ -183,8 +185,8 @@ class GraphicsPopupWindow(QDialog):
         
         🔍 <b>Comparación:</b> Guarda múltiples simulaciones para comparar diferentes algoritmos
         """)
+        instructions.setObjectName("popup_instructions_label")  # Identificador para QSS
         instructions.setWordWrap(True)
-        instructions.setStyleSheet("QLabel { padding: 10px; background-color: #f9f9f9; border-radius: 5px; }")
         instructions_layout.addWidget(instructions)
         
         layout.addWidget(instructions_group)
@@ -197,6 +199,7 @@ class GraphicsPopupWindow(QDialog):
         
         # Botón de exportar adicional
         self.export_btn = QPushButton("💾 Exportar Gráficos Adicionales")
+        self.export_btn.setObjectName("popup_button")  # Identificador para QSS
         self.export_btn.clicked.connect(self.export_additional_graphics)
         footer_layout.addWidget(self.export_btn)
         
@@ -204,6 +207,7 @@ class GraphicsPopupWindow(QDialog):
         
         # Botón de cerrar
         self.close_btn = QPushButton("✅ Cerrar")
+        self.close_btn.setObjectName("popup_button")  # Identificador para QSS
         self.close_btn.clicked.connect(self.accept)
         self.close_btn.setDefault(True)
         footer_layout.addWidget(self.close_btn)
@@ -428,6 +432,29 @@ class GraphicsPopupWindow(QDialog):
             
         except Exception as e:
             QMessageBox.warning(self, "Error", f"No se pudo abrir la carpeta de gráficos: {e}")
+    
+    def set_theme(self, dark_theme):
+        """Aplicar tema QSS a la ventana de gráficos"""
+        try:
+            # Determinar el archivo de tema
+            if dark_theme:
+                theme_file = os.path.join("resources", "styles", "dark_theme.qss")
+            else:
+                theme_file = os.path.join("resources", "styles", "light_theme.qss")
+            
+            # Leer el archivo de tema
+            with open(theme_file, 'r', encoding='utf-8') as f:
+                theme_content = f.read()
+            
+            # Aplicar el tema a la ventana
+            self.setStyleSheet(theme_content)
+            
+            # Aplicar tema al panel de gráficos si existe
+            if hasattr(self, 'charts_panel') and self.charts_panel:
+                self.charts_panel.set_theme(dark_theme)
+            
+        except Exception as e:
+            print(f"Error aplicando tema a ventana de gráficos: {e}")
     
     def export_additional_graphics(self):
         """Exportar gráficos adicionales o en diferentes formatos"""

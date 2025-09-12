@@ -91,6 +91,10 @@ class NetPONPySidebar(QWidget):
         """Actualizar tema del sidebar"""
         self.dark_theme = dark_theme
         
+        # Aplicar tema al panel integrado PON
+        if hasattr(self, 'netponpy_panel') and self.netponpy_panel:
+            self.netponpy_panel.set_theme(dark_theme)
+        
         if dark_theme:
             self.setStyleSheet("""
                 NetPONPySidebar {

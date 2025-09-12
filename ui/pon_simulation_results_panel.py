@@ -26,8 +26,19 @@ class PONResultsPanel(QWidget):
         self.current_results = {}
         self.update_timer = QTimer()
         self.update_timer.timeout.connect(self.refresh_results)
+        self.dark_theme = False  # Estado del tema
         
         self.setup_ui()
+        
+    def set_theme(self, dark_theme):
+        """Aplicar tema al panel de resultados"""
+        self.dark_theme = dark_theme
+        
+        # Actualizar tema del panel de gráficos si existe
+        if hasattr(self, 'charts_panel') and self.charts_panel:
+            self.charts_panel.set_theme(dark_theme)
+            
+        # El estilo QSS se aplicará automáticamente desde la ventana principal
         
     def setup_ui(self):
         """Configurar interfaz de usuario"""
@@ -35,6 +46,7 @@ class PONResultsPanel(QWidget):
         
         # Título
         title = QLabel("📊 Resultados de Simulación PON")
+        title.setObjectName("pon_results_title")  # Identificador para QSS
         title_font = QFont()
         title_font.setPointSize(12)
         title_font.setBold(True)
@@ -68,14 +80,17 @@ class PONResultsPanel(QWidget):
         controls_layout = QHBoxLayout()
         
         self.refresh_btn = QPushButton("🔄 Actualizar")
+        self.refresh_btn.setObjectName("pon_results_button")  # Identificador para QSS
         self.refresh_btn.clicked.connect(self.refresh_results)
         controls_layout.addWidget(self.refresh_btn)
         
         self.export_btn = QPushButton("📁 Exportar")
+        self.export_btn.setObjectName("pon_results_button")  # Identificador para QSS
         self.export_btn.clicked.connect(self.export_results)
         controls_layout.addWidget(self.export_btn)
         
         self.auto_update_btn = QPushButton("⏱️ Auto-actualizar")
+        self.auto_update_btn.setObjectName("pon_results_button")  # Identificador para QSS
         self.auto_update_btn.setCheckable(True)
         self.auto_update_btn.toggled.connect(self.toggle_auto_update)
         controls_layout.addWidget(self.auto_update_btn)
@@ -90,6 +105,7 @@ class PONResultsPanel(QWidget):
         
         # Estado de la simulación
         status_group = QGroupBox("Estado de la Simulación")
+        status_group.setObjectName("pon_results_group")
         status_layout = QGridLayout(status_group)
         
         self.status_label = QLabel("❓ No conectado")
@@ -110,6 +126,7 @@ class PONResultsPanel(QWidget):
         
         # Métricas principales
         metrics_group = QGroupBox("Métricas Principales")
+        metrics_group.setObjectName("pon_results_group")
         metrics_layout = QGridLayout(metrics_group)
         
         self.requests_label = QLabel("0")
@@ -183,6 +200,7 @@ class PONResultsPanel(QWidget):
         
         # Panel izquierdo: Delays
         delays_group = QGroupBox("Historial de Delays")
+        delays_group.setObjectName("pon_results_group")
         delays_layout = QVBoxLayout(delays_group)
         
         self.delays_table = QTableWidget()
@@ -194,6 +212,7 @@ class PONResultsPanel(QWidget):
         
         # Panel derecho: Throughputs
         throughputs_group = QGroupBox("Historial de Throughput")
+        throughputs_group.setObjectName("pon_results_group")
         throughputs_layout = QVBoxLayout(throughputs_group)
         
         self.throughputs_table = QTableWidget()

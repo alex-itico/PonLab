@@ -84,14 +84,10 @@ class MainWindow(QMainWindow):
         # Crear el canvas principal
         self.canvas = Canvas()
         self.canvas.device_dropped.connect(self.on_device_dropped)
-<<<<<<< HEAD
         self.canvas.device_selected.connect(self.on_device_selected_in_canvas)
         self.canvas.device_deselected.connect(self.on_device_deselected_in_canvas)
-        main_layout.addWidget(self.canvas)
-=======
         canvas_layout.addWidget(self.canvas)
         canvas_layout.setStretchFactor(self.canvas, 1)  # Canvas stretch principal
->>>>>>> jorge_dev
         
         # Crear el sidebar derecho para NetPONPy
         self.netponpy_sidebar = NetPONPySidebar()
@@ -758,7 +754,6 @@ class MainWindow(QMainWindow):
                 QMessageBox.No
             )
             return reply
-<<<<<<< HEAD
     
     def on_edit_device_from_sidebar(self, device_id):
         """Manejar solicitud de edición de dispositivo desde el sidebar"""
@@ -784,7 +779,6 @@ class MainWindow(QMainWindow):
         if self.canvas:
             # Delegar al canvas para actualizar las propiedades del dispositivo
             self.canvas.update_device_properties(device_id, new_properties)
-=======
 
     def setup_automatic_graphics_connections(self):
         """Configurar conexiones para el sistema de gráficos automáticos"""
@@ -831,4 +825,3 @@ class MainWindow(QMainWindow):
             
         except Exception as e:
             print(f"ERROR en callback de graficos guardados: {e}")
->>>>>>> jorge_dev
