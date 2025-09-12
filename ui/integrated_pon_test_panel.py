@@ -25,8 +25,6 @@ class IntegratedPONTestPanel(QWidget):
     def __init__(self):
         super().__init__()
         self.adapter = IntegratedPONAdapter()
-        self.simulation_timer = QTimer()
-        self.simulation_timer.timeout.connect(self.step_simulation)
         self.simulation_running = False
         self.step_count = 0
         self.canvas_reference = None  # Referencia al canvas para obtener topología
@@ -166,15 +164,6 @@ class IntegratedPONTestPanel(QWidget):
         self.start_btn.setEnabled(False)
         buttons_layout.addWidget(self.start_btn, 0, 1)
         
-        self.step_btn = QPushButton("👣 Paso a Paso")
-        self.step_btn.clicked.connect(self.toggle_step_simulation)
-        self.step_btn.setEnabled(False)
-        buttons_layout.addWidget(self.step_btn, 1, 0)
-        
-        self.reset_btn = QPushButton("🔄 Reiniciar")
-        self.reset_btn.clicked.connect(self.reset_simulation)
-        buttons_layout.addWidget(self.reset_btn, 1, 1)
-        
         sim_layout.addLayout(buttons_layout)
         
         # Barra de progreso
@@ -243,7 +232,6 @@ class IntegratedPONTestPanel(QWidget):
                 self.status_label.setStyleSheet("color: orange;")
                 self.orchestrator_initialized = False
                 self.start_btn.setEnabled(False)
-                self.step_btn.setEnabled(False)
     
     def on_algorithm_changed(self):
         """Manejar cambio de algoritmo DBA"""
@@ -277,7 +265,6 @@ class IntegratedPONTestPanel(QWidget):
             self.status_label.setStyleSheet("color: orange;")
             self.orchestrator_initialized = False
             self.start_btn.setEnabled(False)
-            self.step_btn.setEnabled(False)
         
         arch_name = "híbrida event-driven" if use_hybrid else "clásica timesteps"
         self.results_panel.add_log_message(f"Arquitectura cambiada a: {arch_name}")
@@ -334,7 +321,6 @@ class IntegratedPONTestPanel(QWidget):
             self.status_label.setStyleSheet("color: green;")
             
             self.start_btn.setEnabled(True)
-            self.step_btn.setEnabled(True)
             
             self.results_panel.add_log_message(f"✅ {message}")
             
@@ -351,7 +337,6 @@ class IntegratedPONTestPanel(QWidget):
         
         # Deshabilitar botones durante simulación
         self.start_btn.setEnabled(False)
-        self.step_btn.setEnabled(False)
         
         if use_hybrid:
             # Simulación híbrida por tiempo
@@ -447,49 +432,7 @@ class IntegratedPONTestPanel(QWidget):
         except Exception as e:
             self.results_panel.add_log_message(f"❌ Error procesando resultados híbridos: {str(e)}")
     
-    def toggle_step_simulation(self):
-        """Activar/desactivar simulación paso a paso"""
-        if not self.orchestrator_initialized:
-            return
-        
-        if not self.simulation_running:
-            # Iniciar simulación paso a paso
-            self.simulation_running = True
-            self.step_btn.setText("⏸️ Pausar")
-            self.start_btn.setEnabled(False)
-            
-            # Configurar timer para simulación paso a paso
-            self.simulation_timer.start(100)  # 100ms entre pasos
-            self.results_panel.add_log_message("🔄 Simulación paso a paso iniciada")
-            
-        else:
-            # Pausar simulación paso a paso
-            self.simulation_running = False
-            self.step_btn.setText("👣 Paso a Paso")
-            self.start_btn.setEnabled(True)
-            
-            self.simulation_timer.stop()
-            self.results_panel.add_log_message("⏸️ Simulación paso a paso pausada")
     
-    def step_simulation(self):
-        """Ejecutar un paso de simulación"""
-        if not self.simulation_running:
-            return
-        
-        result = self.adapter.step_simulation()
-        
-        if result:
-            self.step_count += 1
-            
-            # Actualizar métricas básicas
-            # self.steps_label.setText(f"Pasos: {self.step_count}")  # Removed metrics display
-            
-            # Verificar si debe terminar
-            if result.get('done', False) or self.step_count >= self.steps_spinbox.value():
-                self.toggle_step_simulation()  # Detener simulación
-                self.on_simulation_finished()
-        else:
-            self.toggle_step_simulation()  # Detener en caso de error
     
     def update_realtime_metrics(self, data):
         """Actualizar métricas en tiempo real"""
@@ -508,8 +451,6 @@ class IntegratedPONTestPanel(QWidget):
         """Callback cuando termina la simulación"""
         # Rehabilitar botones
         self.start_btn.setEnabled(True)
-        self.step_btn.setEnabled(True)
-        self.step_btn.setText("👣 Paso a Paso")
         
         # Ocultar barra de progreso
         self.progress_bar.setVisible(False)
@@ -529,37 +470,6 @@ class IntegratedPONTestPanel(QWidget):
         
         self.results_panel.add_log_message("🎯 Simulación finalizada - Resultados y gráficos procesados")
     
-    def reset_simulation(self):
-        """Reiniciar simulación"""
-        # Detener simulación si está corriendo
-        if self.simulation_running:
-            self.toggle_step_simulation()
-        
-        # Reiniciar contadores
-        self.step_count = 0
-        self.orchestrator_initialized = False
-        
-        # Reiniciar estado de botones
-        self.start_btn.setEnabled(False)
-        self.step_btn.setEnabled(False)
-        self.step_btn.setText("👣 Paso a Paso")
-        
-        # Limpiar métricas
-        # Real-time metrics display removed
-        # self.steps_label.setText("Pasos: 0")
-        # self.requests_label.setText("Solicitudes: 0")
-        # self.delay_label.setText("Delay: 0.000s")
-        # self.throughput_label.setText("Throughput: 0.00 MB/s")
-        
-        # Actualizar estado
-        self.status_label.setText("🔄 Sistema reiniciado")
-        self.status_label.setStyleSheet("color: blue;")
-        
-        # Limpiar resultados
-        if hasattr(self.results_panel, 'charts_panel'):
-            self.results_panel.charts_panel.clear_all_charts()
-        
-        self.results_panel.add_log_message("🔄 Sistema reiniciado - listo para nueva simulación")
     
     def handle_automatic_graphics_processing(self):
         """Manejar el procesamiento automático de gráficos al finalizar simulación"""
