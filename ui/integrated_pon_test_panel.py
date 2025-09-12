@@ -39,13 +39,25 @@ class IntegratedPONTestPanel(QWidget):
         # Variables para detectar cambios
         self.last_onu_count = 0
         self.last_algorithm = "FCFS"
+        self.last_scenario = ""
+        self.last_duration = 10
         self.orchestrator_initialized = False
+        self.auto_initialize = True  # Habilitar inicialización automática
         
         self.setup_ui()
         self.check_pon_status()
         
         # Inicializar estado de controles
         self.on_architecture_changed()
+        
+        # Realizar inicialización automática inicial si todo está listo
+        if self.adapter.is_pon_available():
+            QTimer.singleShot(1000, self.perform_initial_auto_initialization)
+        
+        # Agregar timer adicional para actualizar conteo de ONUs periódicamente
+        self.onu_update_timer = QTimer()
+        self.onu_update_timer.timeout.connect(self.periodic_onu_update)
+        self.onu_update_timer.start(5000)  # Cada 5 segundos (reducir frecuencia)
         
     def setup_ui(self):
         """Configurar interfaz de usuario"""
@@ -98,16 +110,29 @@ class IntegratedPONTestPanel(QWidget):
         config_group = QGroupBox("Configuración")
         config_layout = QGridLayout(config_group)
         
-        # Número de ONUs
-        config_layout.addWidget(QLabel("ONUs:"), 0, 0)
-        self.onu_spinbox = QSpinBox()
-        self.onu_spinbox.setRange(2, 32)
-        self.onu_spinbox.setValue(4)
-        self.onu_spinbox.valueChanged.connect(self.on_config_changed)
-        config_layout.addWidget(self.onu_spinbox, 0, 1)
+        # Número de ONUs (automático desde topología)
+        config_layout.addWidget(QLabel("ONUs detectadas:"), 0, 0)
+        
+        # Layout horizontal para el conteo y botón de actualización
+        onu_layout = QHBoxLayout()
+        self.onu_count_label = QLabel("0")
+        self.onu_count_label.setStyleSheet("font-weight: bold; color: #2563eb; padding: 4px; background-color: #f0f4ff; border-radius: 4px;")
+        self.onu_count_label.setToolTip("Número de ONUs detectadas automáticamente de la topología")
+        onu_layout.addWidget(self.onu_count_label)
+        
+        # Botón pequeño para forzar actualización
+        self.refresh_onus_btn = QPushButton("🔄")
+        self.refresh_onus_btn.setMaximumWidth(30)
+        self.refresh_onus_btn.setToolTip("Actualizar manualmente el conteo de ONUs")
+        self.refresh_onus_btn.clicked.connect(self.force_onu_count_update)
+        onu_layout.addWidget(self.refresh_onus_btn)
+        
+        onu_widget = QWidget()
+        onu_widget.setLayout(onu_layout)
+        config_layout.addWidget(onu_widget, 0, 1)
         
         # Algoritmo DBA
-        config_layout.addWidget(QLabel("Algoritmo DBA:"), 1, 0)
+        config_layout.addWidget(QLabel("DBA:"), 1, 0)
         self.algorithm_combo = QComboBox()
         if self.adapter.is_pon_available():
             self.algorithm_combo.addItems(self.adapter.get_available_algorithms())
@@ -119,6 +144,7 @@ class IntegratedPONTestPanel(QWidget):
         self.scenario_combo = QComboBox()
         if self.adapter.is_pon_available():
             self.scenario_combo.addItems(self.adapter.get_available_traffic_scenarios())
+        self.scenario_combo.currentTextChanged.connect(self.on_scenario_changed)
         config_layout.addWidget(self.scenario_combo, 2, 1)
         
         # Arquitectura de simulación
@@ -135,6 +161,7 @@ class IntegratedPONTestPanel(QWidget):
         self.duration_spinbox.setRange(1, 120)
         self.duration_spinbox.setValue(10)
         self.duration_spinbox.setToolTip("Duración en segundos (solo arquitectura híbrida)")
+        self.duration_spinbox.valueChanged.connect(self.on_duration_changed)
         config_layout.addWidget(self.duration_spinbox, 4, 1)
         
         # Pasos de simulación (para arquitectura clásica)
@@ -155,8 +182,10 @@ class IntegratedPONTestPanel(QWidget):
         # Botones principales
         buttons_layout = QGridLayout()
         
-        self.init_btn = QPushButton("🚀 Inicializar")
+        self.init_btn = QPushButton("⚙️ Inicialización Manual")
         self.init_btn.clicked.connect(self.initialize_simulation)
+        self.init_btn.setToolTip("Usar solo si la inicialización automática falló")
+        self.init_btn.setVisible(False)  # Ocultar por defecto - inicialización es automática
         buttons_layout.addWidget(self.init_btn, 0, 0)
         
         self.start_btn = QPushButton("▶️ Ejecutar")
@@ -191,6 +220,12 @@ class IntegratedPONTestPanel(QWidget):
         self.detailed_log_checkbox.toggled.connect(self.toggle_detailed_logging)
         options_layout.addWidget(self.detailed_log_checkbox)
         
+        self.auto_init_checkbox = QCheckBox("Inicialización automática")
+        self.auto_init_checkbox.setChecked(True)
+        self.auto_init_checkbox.setToolTip("Reinicializar automáticamente cuando cambien los parámetros")
+        self.auto_init_checkbox.toggled.connect(self.toggle_auto_initialize)
+        options_layout.addWidget(self.auto_init_checkbox)
+        
         sim_layout.addLayout(options_layout)
         
         # Información sobre visualización de resultados
@@ -223,32 +258,104 @@ class IntegratedPONTestPanel(QWidget):
             for widget in self.findChildren((QPushButton, QComboBox, QSpinBox)):
                 widget.setEnabled(False)
     
-    def on_config_changed(self):
-        """Manejar cambios en la configuración"""
-        if self.orchestrator_initialized:
-            current_onus = self.onu_spinbox.value()
-            if current_onus != self.last_onu_count:
-                self.status_label.setText("WARNING Configuracion cambiada - reinicializar")
-                self.status_label.setStyleSheet("color: orange;")
-                self.orchestrator_initialized = False
-                self.start_btn.setEnabled(False)
+    def auto_reinitialize(self, change_description="configuración"):
+        """Reinicializar automáticamente cuando se detecten cambios"""
+        if not self.auto_initialize or not self.adapter.is_pon_available():
+            return
+            
+        self.status_label.setText(f"🔄 Auto-reinicializando por cambio en {change_description}...")
+        self.status_label.setStyleSheet("color: blue;")
+        
+        # Pequeño delay para que el usuario vea el mensaje
+        QTimer.singleShot(500, self.initialize_simulation)
+    
+    def get_onu_count_from_topology(self):
+        """Obtener número de ONUs desde la topología del canvas"""
+        try:
+            if self.canvas_reference and hasattr(self.canvas_reference, 'device_manager'):
+                device_stats = self.canvas_reference.device_manager.get_device_stats()
+                onu_count = device_stats.get('onu_count', 0)
+                total_devices = device_stats.get('total_devices', 0)
+                olt_count = device_stats.get('olt_count', 0)
+                
+                print(f"DEBUG Estadísticas del canvas: Total={total_devices}, OLTs={olt_count}, ONUs={onu_count}")
+                return onu_count
+            else:
+                print(f"DEBUG Canvas reference: {self.canvas_reference}")
+                if self.canvas_reference:
+                    print(f"DEBUG Canvas tiene device_manager: {hasattr(self.canvas_reference, 'device_manager')}")
+                return 0
+        except Exception as e:
+            print(f"ERROR obteniendo conteo de ONUs: {e}")
+            import traceback
+            traceback.print_exc()
+            return 0
+    
+    def update_onu_count_display(self):
+        """Actualizar la visualización del conteo de ONUs"""
+        try:
+            print("DEBUG Iniciando update_onu_count_display()")
+            current_onus = self.get_onu_count_from_topology()
+            print(f"DEBUG Conteo obtenido: {current_onus}")
+            
+            # Actualizar el texto del label
+            self.onu_count_label.setText(str(current_onus))
+            print(f"DEBUG Label actualizado a: {self.onu_count_label.text()}")
+            
+            # Cambiar estilo según el número detectado
+            if current_onus == 0:
+                self.onu_count_label.setStyleSheet("font-weight: bold; color: #dc2626; padding: 4px; background-color: #fef2f2; border-radius: 4px;")
+                self.onu_count_label.setToolTip("No se detectaron ONUs en la topología")
+                print("DEBUG Estilo aplicado: ROJO (0 ONUs)")
+            elif current_onus < 2:
+                self.onu_count_label.setStyleSheet("font-weight: bold; color: #f59e0b; padding: 4px; background-color: #fffbeb; border-radius: 4px;")
+                self.onu_count_label.setToolTip("Se requieren al menos 2 ONUs para simulación")
+                print("DEBUG Estilo aplicado: AMARILLO (< 2 ONUs)")
+            else:
+                self.onu_count_label.setStyleSheet("font-weight: bold; color: #059669; padding: 4px; background-color: #ecfdf5; border-radius: 4px;")
+                self.onu_count_label.setToolTip(f"{current_onus} ONUs detectadas - listo para simular")
+                print("DEBUG Estilo aplicado: VERDE (≥ 2 ONUs)")
+            
+            # Detectar cambios y reinicializar si es necesario
+            if self.orchestrator_initialized and current_onus != self.last_onu_count:
+                print(f"DEBUG Reinicializando: {self.last_onu_count} -> {current_onus}")
+                self.auto_reinitialize(f"número de ONUs (detectadas: {current_onus})")
+            elif not self.orchestrator_initialized and current_onus >= 2:
+                print("DEBUG Orquestador no inicializado pero hay ONUs suficientes - intentando inicializar")
+                # Intentar inicializar automáticamente si hay ONUs suficientes
+                if self.auto_initialize:
+                    QTimer.singleShot(500, self.initialize_simulation)
+            
+            self.last_onu_count = current_onus
+            print(f"DEBUG Proceso completado. last_onu_count = {self.last_onu_count}")
+            return current_onus
+            
+        except Exception as e:
+            print(f"ERROR actualizando display de ONUs: {e}")
+            import traceback
+            traceback.print_exc()
+            return 0
     
     def on_algorithm_changed(self):
         """Manejar cambio de algoritmo DBA"""
-        if self.orchestrator_initialized:
-            algorithm = self.algorithm_combo.currentText()
-            if algorithm != self.last_algorithm:
-                if self.hybrid_checkbox.isChecked():
-                    success, msg = self.adapter.set_hybrid_dba_algorithm(algorithm)
-                else:
-                    success = self.adapter.set_dba_algorithm(algorithm)
-                    msg = f"Algoritmo cambiado a: {algorithm}" if success else "Error cambiando algoritmo"
-                
-                if success:
-                    self.last_algorithm = algorithm
-                    self.results_panel.add_log_message(msg)
-                else:
-                    self.results_panel.add_log_message(f"Error: {msg}")
+        algorithm = self.algorithm_combo.currentText()
+        if self.orchestrator_initialized and algorithm != self.last_algorithm:
+            self.auto_reinitialize(f"algoritmo DBA ({algorithm})")
+        self.last_algorithm = algorithm
+    
+    def on_scenario_changed(self):
+        """Manejar cambio de escenario de tráfico"""
+        scenario = self.scenario_combo.currentText()
+        if self.orchestrator_initialized and scenario != self.last_scenario:
+            self.auto_reinitialize(f"escenario de tráfico ({scenario})")
+        self.last_scenario = scenario
+    
+    def on_duration_changed(self):
+        """Manejar cambio de duración de simulación"""
+        duration = self.duration_spinbox.value()
+        if self.orchestrator_initialized and duration != self.last_duration:
+            self.auto_reinitialize(f"tiempo de simulación ({duration}s)")
+        self.last_duration = duration
     
     def on_architecture_changed(self):
         """Manejar cambio de arquitectura"""
@@ -259,30 +366,72 @@ class IntegratedPONTestPanel(QWidget):
         self.duration_spinbox.setEnabled(use_hybrid)
         self.steps_spinbox.setEnabled(not use_hybrid)
         
-        # Si está inicializado, requerir reinicialización
-        if self.orchestrator_initialized:
-            self.status_label.setText("⚠️ Arquitectura cambiada - reinicializar")
-            self.status_label.setStyleSheet("color: orange;")
-            self.orchestrator_initialized = False
-            self.start_btn.setEnabled(False)
-        
         arch_name = "híbrida event-driven" if use_hybrid else "clásica timesteps"
+        
+        # Si está inicializado, reinicializar automáticamente
+        if self.orchestrator_initialized:
+            self.auto_reinitialize(f"arquitectura ({arch_name})")
+        
         self.results_panel.add_log_message(f"Arquitectura cambiada a: {arch_name}")
     
     def toggle_detailed_logging(self, enabled):
         """Activar/desactivar logging detallado"""
         self.adapter.set_detailed_logging(enabled)
     
+    def toggle_auto_initialize(self, enabled):
+        """Activar/desactivar inicialización automática"""
+        self.auto_initialize = enabled
+        
+        # Mostrar/ocultar botón de inicialización manual según el estado
+        self.init_btn.setVisible(not enabled)
+        
+        if enabled:
+            self.results_panel.add_log_message("✅ Inicialización automática habilitada")
+        else:
+            self.results_panel.add_log_message("⚠️ Inicialización automática deshabilitada - usar botón manual")
+            self.init_btn.setVisible(True)
+    
+    def perform_initial_auto_initialization(self):
+        """Realizar inicialización automática inicial al cargar el panel"""
+        if self.auto_initialize and not self.orchestrator_initialized:
+            # Actualizar conteo de ONUs antes de inicializar
+            self.update_onu_count_display()
+            
+            # Solo inicializar si hay ONUs suficientes
+            onu_count = self.get_onu_count_from_topology()
+            if onu_count >= 2:
+                self.status_label.setText("🚀 Inicialización automática inicial...")
+                self.status_label.setStyleSheet("color: blue;")
+                self.results_panel.add_log_message(f"🎯 Iniciando configuración automática inicial con {onu_count} ONUs...")
+                QTimer.singleShot(500, self.initialize_simulation)
+            else:
+                self.status_label.setText("⏳ Esperando topología válida...")
+                self.status_label.setStyleSheet("color: orange;")
+                self.results_panel.add_log_message(f"⏳ Esperando al menos 2 ONUs en topología (actual: {onu_count})")
+    
     def initialize_simulation(self):
         """Inicializar simulación"""
+        print("DEBUG initialize_simulation() iniciada")
+        
         if not self.adapter.is_pon_available():
+            print("DEBUG Adapter no disponible")
             return
         
-        # Obtener configuración
-        num_onus = self.onu_spinbox.value()
+        # Obtener configuración automática
+        num_onus = self.get_onu_count_from_topology()
         scenario = self.scenario_combo.currentText()
         algorithm = self.algorithm_combo.currentText()
         use_hybrid = self.hybrid_checkbox.isChecked()
+        
+        print(f"DEBUG Configuración: ONUs={num_onus}, Escenario={scenario}, Algoritmo={algorithm}, Híbrido={use_hybrid}")
+        
+        # Validar que hay ONUs suficientes
+        if num_onus < 2:
+            print(f"DEBUG ONUs insuficientes: {num_onus} < 2")
+            self.status_label.setText("❌ Se requieren al menos 2 ONUs en la topología")
+            self.status_label.setStyleSheet("color: red;")
+            self.results_panel.add_log_message(f"⚠️ Topología insuficiente: {num_onus} ONUs (se requieren mínimo 2)")
+            return
         
         if use_hybrid:
             self.results_panel.add_log_message("🚀 Inicializando simulación híbrida...")
@@ -493,7 +642,7 @@ class IntegratedPONTestPanel(QWidget):
             
             # Recopilar información de la sesión
             session_info = {
-                'num_onus': self.onu_spinbox.value(),
+                'num_onus': self.get_onu_count_from_topology(),
                 'algorithm': self.algorithm_combo.currentText(),
                 'traffic_scenario': self.scenario_combo.currentText(),
                 'steps': self.steps_spinbox.value(),
@@ -569,13 +718,57 @@ class IntegratedPONTestPanel(QWidget):
     def set_canvas_reference(self, canvas):
         """Establecer referencia al canvas"""
         self.canvas_reference = canvas
+        print(f"DEBUG Canvas reference establecida: {canvas}")
+        
+        # Actualizar inmediatamente el conteo de ONUs
+        self.update_onu_count_display()
+        
+        # Conectar señal de cambios de dispositivos si no está conectada
+        if canvas and hasattr(canvas, 'device_manager'):
+            print("DEBUG Conectando señal devices_changed")
+            # Desconectar señal anterior si existe para evitar duplicados
+            try:
+                canvas.device_manager.devices_changed.disconnect(self.on_devices_changed)
+            except:
+                pass  # No estaba conectada
+            
+            # Conectar nueva señal
+            canvas.device_manager.devices_changed.connect(self.on_devices_changed)
+    
+    def on_devices_changed(self):
+        """Callback cuando cambian los dispositivos en el canvas"""
+        print("DEBUG Dispositivos cambiaron - actualizando conteo de ONUs")
+        self.update_onu_count_display()
+    
+    def periodic_onu_update(self):
+        """Actualización periódica del conteo de ONUs"""
+        if self.canvas_reference:
+            current_count = self.get_onu_count_from_topology()
+            displayed_count = int(self.onu_count_label.text()) if self.onu_count_label.text().isdigit() else -1
+            
+            if current_count != displayed_count:
+                print(f"DEBUG Actualizando conteo ONUs: {displayed_count} -> {current_count}")
+                self.update_onu_count_display()
+    
+    def force_onu_count_update(self):
+        """Forzar actualización del conteo de ONUs"""
+        print("DEBUG Actualización manual de ONUs forzada por usuario")
+        self.update_onu_count_display()
+        
+        # Mostrar información de debug al usuario
+        if self.canvas_reference:
+            all_devices = self.canvas_reference.device_manager.get_all_devices()
+            onu_devices = [d for d in all_devices if d.device_type == "ONU"]
+            self.results_panel.add_log_message(f"🔍 Actualización manual: {len(onu_devices)} ONUs encontradas de {len(all_devices)} dispositivos totales")
+        else:
+            self.results_panel.add_log_message("⚠️ No hay referencia al canvas para contar dispositivos")
     
     def update_topology_info(self):
         """Actualizar información de topología desde el canvas"""
         try:
             if self.canvas_reference:
-                # Aquí se puede añadir lógica para actualizar info de topología
-                # por ahora solo log que se ejecutó
+                # Actualizar conteo de ONUs desde la topología
+                self.update_onu_count_display()
                 print("INFO Topologia actualizada desde canvas")
             else:
                 print("WARNING Canvas reference no disponible para actualizar topologia")
@@ -594,6 +787,14 @@ class IntegratedPONTestPanel(QWidget):
                 # Reset adapter internal state
                 self.adapter.orchestrator = None
                 self.adapter.netsim = None
+                
+                # Actualizar conteo de ONUs inmediatamente
+                self.update_onu_count_display()
+                
+                # Si estaba inicializado, reinicializar automáticamente por cambio de topología
+                if self.orchestrator_initialized:
+                    self.auto_reinitialize("topología")
+                
                 print("INFO Orquestador PON reseteado por cambio de topologia")
             else:
                 print("WARNING No hay adapter para resetear orquestador")
@@ -603,6 +804,11 @@ class IntegratedPONTestPanel(QWidget):
     def cleanup(self):
         """Limpiar recursos del panel"""
         try:
+            # Parar timer de actualización de ONUs
+            if hasattr(self, 'onu_update_timer') and self.onu_update_timer:
+                self.onu_update_timer.stop()
+                self.onu_update_timer = None
+            
             if hasattr(self, 'adapter') and self.adapter:
                 # Limpiar adapter si es necesario
                 pass
