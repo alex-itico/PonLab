@@ -1,0 +1,4 @@
+algorithm,cls,n_packets,mean_ms,p95_ms
+ipact,EF,1801,0.009450,0.021520
+ipact,AF,895,0.016865,0.042160
+ipact,BE,1233,0.067576,0.160662

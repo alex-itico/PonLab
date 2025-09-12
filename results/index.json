@@ -1,0 +1,9 @@
+[
+  {
+    "algo": "ipact",
+    "grants_csv": "results\\mi_topologia_2.pon_ipact_grants.csv",
+    "per_onu_csv": "results\\mi_topologia_2.pon_ipact_per_onu.csv",
+    "cycles_csv": "results\\mi_topologia_2.pon_ipact_cycles.csv",
+    "json": "results\\mi_topologia_2.pon_ipact.json"
+  }
+]

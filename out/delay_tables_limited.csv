@@ -1,0 +1,4 @@
+algorithm,cls,n_packets,mean_ms,p95_ms
+limited,EF,1801,0.005946,0.011920
+limited,AF,890,0.029270,0.063320
+limited,BE,864,0.588159,1.209480

@@ -1,0 +1,103 @@
+{
+  "format_version": "1.0",
+  "created_with": "PonLab v1.0",
+  "metadata": {
+    "name": "mi_topologia",
+    "created": "2025-09-11T21:12:58.366990",
+    "modified": "2025-09-11T21:14:09.777730"
+  },
+  "canvas": {
+    "zoom": 1.0,
+    "center": [
+      0,
+      0
+    ],
+    "grid_visible": true,
+    "grid_size": 75
+  },
+  "devices": {
+    "e3a8c3a9-a5b5-4453-b381-a8452bfbf6e5": {
+      "id": "e3a8c3a9-a5b5-4453-b381-a8452bfbf6e5",
+      "device_type": "OLT",
+      "name": "OLT_1",
+      "x": -503.0,
+      "y": -6.0,
+      "icon_size": 64,
+      "visible": true,
+      "properties": {
+        "model": "OLT-Generic",
+        "status": "online",
+        "location": "",
+        "notes": ""
+      }
+    },
+    "65298be0-01e9-4bf4-9842-ae24b342999c": {
+      "id": "65298be0-01e9-4bf4-9842-ae24b342999c",
+      "device_type": "ONU",
+      "name": "ONU_2",
+      "x": -75,
+      "y": -225,
+      "icon_size": 64,
+      "visible": true,
+      "properties": {
+        "model": "ONU-Generic",
+        "status": "online",
+        "location": "",
+        "notes": ""
+      }
+    },
+    "3e986a43-1a3d-4ab7-b7ec-6a30f7d0f62d": {
+      "id": "3e986a43-1a3d-4ab7-b7ec-6a30f7d0f62d",
+      "device_type": "ONU",
+      "name": "ONU_3",
+      "x": -150,
+      "y": 150,
+      "icon_size": 64,
+      "visible": true,
+      "properties": {
+        "model": "ONU-Generic",
+        "status": "online",
+        "location": "",
+        "notes": ""
+      }
+    },
+    "3614600b-9bf7-44db-9e41-2b43bc47c25a": {
+      "id": "3614600b-9bf7-44db-9e41-2b43bc47c25a",
+      "device_type": "ONU",
+      "name": "ONU_4",
+      "x": -375,
+      "y": -300,
+      "icon_size": 64,
+      "visible": true,
+      "properties": {
+        "model": "ONU-Generic",
+        "status": "online",
+        "location": "",
+        "notes": ""
+      }
+    }
+  },
+  "connections": {
+    "connection_1": {
+      "device_a_id": "e3a8c3a9-a5b5-4453-b381-a8452bfbf6e5",
+      "device_b_id": "3614600b-9bf7-44db-9e41-2b43bc47c25a",
+      "device_a_name": "OLT_1",
+      "device_b_name": "ONU_4",
+      "distance": 320.6555784638714
+    },
+    "connection_2": {
+      "device_a_id": "e3a8c3a9-a5b5-4453-b381-a8452bfbf6e5",
+      "device_b_id": "65298be0-01e9-4bf4-9842-ae24b342999c",
+      "device_a_name": "OLT_1",
+      "device_b_name": "ONU_2",
+      "distance": 480.77541534483646
+    },
+    "connection_3": {
+      "device_a_id": "e3a8c3a9-a5b5-4453-b381-a8452bfbf6e5",
+      "device_b_id": "3e986a43-1a3d-4ab7-b7ec-6a30f7d0f62d",
+      "device_a_name": "OLT_1",
+      "device_b_name": "ONU_3",
+      "distance": 385.9339321697433
+    }
+  }
+}

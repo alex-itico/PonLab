@@ -1,0 +1,4 @@
+algorithm,cls,n_packets,mean_ms,p95_ms
+gated,EF,1801,0.013334,0.042088
+gated,AF,896,0.017263,0.043087
+gated,BE,1260,0.030111,0.065495

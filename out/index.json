@@ -1,0 +1,29 @@
+[
+  {
+    "algo": "ipact",
+    "grants_csv": "out\\mi_topologia_2.pon_ipact_grants.csv",
+    "per_onu_csv": "out\\mi_topologia_2.pon_ipact_per_onu.csv",
+    "cycles_csv": "out\\mi_topologia_2.pon_ipact_cycles.csv",
+    "packets_csv": "out\\mi_topologia_2.pon_ipact_packets.csv",
+    "delay_agg_csv": "out\\mi_topologia_2.pon_ipact_delay_agg.csv",
+    "json": "out\\mi_topologia_2.pon_ipact.json"
+  },
+  {
+    "algo": "limited",
+    "grants_csv": "out\\mi_topologia_2.pon_limited_grants.csv",
+    "per_onu_csv": "out\\mi_topologia_2.pon_limited_per_onu.csv",
+    "cycles_csv": "out\\mi_topologia_2.pon_limited_cycles.csv",
+    "packets_csv": "out\\mi_topologia_2.pon_limited_packets.csv",
+    "delay_agg_csv": "out\\mi_topologia_2.pon_limited_delay_agg.csv",
+    "json": "out\\mi_topologia_2.pon_limited.json"
+  },
+  {
+    "algo": "gated",
+    "grants_csv": "out\\mi_topologia_2.pon_gated_grants.csv",
+    "per_onu_csv": "out\\mi_topologia_2.pon_gated_per_onu.csv",
+    "cycles_csv": "out\\mi_topologia_2.pon_gated_cycles.csv",
+    "packets_csv": "out\\mi_topologia_2.pon_gated_packets.csv",
+    "delay_agg_csv": "out\\mi_topologia_2.pon_gated_delay_agg.csv",
+    "json": "out\\mi_topologia_2.pon_gated.json"
+  }
+]

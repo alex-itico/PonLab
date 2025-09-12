@@ -1,0 +1,19 @@
+{
+  "default_onu": {
+    "EF": { "type": "poisson", "lambda_bpc": 600,  "pkt_size_bytes": 200  },
+    "AF": { "type": "onoff",  "p_on": 0.20, "on_bytes_bpc": 12000, "pkt_size_bytes": 1500 },
+    "BE": { "type": "onoff",  "p_on": 0.10, "on_bytes_bpc": 30000, "pkt_size_bytes": 1500 }
+  },
+
+  "ONU_HOTSPOT_ID": {
+    "EF": { "type": "poisson", "lambda_bpc": 800,  "pkt_size_bytes": 200  },
+    "AF": { "type": "onoff",   "p_on": 0.45, "on_bytes_bpc": 28000, "pkt_size_bytes": 1500 },
+    "BE": { "type": "onoff",   "p_on": 0.55, "on_bytes_bpc": 120000, "pkt_size_bytes": 1500 }
+  },
+
+  "ONU_LIVIANA_ID": {
+    "EF": { "type": "poisson", "lambda_bpc": 400,  "pkt_size_bytes": 200  },
+    "AF": { "type": "det",     "bytes_per_cycle": 0, "pkt_size_bytes": 1500 },
+    "BE": { "type": "onoff",   "p_on": 0.05, "on_bytes_bpc": 15000, "pkt_size_bytes": 1500 }
+  }
+}
