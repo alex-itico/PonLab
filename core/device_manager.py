@@ -95,7 +95,7 @@ class DeviceGraphicsItem(QGraphicsPixmapItem):
             else:
                 # Por defecto asumir tema claro (negro para texto)
                 text_color = QColor(0, 0, 0)  # Negro por defecto (tema claro)
-                print("⚠️ Canvas no encontrado, usando color negro por defecto")
+                print("WARNING Canvas no encontrado, usando color negro por defecto")
             
             self.label_item.setDefaultTextColor(text_color)
     
@@ -108,7 +108,7 @@ class DeviceGraphicsItem(QGraphicsPixmapItem):
                 text_color = QColor(0, 0, 0)        # Negro para tema claro
             
             self.label_item.setDefaultTextColor(text_color)
-            print(f"🎨 Color de etiqueta establecido: {'blanco' if dark_theme else 'negro'}")
+            print(f"Color de etiqueta establecido: {'blanco' if dark_theme else 'negro'}")
     
     def update_label_position(self):
         """Actualizar posición de la etiqueta"""
