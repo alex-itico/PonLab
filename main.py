@@ -1,6 +1,6 @@
 """
 Simulador de Redes Ópticas Pasivas
-Punto de entrada principal de la aplicación
+Punto de entrada principal de la aplicaciónz
 """
 
 import sys

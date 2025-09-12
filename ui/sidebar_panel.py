@@ -9,7 +9,9 @@ from PyQt5.QtCore import Qt, pyqtSignal, QMimeData, QPoint
 from PyQt5.QtGui import QFont, QPixmap, QPainter, QColor, QPen, QBrush, QDrag
 from PyQt5.QtSvg import QSvgRenderer
 from utils.constants import DEFAULT_SIDEBAR_WIDTH
+from core.simulation_manager import SimulationManager
 import os
+
 
 class DeviceItem(QFrame):
     """Widget para representar un dispositivo individual"""
@@ -520,6 +522,11 @@ class SidebarPanel(QWidget):
         self.dark_theme = False
         self.device_items = []
         self.connection_item = None  # Referencia al item de conexión
+        self.canvas = None  # Referencia al canvas
+        
+        # Crear gestor de simulación
+        self.simulation_manager = SimulationManager()
+        
         self.setup_ui()
         self.populate_devices()
     
@@ -569,6 +576,9 @@ class SidebarPanel(QWidget):
         info_label.setFont(info_font)
         info_label.setFixedHeight(40)
         main_layout.addWidget(info_label)
+        
+
+        self.setLayout(main_layout)
         
         # Aplicar tema inicial
         self.set_theme(self.dark_theme)
@@ -720,3 +730,42 @@ class SidebarPanel(QWidget):
         for device_item in self.device_items:
             device_item.setParent(None)
         self.device_items.clear()
+    
+    def set_canvas_reference(self, canvas):
+        """Establecer referencia al canvas para acceso a dispositivos"""
+        self.canvas = canvas
+        if canvas and hasattr(canvas, 'device_manager'):
+            self.simulation_manager.set_device_manager(canvas.device_manager)
+    
+    def _handle_simulation_start(self, params):
+        """Iniciar simulación usando el SimulationManager"""
+        if not self.canvas or not hasattr(self.canvas, 'device_manager'):
+            print("❌ No hay canvas o device manager disponible")
+            return
+        
+        try:
+            # Inicializar simulación con parámetros
+            if self.simulation_manager.initialize_simulation(params):
+                # Iniciar simulación
+                success = self.simulation_manager.start_simulation()
+                if not success:
+                    print("❌ Error al iniciar la simulación")
+                    self.sim_panel.on_simulation_stopped()
+            else:
+                print("❌ Error al inicializar la simulación")
+                self.sim_panel.on_simulation_stopped()
+                
+        except Exception as e:
+            print(f"❌ Error al iniciar simulación: {e}")
+            self.sim_panel.on_simulation_stopped()
+    
+    def _handle_simulation_stop(self):
+        """Detener simulación en curso"""
+        try:
+            self.simulation_manager.stop_simulation()
+        except Exception as e:
+            print(f"❌ Error al detener simulación: {e}")
+    
+    def cleanup(self):
+        """Limpiar recursos del sidebar panel"""
+        print("🧹 Sidebar panel limpiado")
