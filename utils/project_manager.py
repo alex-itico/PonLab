@@ -70,10 +70,10 @@ class ProjectManager(QObject):
             with open(self.auto_save_path, 'w', encoding='utf-8') as f:
                 json.dump(self.project_data, f, indent=2, ensure_ascii=False)
             
-            print(f"💾 Auto-guardado en carpeta temporal: temp/sin_guardar.pon")
+            print(f"Auto-guardado en carpeta temporal: temp/sin_guardar.pon")
             return True
         except Exception as e:
-            print(f"❌ Error en auto-guardado: {e}")
+            print(f"ERROR en auto-guardado: {e}")
             return False
     
     def save_as(self, file_path: str) -> bool:
@@ -88,7 +88,7 @@ class ProjectManager(QObject):
             
             self.current_file_path = file_path
             self.project_saved.emit(file_path)
-            print(f"💾 Proyecto guardado: {file_path}")
+            print(f"Proyecto guardado: {file_path}")
             return True
             
         except Exception as e:
@@ -165,9 +165,9 @@ class ProjectManager(QObject):
                         # Borrar archivos temporales de más de 1 día
                         if os.path.getctime(file_path) < (datetime.now().timestamp() - 86400):
                             os.remove(file_path)
-                            print(f"🧹 Archivo temporal eliminado: {file}")
+                            print(f"Archivo temporal eliminado: {file}")
         except Exception as e:
-            print(f"⚠️ Error limpiando archivos temporales: {e}")
+            print(f"Error limpiando archivos temporales: {e}")
     
     def has_temp_save(self) -> bool:
         """Verificar si existe un archivo temporal"""

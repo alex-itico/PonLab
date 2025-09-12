@@ -18,6 +18,8 @@ from utils.resource_manager import resource_manager
 from utils.config_manager import config_manager
 from .canvas import Canvas
 from .sidebar_panel import SidebarPanel
+from .netponpy_sidebar import NetPONPySidebar
+from .log_panel import LogPanel
 
 class MainWindow(QMainWindow):
     """Clase de la ventana principal para el simulador de redes pasivas ópticas"""
@@ -29,6 +31,8 @@ class MainWindow(QMainWindow):
         self.components_visible = config_manager.get_setting('components_visible', True)
         self.grid_visible = config_manager.get_setting('grid_visible', True)
         self.simulation_visible = config_manager.get_setting('simulation_visible', True)
+        self.netponpy_visible = config_manager.get_setting('netponpy_visible', True)
+        self.log_panel_visible = config_manager.get_setting('log_panel_visible', True)
         # El origen siempre sigue el estado de la cuadrícula
         self.origin_visible = self.grid_visible
         self.dark_theme = config_manager.get_theme_settings()
@@ -56,26 +60,74 @@ class MainWindow(QMainWindow):
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
         
-        # Crear layout principal
-        main_layout = QHBoxLayout(central_widget)
+        # Crear layout principal vertical
+        main_layout = QVBoxLayout(central_widget)
         main_layout.setContentsMargins(5, 5, 5, 5)
         main_layout.setSpacing(5)
         
-        # Crear el sidebar panel
+        # Crear layout horizontal para canvas y sidebars
+        canvas_layout = QHBoxLayout()
+        canvas_layout.setSpacing(5)
+        
+        # Crear el sidebar panel izquierdo
         self.sidebar = SidebarPanel()
         self.sidebar.device_selected.connect(self.on_device_selected)
         self.sidebar.connection_mode_toggled.connect(self.on_connection_mode_toggled)
         
-        # Agregar sidebar al layout si está visible
+        # Agregar sidebar izquierdo al layout si está visible
         if self.components_visible:
-            main_layout.addWidget(self.sidebar)
+            canvas_layout.addWidget(self.sidebar)
+            canvas_layout.setStretchFactor(self.sidebar, 0)  # Sidebar izq no stretch
         
         # Crear el canvas principal
         self.canvas = Canvas()
         self.canvas.device_dropped.connect(self.on_device_dropped)
-        main_layout.addWidget(self.canvas)
+        canvas_layout.addWidget(self.canvas)
+        canvas_layout.setStretchFactor(self.canvas, 1)  # Canvas stretch principal
         
-        # El canvas ocupa el espacio restante
+        # Crear el sidebar derecho para NetPONPy
+        self.netponpy_sidebar = NetPONPySidebar()
+        
+        # Conectar señales del sistema de gráficos automáticos
+        self.setup_automatic_graphics_connections()
+        
+        # Agregar sidebar derecho al layout si está visible
+        if self.netponpy_visible:
+            canvas_layout.addWidget(self.netponpy_sidebar)
+            canvas_layout.setStretchFactor(self.netponpy_sidebar, 0)  # Sidebar der sin stretch limitante
+        
+        # Agregar layout del canvas al layout principal
+        main_layout.addLayout(canvas_layout)
+        
+        # Crear panel de log debajo del canvas
+        self.log_panel = LogPanel()
+        if self.log_panel_visible:
+            main_layout.addWidget(self.log_panel)
+        else:
+            self.log_panel.hide()
+        
+        # Establecer referencia del canvas en el sidebar para simulación
+        self.sidebar.set_canvas_reference(self.canvas)
+        
+        # Establecer referencia del canvas en el sidebar NetPONPy
+        self.netponpy_sidebar.set_canvas_reference(self.canvas)
+        
+        # Conectar el log panel con el panel NetPONPy (se hace después del setup completo)
+        self._connect_log_panel()
+        
+        # Conectar señales para actualizar automáticamente cuando cambie la topología
+        self.canvas.device_manager.devices_changed.connect(self.on_topology_changed)
+        
+        # El canvas ocupa el espacio restante verticalmente
+    
+    def _connect_log_panel(self):
+        """Conectar el panel de log con el panel NetPONPy"""
+        if (hasattr(self, 'log_panel') and self.log_panel and 
+            hasattr(self, 'netponpy_sidebar') and self.netponpy_sidebar and
+            hasattr(self.netponpy_sidebar, 'netponpy_panel') and 
+            self.netponpy_sidebar.netponpy_panel):
+            self.netponpy_sidebar.netponpy_panel.set_log_panel(self.log_panel)
+            print("Panel de log conectado con NetPONPy")
     
     def setup_menubar(self):
         """Configurar la barra de menú"""
@@ -146,6 +198,24 @@ class MainWindow(QMainWindow):
         self.simulation_action.setStatusTip('Mostrar u ocultar panel de simulación')
         self.simulation_action.triggered.connect(self.toggle_simulation)
         view_menu.addAction(self.simulation_action)
+        
+        # Mostrar/Ocultar NetPONPy
+        self.netponpy_action = QAction('Mostrar/Ocultar &NetPONPy', self)
+        self.netponpy_action.setCheckable(True)
+        self.netponpy_action.setChecked(self.netponpy_visible)
+        self.netponpy_action.setShortcut('Ctrl+N')
+        self.netponpy_action.setStatusTip('Mostrar u ocultar panel NetPONPy (Ctrl+N)')
+        self.netponpy_action.triggered.connect(self.toggle_netponpy)
+        view_menu.addAction(self.netponpy_action)
+        
+        # Mostrar/Ocultar Panel de Log
+        self.log_panel_action = QAction('Mostrar/Ocultar &Log', self)
+        self.log_panel_action.setCheckable(True)
+        self.log_panel_action.setChecked(self.log_panel_visible)
+        self.log_panel_action.setShortcut('Ctrl+L')
+        self.log_panel_action.setStatusTip('Mostrar u ocultar panel de log de eventos (Ctrl+L)')
+        self.log_panel_action.triggered.connect(self.toggle_log_panel)
+        view_menu.addAction(self.log_panel_action)
         
         view_menu.addSeparator()
         
@@ -271,7 +341,7 @@ class MainWindow(QMainWindow):
         # Intentar guardar
         if self.canvas.save_project_as(file_path):
             self.statusBar().showMessage(f'Proyecto guardado: {file_path}', 4000)
-            print(f"💾 Proyecto guardado en: {file_path}")
+            print(f"Proyecto guardado en: {file_path}")
         else:
             QMessageBox.warning(
                 self,
@@ -309,6 +379,22 @@ class MainWindow(QMainWindow):
         device_count = self.canvas.get_device_manager().get_device_count()
         print(f"📊 Total de dispositivos en canvas: {device_count}")
     
+    def on_topology_changed(self):
+        """Manejar cambios en la topología del canvas"""
+        # Notificar al panel NetPONPy que la topología cambió
+        if hasattr(self, 'netponpy_sidebar') and self.netponpy_sidebar:
+            if hasattr(self.netponpy_sidebar, 'netponpy_panel'):
+                # Resetear orquestrador cuando cambie la topología
+                self.netponpy_sidebar.netponpy_panel.reset_orchestrator()
+        
+        # Logs también en el panel principal si está disponible
+        if hasattr(self, 'log_panel') and self.log_panel:
+            device_count = self.canvas.get_device_manager().get_device_count() if self.canvas else 0
+            device_stats = self.canvas.get_device_manager().get_device_stats() if self.canvas else {}
+            olt_count = device_stats.get('olt_count', 0)
+            onu_count = device_stats.get('onu_count', 0)
+            self.log_panel.add_log_entry(f"🔄 Topología actualizada: {olt_count} OLT, {onu_count} ONUs")
+    
     def on_connection_mode_toggled(self, enabled):
         """Manejar cambio de modo conexión"""
         if self.canvas:
@@ -316,9 +402,9 @@ class MainWindow(QMainWindow):
             
             # Actualizar status bar
             if enabled:
-                self.statusBar().showMessage("🔗 Modo Conexión ACTIVO - Selecciona dos dispositivos para conectar", 0)
+                self.statusBar().showMessage("Modo Conexion ACTIVO - Selecciona dos dispositivos para conectar", 0)
             else:
-                self.statusBar().showMessage("🔗 Modo Conexión DESACTIVADO", 2000)
+                self.statusBar().showMessage("Modo Conexion DESACTIVADO", 2000)
     
     def toggle_grid(self):
         """Alternar visibilidad de la cuadrícula y el origen"""
@@ -360,6 +446,39 @@ class MainWindow(QMainWindow):
         print(f"Simulación {'mostrada' if self.simulation_visible else 'oculta'}")
         # TODO: Implementar lógica para mostrar/ocultar simulación
     
+    def toggle_netponpy(self):
+        """Alternar visibilidad del panel NetPONPy"""
+        self.netponpy_visible = not self.netponpy_visible
+        
+        # Mostrar/ocultar sidebar derecho
+        if self.netponpy_visible:
+            self.netponpy_sidebar.show()
+        else:
+            self.netponpy_sidebar.hide()
+        
+        # Actualizar estado del menú
+        self.netponpy_action.setChecked(self.netponpy_visible)
+        
+        print(f"NetPONPy {'mostrado' if self.netponpy_visible else 'oculto'}")
+    
+    def toggle_log_panel(self):
+        """Alternar visibilidad del panel de log"""
+        self.log_panel_visible = not self.log_panel_visible
+        
+        # Mostrar/ocultar panel de log
+        if self.log_panel_visible:
+            self.log_panel.show()
+        else:
+            self.log_panel.hide()
+        
+        # Actualizar estado del menú
+        self.log_panel_action.setChecked(self.log_panel_visible)
+        
+        # Guardar configuración
+        config_manager.set_setting('log_panel_visible', self.log_panel_visible)
+        
+        print(f"Panel de log {'mostrado' if self.log_panel_visible else 'oculto'}")
+    
     def set_theme(self, dark_mode):
         """Establecer tema de la aplicación"""
         self.dark_theme = dark_mode
@@ -384,9 +503,17 @@ class MainWindow(QMainWindow):
             if self.canvas:
                 self.canvas.set_theme(dark_mode)
             
-            # Actualizar tema del sidebar si existe
+            # Actualizar tema del sidebar izquierdo si existe
             if hasattr(self, 'sidebar') and self.sidebar:
                 self.sidebar.set_theme(dark_mode)
+            
+            # Actualizar tema del sidebar derecho si existe
+            if hasattr(self, 'netponpy_sidebar') and self.netponpy_sidebar:
+                self.netponpy_sidebar.set_theme(dark_mode)
+            
+            # Actualizar tema del panel de log si existe
+            if hasattr(self, 'log_panel') and self.log_panel:
+                self.log_panel.set_theme(dark_mode)
             
             # Actualizar mensaje en la barra de estado
             self.statusBar().showMessage(f'Tema {theme_name} aplicado', 2000)
@@ -552,6 +679,12 @@ class MainWindow(QMainWindow):
         # Guardar configuraciones de la UI
         config_manager.save_ui_settings(self)
         
+        # Limpiar recursos de los sidebars si existen
+        if hasattr(self, 'sidebar') and self.sidebar:
+            self.sidebar.cleanup()
+        if hasattr(self, 'netponpy_sidebar') and self.netponpy_sidebar:
+            self.netponpy_sidebar.cleanup()
+        
         # Permitir el cierre de la ventana
         event.accept()
     
@@ -606,7 +739,7 @@ class MainWindow(QMainWindow):
         # Intentar guardar
         if self.canvas and self.canvas.save_project_as(file_path):
             self.statusBar().showMessage(f'Proyecto guardado: {file_path}', 3000)
-            print(f"💾 Proyecto guardado en: {file_path}")
+            print(f"Proyecto guardado en: {file_path}")
             return QMessageBox.Yes  # Proceder con el cierre
         else:
             # Si falla el guardado, preguntar qué hacer
@@ -618,3 +751,49 @@ class MainWindow(QMainWindow):
                 QMessageBox.No
             )
             return reply
+
+    def setup_automatic_graphics_connections(self):
+        """Configurar conexiones para el sistema de gráficos automáticos"""
+        try:
+            # Acceder al panel integrado de PON que tiene el sistema de gráficos
+            if hasattr(self.netponpy_sidebar, 'netponpy_panel'):
+                panel = self.netponpy_sidebar.netponpy_panel
+                
+                # Conectar señales de simulación terminada
+                if hasattr(panel, 'simulation_finished'):
+                    panel.simulation_finished.connect(self.on_simulation_graphics_ready)
+                
+                # Conectar señales de gráficos guardados
+                if hasattr(panel, 'graphics_saver') and hasattr(panel.graphics_saver, 'graphics_saved'):
+                    panel.graphics_saver.graphics_saved.connect(self.on_graphics_saved)
+                
+                # Configurar opciones automáticas: solo ventana emergente y guardado
+                if hasattr(panel, 'auto_save_checkbox'):
+                    panel.auto_save_checkbox.setChecked(True)  # Guardar automáticamente
+                if hasattr(panel, 'popup_window_checkbox'):
+                    panel.popup_window_checkbox.setChecked(True)  # Ventana emergente
+                if hasattr(panel, 'auto_charts_checkbox'):
+                    panel.auto_charts_checkbox.setChecked(False)  # NO mostrar en panel
+                
+                print("OK Sistema de graficos automaticos conectado al main UI")
+                
+        except Exception as e:
+            print(f"WARNING Error conectando sistema de graficos automaticos: {e}")
+    
+    def on_simulation_graphics_ready(self):
+        """Callback cuando la simulación termina y los gráficos están listos"""
+        try:
+            self.statusBar().showMessage("Simulacion completada - Graficos generados automaticamente", 5000)
+            print("INFO Simulacion terminada, graficos automaticos procesados")
+            
+        except Exception as e:
+            print(f"ERROR en callback de simulacion terminada: {e}")
+    
+    def on_graphics_saved(self, session_directory):
+        """Callback cuando los gráficos se han guardado automáticamente"""
+        try:
+            self.statusBar().showMessage(f"Graficos guardados en: {session_directory}", 8000)
+            print(f"OK Graficos guardados automaticamente en: {session_directory}")
+            
+        except Exception as e:
+            print(f"ERROR en callback de graficos guardados: {e}")
