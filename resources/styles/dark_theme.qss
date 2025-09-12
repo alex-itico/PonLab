@@ -212,3 +212,359 @@ DevicePropertiesPanel QPushButton:disabled {
     color: #666666;
     border-color: #444444;
 }
+
+/* Estilos específicos para componentes PON */
+
+/* Panel de Resultados PON */
+PONResultsPanel {
+    background-color: #2b2b2b;
+    color: #ffffff;
+}
+
+PONResultsPanel QTabWidget::pane {
+    border: 1px solid #555555;
+    background-color: #3c3c3c;
+}
+
+PONResultsPanel QTabBar::tab {
+    background-color: #404040;
+    color: #ffffff;
+    padding: 8px 16px;
+    border: 1px solid #555555;
+    border-bottom: none;
+}
+
+PONResultsPanel QTabBar::tab:selected {
+    background-color: #4a90e2;
+    color: #ffffff;
+}
+
+PONResultsPanel QTabBar::tab:hover {
+    background-color: #357abd;
+}
+
+PONResultsPanel QTextEdit {
+    background-color: #1e1e1e;
+    color: #ffffff;
+    border: 1px solid #555555;
+    border-radius: 3px;
+    selection-background-color: #4a90e2;
+}
+
+PONResultsPanel QTableWidget {
+    background-color: #1e1e1e;
+    color: #ffffff;
+    border: 1px solid #555555;
+    gridline-color: #555555;
+    selection-background-color: #4a90e2;
+}
+
+PONResultsPanel QTableWidget::item {
+    padding: 4px;
+    border-bottom: 1px solid #404040;
+}
+
+PONResultsPanel QTableWidget::item:selected {
+    background-color: #4a90e2;
+    color: #ffffff;
+}
+
+PONResultsPanel QHeaderView::section {
+    background-color: #404040;
+    color: #ffffff;
+    padding: 4px;
+    border: 1px solid #555555;
+    font-weight: bold;
+}
+
+/* Panel de Gráficos PON */
+PONMetricsChartsPanel {
+    background-color: #2b2b2b;
+    color: #ffffff;
+}
+
+PONMetricsChartsPanel QGroupBox {
+    font-weight: bold;
+    color: #ffffff;
+    border: 2px solid #555555;
+    border-radius: 5px;
+    margin-top: 10px;
+    padding-top: 10px;
+}
+
+PONMetricsChartsPanel QGroupBox::title {
+    subcontrol-origin: margin;
+    left: 10px;
+    padding: 0 5px 0 5px;
+    color: #ffffff;
+}
+
+/* Títulos específicos de componentes PON */
+QLabel#pon_charts_title {
+    color: #ffffff;
+    background-color: transparent;
+    font-weight: bold;
+    font-size: 14px;
+}
+
+QLabel#pon_results_title {
+    color: #ffffff;
+    background-color: transparent;
+    font-weight: bold;
+    font-size: 14px;
+}
+
+/* Botones específicos de componentes PON */
+QPushButton#pon_charts_button {
+    background-color: #4a90e2;
+    color: #ffffff;
+    border: 1px solid #357abd;
+    border-radius: 4px;
+    padding: 6px 12px;
+    font-weight: bold;
+}
+
+QPushButton#pon_charts_button:hover {
+    background-color: #357abd;
+    border-color: #2a5a8a;
+}
+
+QPushButton#pon_charts_button:pressed {
+    background-color: #2a5a8a;
+}
+
+QPushButton#pon_results_button {
+    background-color: #4a90e2;
+    color: #ffffff;
+    border: 1px solid #357abd;
+    border-radius: 4px;
+    padding: 6px 12px;
+    font-weight: bold;
+}
+
+QPushButton#pon_results_button:hover {
+    background-color: #357abd;
+    border-color: #2a5a8a;
+}
+
+QPushButton#pon_results_button:pressed {
+    background-color: #2a5a8a;
+}
+
+QPushButton#pon_results_button:checked {
+    background-color: #2a5a8a;
+    border-color: #1e4a6b;
+}
+
+/* QGroupBox específicos de componentes PON */
+QGroupBox#pon_charts_group {
+    font-weight: bold;
+    color: #ffffff;
+    border: 2px solid #555555;
+    border-radius: 5px;
+    margin-top: 15px;
+    padding-top: 10px;
+    background-color: transparent;
+}
+
+QGroupBox#pon_charts_group::title {
+    subcontrol-origin: margin;
+    left: 10px;
+    padding: 0 8px 0 8px;
+    color: #ffffff;
+    font-size: 12px;
+    font-weight: bold;
+}
+
+QGroupBox#pon_results_group {
+    font-weight: bold;
+    color: #ffffff;
+    border: 2px solid #555555;
+    border-radius: 5px;
+    margin-top: 15px;
+    padding-top: 10px;
+    background-color: transparent;
+}
+
+QGroupBox#pon_results_group::title {
+    subcontrol-origin: margin;
+    left: 10px;
+    padding: 0 8px 0 8px;
+    color: #ffffff;
+    font-size: 12px;
+    font-weight: bold;
+}
+
+/* Panel Integrado PON */
+IntegratedPONTestPanel {
+    background-color: #2b2b2b;
+    color: #ffffff;
+}
+
+IntegratedPONTestPanel QProgressBar {
+    border: 1px solid #555555;
+    border-radius: 3px;
+    background-color: #404040;
+    text-align: center;
+    color: #ffffff;
+}
+
+IntegratedPONTestPanel QProgressBar::chunk {
+    background-color: #4a90e2;
+    border-radius: 2px;
+}
+
+IntegratedPONTestPanel QComboBox {
+    background-color: #404040;
+    color: #ffffff;
+    border: 1px solid #555555;
+    border-radius: 3px;
+    padding: 4px;
+}
+
+IntegratedPONTestPanel QComboBox:hover {
+    border-color: #4a90e2;
+}
+
+IntegratedPONTestPanel QComboBox::drop-down {
+    border: none;
+    width: 20px;
+}
+
+IntegratedPONTestPanel QComboBox::down-arrow {
+    image: none;
+    border: 2px solid #ffffff;
+    width: 3px;
+    height: 3px;
+}
+
+IntegratedPONTestPanel QComboBox QAbstractItemView {
+    background-color: #3c3c3c;
+    color: #ffffff;
+    border: 1px solid #555555;
+    selection-background-color: #4a90e2;
+}
+
+/* Ventana emergente de gráficos */
+GraphicsPopupWindow {
+    background-color: #2b2b2b;
+    color: #ffffff;
+}
+
+/* Elementos de la ventana popup de gráficos */
+QFrame#popup_header_frame {
+    background-color: #3a3a3a;
+    border: 1px solid #555555;
+    border-radius: 5px;
+    padding: 5px;
+}
+
+QLabel#popup_title_label {
+    color: #00d4ff;
+    font-size: 14px;
+    font-weight: bold;
+}
+
+QLabel#popup_session_label {
+    color: #ffffff;
+    font-size: 12px;
+}
+
+QGroupBox#popup_group {
+    background-color: #3a3a3a;
+    border: 2px solid #555555;
+    border-radius: 8px;
+    font-weight: bold;
+    color: #ffffff;
+    padding-top: 10px;
+    margin-top: 5px;
+}
+
+QGroupBox#popup_group::title {
+    subcontrol-origin: margin;
+    left: 10px;
+    padding: 0 5px 0 5px;
+    color: #00d4ff;
+}
+
+QTextEdit#popup_text_edit {
+    background-color: #1e1e1e;
+    color: #ffffff;
+    border: 1px solid #555555;
+    border-radius: 4px;
+    font-family: "Consolas", "Monaco", monospace;
+    padding: 5px;
+}
+
+QLabel#popup_instructions_label {
+    color: #cccccc;
+    font-size: 11px;
+    font-style: italic;
+    background-color: transparent;
+}
+
+QPushButton#popup_button {
+    background-color: #0078d4;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    font-weight: bold;
+    font-size: 12px;
+}
+
+QPushButton#popup_button:hover {
+    background-color: #106ebe;
+}
+
+QPushButton#popup_button:pressed {
+    background-color: #005a9e;
+}
+
+QPushButton#popup_button:default {
+    background-color: #0f7b0f;
+}
+
+QPushButton#popup_button:default:hover {
+    background-color: #0d6b0d;
+}
+
+/* Pestañas de la ventana popup */
+QTabWidget#popup_tabs {
+    background-color: #2d2d2d;
+}
+
+QTabWidget#popup_tabs::pane {
+    border: 1px solid #555555;
+    background-color: #2d2d2d;
+}
+
+QTabWidget#popup_tabs::tab-bar {
+    left: 5px;
+}
+
+QTabWidget#popup_tabs QTabBar::tab {
+    background-color: #3a3a3a;
+    color: #ffffff;
+    border: 1px solid #555555;
+    border-bottom-color: #555555;
+    border-top-left-radius: 4px;
+    border-top-right-radius: 4px;
+    min-width: 8ex;
+    padding: 8px 12px;
+    margin-right: 2px;
+}
+
+QTabWidget#popup_tabs QTabBar::tab:selected {
+    background-color: #0078d4;
+    color: #ffffff;
+    border-bottom-color: #0078d4;
+}
+
+QTabWidget#popup_tabs QTabBar::tab:hover {
+    background-color: #4a4a4a;
+}
+
+QTabWidget#popup_tabs QTabBar::tab:selected:hover {
+    background-color: #106ebe;
+}

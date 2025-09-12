@@ -867,3 +867,15 @@ class IntegratedPONTestPanel(QWidget):
             
         except Exception as e:
             print(f"ERROR limpiando panel PON: {e}")
+    
+    def set_theme(self, dark_theme):
+        """Aplicar tema al panel integrado PON"""
+        # Aplicar tema al panel de resultados
+        if hasattr(self, 'results_panel') and self.results_panel:
+            self.results_panel.set_theme(dark_theme)
+            
+        # Aplicar tema a la ventana emergente si existe
+        if hasattr(self, 'popup_window') and self.popup_window:
+            self.popup_window.set_theme(dark_theme)
+            
+        # El estilo QSS se aplicará automáticamente desde la ventana principal

@@ -804,16 +804,13 @@ class SidebarPanel(QWidget):
         info_label.setFixedHeight(40)
         main_layout.addWidget(info_label)
         
-<<<<<<< HEAD
         # Panel de propiedades de dispositivo
         self.properties_panel = DevicePropertiesPanel(self)
         self.properties_panel.edit_device_requested.connect(self.on_edit_device_requested)
         self.properties_panel.device_properties_changed.connect(self.on_device_properties_changed)
         main_layout.addWidget(self.properties_panel)
-=======
 
         self.setLayout(main_layout)
->>>>>>> jorge_dev
         
         # Aplicar tema inicial
         self.set_theme(self.dark_theme)
@@ -970,7 +967,6 @@ class SidebarPanel(QWidget):
             device_item.setParent(None)
         self.device_items.clear()
     
-<<<<<<< HEAD
     def update_device_properties(self, device, connection_manager=None):
         """Actualizar el panel de propiedades con un dispositivo seleccionado"""
         self.properties_panel.update_device_properties(device, connection_manager)
@@ -988,7 +984,7 @@ class SidebarPanel(QWidget):
         """Manejar cambio de propiedades desde el panel editable"""
         # Reenviar señal al nivel superior para actualizar el dispositivo
         self.device_properties_changed.emit(device_id, new_properties)
-=======
+
     def set_canvas_reference(self, canvas):
         """Establecer referencia al canvas para acceso a dispositivos"""
         self.canvas = canvas
@@ -1027,4 +1023,3 @@ class SidebarPanel(QWidget):
     def cleanup(self):
         """Limpiar recursos del sidebar panel"""
         print("🧹 Sidebar panel limpiado")
->>>>>>> jorge_dev
