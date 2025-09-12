@@ -10,7 +10,6 @@ from PyQt5.QtWidgets import (QGraphicsView, QGraphicsScene, QWidget,
                              QGraphicsItem, QMenu, QAction, QActionGroup, QShortcut)
 from PyQt5.QtCore import Qt, QRectF, QPoint, pyqtSignal
 from PyQt5.QtGui import QPen, QBrush, QColor, QPainter, QCursor, QFont, QKeySequence
-from .map_overlay_toggle import MapOverlayToggle
 from utils.constants import DEFAULT_CANVAS_WIDTH, DEFAULT_CANVAS_HEIGHT
 from utils.project_manager import ProjectManager
 from core import DeviceManager
@@ -84,9 +83,6 @@ class Canvas(QGraphicsView):
         
         # Crear info panel
         self.setup_info_panel()
-        
-        # Crear botón de máscara de mapa
-        self.setup_map_overlay_toggle()
         
         # Configurar shortcuts globales
         self.setup_shortcuts()
@@ -171,23 +167,6 @@ class Canvas(QGraphicsView):
         else:
             self.info_label.hide()
     
-    def setup_map_overlay_toggle(self):
-        """Configurar el botón de máscara de mapa en esquina inferior izquierda"""
-        self.map_overlay_toggle = MapOverlayToggle(self)
-        
-        # Aplicar tema actual
-        if hasattr(self, 'dark_theme'):
-            self.map_overlay_toggle.set_theme(self.dark_theme)
-        
-        # Conectar señal (por ahora sin funcionalidad específica)
-        self.map_overlay_toggle.toggled.connect(self.on_map_overlay_toggled)
-        
-        # Posicionar en esquina inferior izquierda
-        self.position_map_overlay_toggle()
-        
-        # Mostrar el botón
-        self.map_overlay_toggle.show()
-    
     def setup_shortcuts(self):
         """Configurar shortcuts globales para el canvas"""
         # Shortcut para toggle del panel de información
@@ -216,22 +195,6 @@ class Canvas(QGraphicsView):
         self.connection_shortcut = QShortcut(QKeySequence("L"), self)
         self.connection_shortcut.activated.connect(self.toggle_connection_mode_shortcut)
         
-    
-    def position_map_overlay_toggle(self):
-        """Posicionar el botón de mapa en la esquina inferior izquierda"""
-        if not hasattr(self, 'map_overlay_toggle'):
-            return
-            
-        # Posicionar en esquina inferior izquierda con margen
-        margin = 15
-        self.map_overlay_toggle.move(margin, self.height() - self.map_overlay_toggle.height() - margin)
-    
-    def on_map_overlay_toggled(self, is_active):
-        """Manejar cambio del botón de máscara de mapa"""
-        # Por ahora solo imprimir el cambio
-        state = "activada" if is_active else "desactivada"
-        print(f"Máscara de mapa {state}")
-        # TODO: Implementar lógica para mostrar/ocultar máscara de mapa
     
     def position_info_panel(self):
         """Posicionar el panel de información en la esquina inferior derecha"""
@@ -759,10 +722,6 @@ Tamaño de cuadrícula: {self.grid_size}px
             }}
         """)
         
-        # Actualizar tema del botón de mapa
-        if hasattr(self, 'map_overlay_toggle'):
-            self.map_overlay_toggle.set_theme(dark_theme)
-    
     def set_connection_mode(self, enabled):
         """Activar/desactivar modo conexión"""
         self.connection_mode = enabled
@@ -1032,7 +991,6 @@ Tamaño de cuadrícula: {self.grid_size}px
         """Manejar cambio de tamaño"""
         super().resizeEvent(event)
         self.position_info_panel()
-        self.position_map_overlay_toggle()  # Reposicionar botón de mapa
         self.setup_grid()  # Redibujar cuadrícula con nuevo tamaño
         self.update_axis_labels_position()  # Actualizar posición de etiquetas
     
@@ -1046,7 +1004,6 @@ Tamaño de cuadrícula: {self.grid_size}px
         """Refrescar el layout del canvas después de cambios de configuración"""
         # Reposicionar elementos
         self.position_info_panel()
-        self.position_map_overlay_toggle()  # Reposicionar botón de mapa
         self.setup_grid()
         self.update_axis_labels_position()
         
