@@ -9,7 +9,7 @@ from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel,
                              QCheckBox, QSlider, QSplitter)
 from PyQt5.QtCore import Qt, QTimer, pyqtSignal
 from PyQt5.QtGui import QFont
-from core.integrated_netponpy_adapter import IntegratedPONAdapter
+from core.pon_adapter import PONAdapter
 from .pon_simulation_results_panel import PONResultsPanel
 from .auto_graphics_saver import AutoGraphicsSaver
 from .graphics_popup_window import GraphicsPopupWindow
@@ -24,7 +24,7 @@ class IntegratedPONTestPanel(QWidget):
     
     def __init__(self):
         super().__init__()
-        self.adapter = IntegratedPONAdapter()
+        self.adapter = PONAdapter()
         self.simulation_running = False
         self.step_count = 0
         self.canvas_reference = None  # Referencia al canvas para obtener topología

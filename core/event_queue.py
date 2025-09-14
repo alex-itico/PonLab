@@ -196,13 +196,13 @@ class TimeSlotManager:
 class CycleTimeManager:
     """
     Gestor de timing para ciclos DBA
-    Garantiza ciclos regulares de 125μs
+    Garantiza ciclos regulares de 125us
     """
     
     def __init__(self, cycle_duration: float = 125e-6):
         """
         Args:
-            cycle_duration: Duración del ciclo DBA en segundos (default: 125μs)
+            cycle_duration: Duración del ciclo DBA en segundos (default: 125us)
         """
         self.cycle_duration = cycle_duration
         self.current_cycle = 0
@@ -243,9 +243,9 @@ class CycleTimeManager:
             Dict con fases y sus (start_time, end_time)
         """
         return {
-            'report_phase': (cycle_start, cycle_start + 40e-6),  # 0-40μs
-            'dba_processing': (cycle_start + 40e-6, cycle_start + 50e-6),  # 40-50μs
-            'transmission_phase': (cycle_start + 50e-6, cycle_start + self.cycle_duration)  # 50-125μs
+            'report_phase': (cycle_start, cycle_start + 40e-6),  # 0-40us
+            'dba_processing': (cycle_start + 40e-6, cycle_start + 50e-6),  # 40-50us
+            'transmission_phase': (cycle_start + 50e-6, cycle_start + self.cycle_duration)  # 50-125us
         }
     
     def is_in_transmission_phase(self, current_time: float) -> bool:
@@ -259,7 +259,7 @@ class CycleTimeManager:
             True si está en fase de transmisión
         """
         cycle_position = current_time % self.cycle_duration
-        return cycle_position >= 50e-6  # Después de 50μs del ciclo
+        return cycle_position >= 50e-6  # Después de 50us del ciclo
     
     def get_current_cycle_number(self, current_time: float) -> int:
         """Obtener número del ciclo actual"""

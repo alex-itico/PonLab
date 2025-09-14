@@ -7,7 +7,7 @@ from typing import Dict, List, Tuple, Optional
 from dataclasses import dataclass
 from .pon_request import Request
 from .pon_onu import ONU
-from .pon_dba_interface import DBAAlgorithmInterface
+from .pon_dba import DBAAlgorithmInterface
 
 
 @dataclass
@@ -41,7 +41,7 @@ class DBACycleManager:
         Inicializar gestor de ciclos DBA
         
         Args:
-            cycle_duration: Duración de un ciclo DBA en segundos (default: 125μs)
+            cycle_duration: Duración de un ciclo DBA en segundos (default: 125us)
         """
         self.cycle_duration = cycle_duration
         self.current_cycle = 0

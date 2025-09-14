@@ -38,7 +38,7 @@ class RealisticNetSim:
         
         Args:
             network: Red PON (OLT) a simular
-            cycle_duration: Duración de ciclo DBA en segundos (125μs default)
+            cycle_duration: Duración de ciclo DBA en segundos (125us default)
         """
         self.network = network
         self.dba_manager = DBACycleManager(cycle_duration)

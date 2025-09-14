@@ -6,10 +6,10 @@ Versión mejorada que previene consumo excesivo de memoria y CPU
 from typing import Dict, List, Optional, Any, Callable
 import numpy as np
 from .event_queue import EventQueue, EventType
-from .hybrid_onu import HybridONU
-from .hybrid_olt import HybridOLT
-from .traffic_scenarios import get_traffic_scenario, calculate_realistic_lambda
-from .pon_dba_interface import DBAAlgorithmInterface, FCFSDBAAlgorithm
+from .pon_event_onu import HybridONU
+from .pon_event_olt import HybridOLT
+from .pon_traffic import get_traffic_scenario, calculate_realistic_lambda
+from .pon_dba import DBAAlgorithmInterface, FCFSDBAAlgorithm
 
 
 class OptimizedHybridPONSimulator:

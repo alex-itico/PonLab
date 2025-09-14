@@ -18,13 +18,13 @@ def test_graphics_system():
         print("\n1. Importando componentes...")
         from ui.auto_graphics_saver import AutoGraphicsSaver
         from ui.pon_metrics_charts import PONMetricsChartsPanel
-        from core.integrated_netponpy_adapter import IntegratedPONAdapter
+        from core.integrated_netponpy_adapter import PONAdapter
         print("OK Todos los componentes importados correctamente")
         
         # Test 2: Crear instancias
         print("\n2. Creando instancias...")
         saver = AutoGraphicsSaver()
-        adapter = IntegratedPONAdapter()
+        adapter = PONAdapter()
         print("OK Instancias creadas correctamente")
         
         # Test 3: Verificar disponibilidad de PON
