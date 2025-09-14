@@ -10,7 +10,7 @@ from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel,
                              QProgressBar, QSplitter, QScrollArea, QFrame)
 from PyQt5.QtCore import Qt, QTimer, pyqtSignal
 from PyQt5.QtGui import QFont, QColor
-from core.integrated_netponpy_adapter import IntegratedPONAdapter
+from core.pon_adapter import PONAdapter
 from .pon_metrics_charts import PONMetricsChartsPanel
 
 
@@ -22,7 +22,7 @@ class PONResultsPanel(QWidget):
     
     def __init__(self):
         super().__init__()
-        self.adapter = IntegratedPONAdapter()
+        self.adapter = PONAdapter()
         self.current_results = {}
         self.update_timer = QTimer()
         self.update_timer.timeout.connect(self.refresh_results)

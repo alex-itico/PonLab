@@ -19,11 +19,11 @@ from .pon_queue import Queue
 from .pon_buffer import Buffer
 from .pon_onu import ONU as PON_ONU
 from .pon_olt import OLT as PON_OLT
-from .pon_dba_interface import DBAAlgorithmInterface, FCFSDBAAlgorithm, PriorityDBAAlgorithm, RLDBAAlgorithm
+from .pon_dba import DBAAlgorithmInterface, FCFSDBAAlgorithm, PriorityDBAAlgorithm, RLDBAAlgorithm
 from .pon_netsim import NetSim, EventEvaluator
 from .pon_orchestrator import PONOrchestrator, SimulatorStatus, SimulationResult
-from .traffic_scenarios import get_traffic_scenario, calculate_realistic_lambda, get_available_scenarios, print_scenario_info
-from .integrated_netponpy_adapter import IntegratedPONAdapter
+from .pon_traffic import get_traffic_scenario, calculate_realistic_lambda, get_available_scenarios, print_scenario_info
+from .pon_adapter import PONAdapter
 
 __all__ = [
     # PonLab original
@@ -62,5 +62,5 @@ __all__ = [
     'calculate_realistic_lambda',
     'get_available_scenarios',
     'print_scenario_info',
-    'IntegratedPONAdapter'
+    'PONAdapter'
 ]

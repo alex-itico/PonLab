@@ -122,7 +122,7 @@ def test_onu_scaling():
 
 def test_traffic_generation():
     """Test traffic generation patterns"""
-    from core.hybrid_onu import HybridONU
+    from core.pon_event_onu import HybridONU
     from core.event_queue import EventQueue, EventType
     from core.traffic_scenarios import get_traffic_scenario, calculate_realistic_lambda
     

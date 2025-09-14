@@ -5,14 +5,14 @@ Arquitectura event-driven con control temporal estricto
 
 from typing import Dict, List, Optional, Any, Tuple
 from .event_queue import EventQueue, EventType, TimeSlotManager, CycleTimeManager
-from .hybrid_onu import HybridONU
-from .pon_dba_interface import DBAAlgorithmInterface, FCFSDBAAlgorithm
+from .pon_event_onu import HybridONU
+from .pon_dba import DBAAlgorithmInterface, FCFSDBAAlgorithm
 
 
 class HybridOLT:
     """
     OLT con arquitectura híbrida event-driven
-    Polling determinístico cada 125μs + asignación secuencial de grants
+    Polling determinístico cada 125us + asignación secuencial de grants
     """
     
     def __init__(self, onus: Dict[str, HybridONU], 
@@ -76,13 +76,13 @@ class HybridOLT:
         cycle_start = current_time
         phases = self.cycle_manager.get_cycle_phases(cycle_start)
         
-        # FASE 1: Recolectar reports (0-40μs del ciclo)
+        # FASE 1: Recolectar reports (0-40us del ciclo)
         reports = self._collect_reports()
         
-        # FASE 2: Ejecutar DBA (40-50μs del ciclo)
+        # FASE 2: Ejecutar DBA (40-50us del ciclo)
         grants = self._execute_dba_algorithm(reports, current_time)
         
-        # FASE 3: Programar transmisiones (50-125μs del ciclo)
+        # FASE 3: Programar transmisiones (50-125us del ciclo)
         transmission_start = phases['transmission_phase'][0]
         self._schedule_sequential_transmissions(event_queue, grants, transmission_start)
         
@@ -319,7 +319,7 @@ class HybridOLT:
             
             # Calcular utilización solo para este ciclo
             cycle_transmission_time = sum(entry['duration'] for entry in cycle_transmissions)
-            transmission_window = cycle_duration * 0.6  # 60% del ciclo disponible para transmisión (75μs de 125μs)
+            transmission_window = cycle_duration * 0.6  # 60% del ciclo disponible para transmisión (75us de 125us)
             
             cycle_utilization = (cycle_transmission_time / transmission_window) * 100 if transmission_window > 0 else 0
             cycle_utilization = min(cycle_utilization, 100.0)

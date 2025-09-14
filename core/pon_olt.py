@@ -8,7 +8,7 @@ from .pon_request import Request
 from .pon_onu import ONU
 from .pon_connection import Connection
 from .pon_link import Link
-from .pon_dba_interface import DBAAlgorithmInterface, FCFSDBAAlgorithm
+from .pon_dba import DBAAlgorithmInterface, FCFSDBAAlgorithm
 
 # Mapeo de prioridades para requests
 PRIORITY_MAP = {"highest": 0, "high": 1, "medium": 2, "low": 3, "lowest": 4}
