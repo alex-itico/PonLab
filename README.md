@@ -8,7 +8,7 @@ _Una aplicación de escritorio avanzada para la simulación, diseño y análisis
 
 [![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)](https://python.org)
 [![PyQt5](https://img.shields.io/badge/PyQt5-5.15+-green.svg)](https://pypi.org/project/PyQt5/)
-[![Version](https://img.shields.io/badge/Version-1.0.0-brightgreen.svg)](releases)
+[![Version](https://img.shields.io/badge/Version-2.0.0-brightgreen.svg)](releases)
 
 **🎯 Desarrollado por:** Alex Aravena Tapia • Jesús Chaffe González • Eduardo Maldonado Zamora • Jorge Barrios Núñez
 
@@ -18,7 +18,7 @@ _Una aplicación de escritorio avanzada para la simulación, diseño y análisis
 
 ## 📋 Descripción
 
-**PonLab** es una aplicación de escritorio profesional desarrollada en Python que permite simular, diseñar y analizar redes ópticas pasivas (PON - Passive Optical Networks). La herramienta proporciona una interfaz gráfica intuitiva y potente para el diseño de infraestructuras de fibra óptica, con funcionalidades avanzadas de visualización, gestión de dispositivos y análisis de topologías.
+**PonLab** es una aplicación de escritorio profesional desarrollada en Python que permite simular, diseñar y analizar redes ópticas pasivas (PON - Passive Optical Networks). La herramienta proporciona una interfaz gráfica intuitiva y potente para el diseño de infraestructuras de fibra óptica, con funcionalidades avanzadas de visualización, gestión de dispositivos, análisis de topologías y simulación en tiempo real con gráficos interactivos.
 
 ## ✨ Características Principales
 
@@ -29,6 +29,7 @@ _Una aplicación de escritorio avanzada para la simulación, diseño y análisis
 - **Visualización de Mapas**: Integración con mapas geográficos para ubicación real de equipos
 - **Temas Personalizables**: Soporte completo para temas claro y oscuro con estilos profesionales
 - **Pantalla de Carga**: Splash screen con progreso de inicialización
+- **Interfaz Adaptativa**: Paneles redimensionables y configurables
 
 ### 🔧 **Gestión de Dispositivos**
 
@@ -37,6 +38,7 @@ _Una aplicación de escritorio avanzada para la simulación, diseño y análisis
 - **Gestión Visual**: Iconos SVG profesionales y representación gráfica detallada
 - **Información en Tiempo Real**: Panel de información con coordenadas y datos de dispositivos
 - **Selección y Manipulación**: Selección múltiple, movimiento y configuración de dispositivos
+- **Propiedades Configurables**: Configuración detallada de cada dispositivo
 
 ### 🔗 **Sistema de Conexiones**
 
@@ -46,6 +48,25 @@ _Una aplicación de escritorio avanzada para la simulación, diseño y análisis
 - **Cálculo de Distancias**: Medición automática de distancias entre dispositivos
 - **Validación de Conexiones**: Sistema que previene conexiones inválidas
 
+### 🧪 **Sistema de Simulación NetPONPy**
+
+- **Simulador PON Integrado**: Motor de simulación avanzado para redes PON
+- **Algoritmos DBA**: Soporte para múltiples algoritmos de asignación dinámica de ancho de banda (FCFS, Round-Robin, Weighted, Priority-Based)
+- **Escenarios Predefinidos**: Configuración automática para diferentes escenarios de tráfico
+- **Simulación en Tiempo Real**: Ejecución de simulaciones con tiempo configurable (1-120 segundos)
+- **Arquitectura Híbrida**: Sistema de simulación event-driven con control temporal preciso
+- **Métricas Avanzadas**: Análisis de delay, throughput, utilización, pérdida de paquetes
+
+### 📊 **Visualización y Análisis**
+
+- **Gráficos Interactivos**: Sistema completo de visualización con matplotlib
+- **Métricas en Tiempo Real**: Monitoreo de rendimiento durante la simulación
+- **Ventana de Resultados**: Popup automático con gráficos al finalizar simulación
+- **Exportación de Gráficos**: Guardado automático en formatos PNG, PDF, SVG
+- **Análisis de Performance**: Gráficos de delay, throughput, buffer occupancy
+- **Historial de Simulaciones**: Seguimiento y comparación de resultados
+- **Panel de Log**: Sistema de eventos en tiempo real con filtros
+
 ### 💾 **Gestión de Proyectos**
 
 - **Formato .pon Nativo**: Sistema de archivos propio para topologías PON
@@ -53,13 +74,14 @@ _Una aplicación de escritorio avanzada para la simulación, diseño y análisis
 - **Carga y Guardado**: Importación y exportación completa de proyectos
 - **Historial de Cambios**: Seguimiento de modificaciones y estados del proyecto
 - **Detección de Cambios**: Notificación de trabajo sin guardar
+- **Exportación de Resultados**: Guardado de métricas y gráficos de simulación
 
 ### ⌨️ **Controles y Navegación**
 
 - **Atajos de Teclado Completos**: Más de 15 atajos para navegación rápida
 - **Controles de Mouse**: Pan con botón central, zoom con rueda, selección con clic
 - **Navegación Inteligente**: Centrado automático, reseteo de vista y enfoque en dispositivos
-- **Modo Pantalla Completa**: Maximización del área de trabajo
+- **Panel NetPONPy**: Acceso rápido con Ctrl+N al sistema de simulación
 
 ## 🛠️ Tecnologías y Arquitectura
 
@@ -68,6 +90,8 @@ _Una aplicación de escritorio avanzada para la simulación, diseño y análisis
 - **Python 3.8+**: Lenguaje principal con soporte moderno
 - **PyQt5**: Framework de interfaz gráfica profesional
 - **PyQtWebEngine**: Motor web para mapas interactivos (opcional)
+- **Matplotlib**: Biblioteca para gráficos científicos y visualización
+- **NumPy**: Computación numérica para análisis de datos
 - **JSON**: Formato de almacenamiento de configuraciones
 - **SVG**: Gráficos vectoriales para iconos de dispositivos
 
@@ -80,16 +104,21 @@ _Una aplicación de escritorio avanzada para la simulación, diseño y análisis
 │   ├── MainWindow (Ventana principal)
 │   ├── Canvas (Área de trabajo)
 │   ├── SidebarPanel (Panel de dispositivos)
-│   ├── InfoPanel (Información en tiempo real)
-│   └── MapView (Visualización de mapas)
+│   ├── NetPONPySidebar (Panel de simulación)
+│   ├── IntegratedPONTestPanel (Simulador integrado)
+│   ├── PONMetricsChartsPanel (Visualización gráficos)
+│   ├── PONResultsPanel (Panel de resultados)
+│   └── GraphicsPopupWindow (Ventana emergente)
 ├── ⚙️ Core Logic (core/)
 │   ├── DeviceManager (Gestión de dispositivos)
 │   ├── ConnectionManager (Gestión de conexiones)
+│   ├── PONAdapter (Adaptador simulación)
+│   ├── SimulationManager (Gestor de simulaciones)
 │   └── ProjectManager (Gestión de proyectos)
 └── 🛠️ Utils Layer (utils/)
     ├── ConfigManager (Configuraciones)
     ├── ResourceManager (Recursos)
-    └── CoordinateSystem (Sistema de coordenadas)
+    └── Constants (Constantes y configuración)
 ```
 
 ## 📦 Instalación y Configuración
@@ -169,6 +198,7 @@ python main.py
 | `Ctrl+P` | **Panel Componentes** | Muestra/oculta el panel de dispositivos             |
 | `Ctrl+G` | **Cuadrícula**        | Muestra/oculta la cuadrícula y origen               |
 | `Ctrl+I` | **Panel Info**        | Muestra/oculta el panel de información              |
+| `Ctrl+N` | **Panel NetPONPy**    | Muestra/oculta el panel de simulación integrado     |
 | `Ctrl+S` | **Guardar**           | Guarda el proyecto actual                           |
 | `Ctrl+O` | **Abrir**             | Abre un proyecto existente                          |
 | `Delete` | **Eliminar**          | Elimina dispositivos/conexiones seleccionados       |
@@ -184,6 +214,20 @@ python main.py
 | **Drag & Drop**          | Mover dispositivos, arrastrar desde panel |
 
 ### **🔧 Funcionalidades Avanzadas**
+
+#### **Sistema de Simulación NetPONPy**
+
+- **Simulación Integrada**: Panel de simulación PON con controles completos
+- **Configuración Temporal**: Control de duración de simulación personalizable
+- **Ejecución Automática**: Sistema de simulación con parámetros optimizados
+- **Resultados en Tiempo Real**: Visualización inmediata de resultados
+
+#### **Visualización de Métricas PON**
+
+- **Gráficos Interactivos**: Gráficos matplotlib integrados en la interfaz
+- **Métricas en Tiempo Real**: Monitoreo continuo de parámetros de red
+- **Ventana Emergente**: Visualización ampliada de gráficos y resultados
+- **Análisis Detallado**: Métricas de rendimiento y estadísticas avanzadas
 
 #### **Gestión de Dispositivos**
 
@@ -205,6 +249,13 @@ python main.py
 - **Navegación Suave**: Pan fluido con inercia natural
 - **Centrado Inteligente**: `C` centra en origen, `R` resetea completamente
 - **Coordenadas en Tiempo Real**: Ve las coordenadas del mouse en tiempo real
+
+#### **Sistema de Temas**
+
+- **Temas Intercambiables**: Soporte completo para temas claro y oscuro
+- **Integración QSS**: Todos los componentes respetan el tema seleccionado
+- **Persistencia**: El tema seleccionado se mantiene entre sesiones
+- **Compatibilidad Universal**: Todos los paneles y ventanas soportan temas
 
 ## 📁 Estructura del Proyecto Detallada
 
@@ -287,45 +338,3 @@ PonLab/
 - **Configuración Persistente**: Todas las preferencias se guardan automáticamente
 - **Arquitectura Modular**: Fácil extensión y adición de nuevas funcionalidades
 - **API Interna**: Sistema de events y signals para comunicación entre componentes
-
-## 📸 Capturas de Pantalla
-
-### **🌟 Interfaz Principal**
-
-> _Canvas principal con dispositivos PON, conexiones y panel de información_
-
-### **🗺️ Vista de Mapas**
-
-> _Integración con mapas geográficos para ubicación real de equipos_
-
-### **🌙 Tema Oscuro**
-
-> _Interfaz en tema oscuro para trabajo nocturno_
-
-### **📱 Panel de Dispositivos**
-
-> _Panel lateral con dispositivos disponibles para drag & drop_
-
-
-## 📋 Roadmap y Funcionalidades Futuras
-
-### **🎯 Versión 1.1 - Simulación Avanzada**
-
-- [ ] **Simulación de Señales**: Cálculo de pérdidas y atenuación
-- [ ] **Análisis de Potencia**: Medición de niveles de señal
-- [ ] **Reportes Automáticos**: Generación de informes técnicos
-- [ ] **Exportación CAD**: Soporte para AutoCAD y formatos técnicos
-
-### **🎯 Versión 1.2 - Colaboración**
-
-- [ ] **Trabajo en Equipo**: Proyectos colaborativos en tiempo real
-- [ ] **Control de Versiones**: Historial de cambios en proyectos
-- [ ] **Comentarios**: Sistema de anotaciones y comentarios
-- [ ] **Sincronización en la Nube**: Backup automático en la nube
-
-### **🎯 Versión 2.0 - Inteligencia Artificial**
-
-- [ ] **Optimización Automática**: IA para optimizar topologías
-- [ ] **Detección de Problemas**: Análisis predictivo de fallos
-- [ ] **Sugerencias Inteligentes**: Recomendaciones de diseño
-- [ ] **Machine Learning**: Aprendizaje de patrones de usuario
