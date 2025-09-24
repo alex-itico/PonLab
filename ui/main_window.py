@@ -198,28 +198,19 @@ class MainWindow(QMainWindow):
         # Mostrar/Ocultar Simulación
         self.simulation_action = QAction('Mostrar/Ocultar &Simulación', self)
         self.simulation_action.setCheckable(True)
-        self.simulation_action.setChecked(self.simulation_visible)
-        self.simulation_action.setStatusTip('Mostrar u ocultar panel de simulación')
-        self.simulation_action.triggered.connect(self.toggle_simulation)
+        self.simulation_action.setChecked(self.netponpy_visible)
+        self.simulation_action.setShortcut('Ctrl+N')
+        self.simulation_action.setStatusTip('Mostrar u ocultar panel de simulación (Ctrl+N)')
+        self.simulation_action.triggered.connect(self.toggle_netponpy)
         view_menu.addAction(self.simulation_action)
         
-        # Mostrar/Ocultar NetPONPy
-        self.netponpy_action = QAction('Mostrar/Ocultar &NetPONPy', self)
-        self.netponpy_action.setCheckable(True)
-        self.netponpy_action.setChecked(self.netponpy_visible)
-        self.netponpy_action.setShortcut('Ctrl+N')
-        self.netponpy_action.setStatusTip('Mostrar u ocultar panel NetPONPy (Ctrl+N)')
-        self.netponpy_action.triggered.connect(self.toggle_netponpy)
-        view_menu.addAction(self.netponpy_action)
-        
-        # Mostrar/Ocultar Panel de Log
-        self.log_panel_action = QAction('Mostrar/Ocultar &Log', self)
-        self.log_panel_action.setCheckable(True)
-        self.log_panel_action.setChecked(self.log_panel_visible)
-        self.log_panel_action.setShortcut('Ctrl+L')
-        self.log_panel_action.setStatusTip('Mostrar u ocultar panel de log de eventos (Ctrl+L)')
-        self.log_panel_action.triggered.connect(self.toggle_log_panel)
-        view_menu.addAction(self.log_panel_action)
+        # Mostrar/Ocultar Panel Información
+        self.info_panel_action = QAction('Mostrar/Ocultar Panel &Información\tCtrl+I', self)
+        self.info_panel_action.setCheckable(True)
+        self.info_panel_action.setChecked(True)  # Por defecto visible
+        self.info_panel_action.setStatusTip('Mostrar u ocultar panel de información (Ctrl+I)')
+        self.info_panel_action.triggered.connect(self.toggle_info_panel_from_menu)
+        view_menu.addAction(self.info_panel_action)
         
         view_menu.addSeparator()
         
@@ -461,9 +452,9 @@ class MainWindow(QMainWindow):
             self.netponpy_sidebar.hide()
         
         # Actualizar estado del menú
-        self.netponpy_action.setChecked(self.netponpy_visible)
+        self.simulation_action.setChecked(self.netponpy_visible)
         
-        print(f"NetPONPy {'mostrado' if self.netponpy_visible else 'oculto'}")
+        print(f"Panel de simulación {'mostrado' if self.netponpy_visible else 'oculto'}")
     
     def toggle_log_panel(self):
         """Alternar visibilidad del panel de log"""
@@ -475,13 +466,17 @@ class MainWindow(QMainWindow):
         else:
             self.log_panel.hide()
         
-        # Actualizar estado del menú
-        self.log_panel_action.setChecked(self.log_panel_visible)
-        
         # Guardar configuración
         config_manager.set_setting('log_panel_visible', self.log_panel_visible)
         
         print(f"Panel de log {'mostrado' if self.log_panel_visible else 'oculto'}")
+    
+    def toggle_info_panel_from_menu(self):
+        """Alternar visibilidad del panel de información desde el menú"""
+        if hasattr(self, 'canvas') and self.canvas:
+            self.canvas.toggle_info_panel()
+        else:
+            print("Error: No se pudo acceder al canvas para toggle del panel de información")
     
     def set_theme(self, dark_mode):
         """Establecer tema de la aplicación"""

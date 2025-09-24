@@ -730,11 +730,9 @@ Tamaño de cuadrícula: {self.grid_size}px
         if enabled:
             # Cambiar cursor a modo conexión
             self.setCursor(Qt.CrossCursor)
-            print(f"Conexion:")
         else:
             # Restaurar cursor normal
             self.setCursor(self.original_cursor)
-            print(f"Conexion:")
     
     def is_connection_mode_active(self):
         """Verificar si el modo conexión está activo"""
@@ -762,7 +760,7 @@ Tamaño de cuadrícula: {self.grid_size}px
             connection = self.connection_manager.create_connection(source_device, target_device)
             
             if connection:
-                print(f"Conexion:")
+                print(f"🔗 Conexión creada: {source_device.name} ↔ {target_device.name}")
             
             return True
     
@@ -782,11 +780,6 @@ Tamaño de cuadrícula: {self.grid_size}px
                 if hasattr(sidebar, 'connection_item') and sidebar.connection_item:
                     sidebar.connection_item.set_connection_mode(new_mode)
                     
-            if new_mode:
-                print(f"Conexion:")
-            else:
-                print(f"Conexion:")
-                
         except Exception as e:
             print(f"Error en shortcut conexión: {e}")
     
@@ -802,7 +795,6 @@ Tamaño de cuadrícula: {self.grid_size}px
                 sidebar = main_window.sidebar
                 if hasattr(sidebar, 'connection_item') and sidebar.connection_item:
                     sidebar.connection_item.set_connection_mode(False)
-                    print(f"Conexion:")
         except Exception as e:
             print(f"Error notificando al sidebar: {e}")
 
@@ -1117,7 +1109,6 @@ Tamaño de cuadrícula: {self.grid_size}px
                 self.device_manager.deselect_all()
                 event.accept()
             elif event.key() == Qt.Key_L and not (event.modifiers() & Qt.ControlModifier):
-                print(f"Conexion:")
                 self.toggle_connection_mode_shortcut()
                 event.accept()
             elif event.key() in (Qt.Key_Delete, Qt.Key_Backspace):
