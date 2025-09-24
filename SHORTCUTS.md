@@ -11,6 +11,7 @@ Lista completa de atajos de teclado disponibles en el canvas:
 
 - **Ctrl+I**: Mostrar/Ocultar panel de información
 - **Ctrl+P**: Mostrar/Ocultar panel lateral de componentes
+- **Ctrl+N**: Mostrar/Ocultar panel de simulación
 - **Ctrl+G**: Mostrar/Ocultar cuadrícula (desde menú principal)
 
 ## 🔧 Redimensionar Dispositivos

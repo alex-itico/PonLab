@@ -44,6 +44,9 @@ class IntegratedPONTestPanel(QWidget):
         self.orchestrator_initialized = False
         self.auto_initialize = True  # Habilitar inicialización automática
         
+        # Control de debug verbose
+        self.verbose_debug = False  # Controla mensajes DEBUG repetitivos
+        
         self.setup_ui()
         self.check_pon_status()
         
@@ -279,7 +282,8 @@ class IntegratedPONTestPanel(QWidget):
             
             # Si no hay conexiones, ninguna ONU está conectada
             if not hasattr(self.canvas_reference, 'connection_manager'):
-                print(f"DEBUG Canvas no tiene connection_manager")
+                if getattr(self, 'verbose_debug', False):
+                    print(f"DEBUG Canvas no tiene connection_manager")
                 return 0
             
             connection_manager = self.canvas_reference.connection_manager
@@ -288,7 +292,12 @@ class IntegratedPONTestPanel(QWidget):
             all_onus = self.canvas_reference.device_manager.get_devices_by_type("ONU")
             all_olts = self.canvas_reference.device_manager.get_devices_by_type("OLT")
             
-            print(f"DEBUG Dispositivos encontrados: {len(all_olts)} OLTs, {len(all_onus)} ONUs totales")
+            # Solo mostrar debug si hay cambios significativos en dispositivos
+            current_total = len(all_olts) + len(all_onus)
+            if not hasattr(self, '_last_device_count') or self._last_device_count != current_total:
+                if getattr(self, 'verbose_debug', False):
+                    print(f"DEBUG Dispositivos encontrados: {len(all_olts)} OLTs, {len(all_onus)} ONUs totales")
+                self._last_device_count = current_total
             
             # Contar ONUs conectadas a cualquier OLT
             connected_onus = 0
@@ -307,55 +316,68 @@ class IntegratedPONTestPanel(QWidget):
                 if is_connected:
                     connected_onus += 1
             
-            print(f"DEBUG Estadísticas: Total={total_devices}, OLTs={olt_count}, ONUs totales={total_onus}, ONUs conectadas={connected_onus}")
-            if connected_onu_names:
-                print(f"DEBUG ONUs conectadas: {connected_onu_names}")
+            # Solo mostrar estadísticas detalladas si hay cambios importantes
+            if connected_onus != getattr(self, '_last_connected_count', -1):
+                if getattr(self, 'verbose_debug', False):
+                    print(f"DEBUG Estadísticas: Total={total_devices}, OLTs={olt_count}, ONUs totales={total_onus}, ONUs conectadas={connected_onus}")
+                    if connected_onu_names:
+                        print(f"DEBUG ONUs conectadas: {connected_onu_names}")
+                self._last_connected_count = connected_onus
             
             return connected_onus
             
         except Exception as e:
-            print(f"ERROR obteniendo conteo de ONUs conectadas: {e}")
-            import traceback
-            traceback.print_exc()
+            print(f"❌ Error obteniendo conteo de ONUs conectadas: {e}")
+            if getattr(self, 'verbose_debug', False):
+                import traceback
+                traceback.print_exc()
             return 0
     
     def update_onu_count_display(self):
         """Actualizar la visualización del conteo de ONUs"""
         try:
-            print("DEBUG Iniciando update_onu_count_display()")
+            # Solo debug en modo verbose
+            if getattr(self, 'verbose_debug', False):
+                print("DEBUG Iniciando update_onu_count_display()")
+                
             current_onus = self.get_onu_count_from_topology()
-            print(f"DEBUG Conteo obtenido: {current_onus}")
+            
+            # Solo mostrar debug si cambió el valor
+            if not hasattr(self, '_last_debug_count') or self._last_debug_count != current_onus:
+                if getattr(self, 'verbose_debug', False):
+                    print(f"DEBUG Conteo obtenido: {current_onus}")
+                self._last_debug_count = current_onus
             
             # Actualizar el texto del label
             self.onu_count_label.setText(str(current_onus))
-            print(f"DEBUG Label actualizado a: {self.onu_count_label.text()}")
             
-            # Cambiar estilo según el número detectado
+            # Cambiar estilo según el número detectado (sin debug repetitivo)
             if current_onus == 0:
                 self.onu_count_label.setStyleSheet("font-weight: bold; color: #dc2626; padding: 4px; background-color: #fef2f2; border-radius: 4px;")
                 self.onu_count_label.setToolTip("No se detectaron ONUs conectadas a OLTs")
-                print("DEBUG Estilo aplicado: ROJO (0 ONUs conectadas)")
             elif current_onus < 2:
                 self.onu_count_label.setStyleSheet("font-weight: bold; color: #f59e0b; padding: 4px; background-color: #fffbeb; border-radius: 4px;")
                 self.onu_count_label.setToolTip("Se requieren al menos 2 ONUs conectadas para simulación")
-                print("DEBUG Estilo aplicado: AMARILLO (< 2 ONUs conectadas)")
             else:
                 self.onu_count_label.setStyleSheet("font-weight: bold; color: #059669; padding: 4px; background-color: #ecfdf5; border-radius: 4px;")
                 self.onu_count_label.setToolTip(f"{current_onus} ONUs conectadas - listo para simular")
-                print("DEBUG Estilo aplicado: VERDE (≥ 2 ONUs conectadas)")
             
             # Detectar cambios y reinicializar si es necesario
             if self.orchestrator_initialized and current_onus != self.last_onu_count:
-                print(f"DEBUG Reinicializando: {self.last_onu_count} -> {current_onus}")
+                # Solo log cuando realmente hay cambios importantes
+                print(f"🔄 ONUs cambiaron: {self.last_onu_count} → {current_onus}")
                 self.auto_reinitialize(f"número de ONUs (detectadas: {current_onus})")
             elif not self.orchestrator_initialized and current_onus >= 2:
-                print("DEBUG Orquestador no inicializado pero hay ONUs suficientes - intentando inicializar")
+                # Solo mostrar una vez cuando se detectan ONUs suficientes
+                if not hasattr(self, '_onu_ready_logged') or not self._onu_ready_logged:
+                    print(f"✅ Detectadas {current_onus} ONUs - listo para inicializar")
+                    self._onu_ready_logged = True
+                    
                 # Intentar inicializar automáticamente si hay ONUs suficientes
                 if self.auto_initialize:
                     QTimer.singleShot(500, self.initialize_simulation)
             
             self.last_onu_count = current_onus
-            print(f"DEBUG Proceso completado. last_onu_count = {self.last_onu_count}")
             return current_onus
             
         except Exception as e:
@@ -439,10 +461,11 @@ class IntegratedPONTestPanel(QWidget):
     
     def initialize_simulation(self):
         """Inicializar simulación"""
-        print("DEBUG initialize_simulation() iniciada")
+        print("🚀 Inicializando simulación PON...")
         
         if not self.adapter.is_pon_available():
-            print("DEBUG Adapter no disponible")
+            if getattr(self, 'verbose_debug', False):
+                print("DEBUG Adapter no disponible")
             return
         
         # Obtener configuración automática
@@ -451,11 +474,12 @@ class IntegratedPONTestPanel(QWidget):
         algorithm = self.algorithm_combo.currentText()
         use_hybrid = self.hybrid_checkbox.isChecked()
         
-        print(f"DEBUG Configuración: ONUs={num_onus}, Escenario={scenario}, Algoritmo={algorithm}, Híbrido={use_hybrid}")
+        print(f"📊 Configuración: {num_onus} ONUs, Escenario: {scenario}, Algoritmo: {algorithm}, Híbrido: {use_hybrid}")
         
         # Validar que hay ONUs conectadas suficientes
         if num_onus < 2:
-            print(f"DEBUG ONUs conectadas insuficientes: {num_onus} < 2")
+            if getattr(self, 'verbose_debug', False):
+                print(f"DEBUG ONUs conectadas insuficientes: {num_onus} < 2")
             self.status_label.setText("❌ Se requieren al menos 2 ONUs conectadas a OLTs")
             self.status_label.setStyleSheet("color: red;")
             self.results_panel.add_log_message(f"⚠️ Topología insuficiente: {num_onus} ONUs conectadas (se requieren mínimo 2)")
@@ -777,12 +801,16 @@ class IntegratedPONTestPanel(QWidget):
     
     def on_devices_changed(self):
         """Callback cuando cambian los dispositivos en el canvas"""
-        print("DEBUG Dispositivos cambiaron - actualizando conteo de ONUs")
+        # Solo log cuando sea relevante
+        if getattr(self, 'verbose_debug', False):
+            print("DEBUG Dispositivos cambiaron - actualizando conteo de ONUs")
         self.update_onu_count_display()
     
     def on_connections_changed(self):
         """Callback cuando cambian las conexiones en el canvas"""
-        print("DEBUG Conexiones cambiaron - actualizando conteo de ONUs conectadas")
+        # Solo log cuando sea relevante  
+        if getattr(self, 'verbose_debug', False):
+            print("DEBUG Conexiones cambiaron - actualizando conteo de ONUs conectadas")
         self.update_onu_count_display()
     
     def periodic_onu_update(self):
@@ -797,10 +825,10 @@ class IntegratedPONTestPanel(QWidget):
     
     def force_onu_count_update(self):
         """Forzar actualización del conteo de ONUs"""
-        print("DEBUG Actualización manual de ONUs forzada por usuario")
+        print("🔄 Actualización manual de conteo de ONUs solicitada")
         self.update_onu_count_display()
         
-        # Mostrar información de debug al usuario
+        # Mostrar información detallada al usuario solo cuando se solicite manualmente
         if self.canvas_reference:
             all_devices = self.canvas_reference.device_manager.get_all_devices()
             all_onus = self.canvas_reference.device_manager.get_devices_by_type("ONU")

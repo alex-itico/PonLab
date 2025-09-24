@@ -81,7 +81,7 @@ _Una aplicación de escritorio avanzada para la simulación, diseño y análisis
 - **Atajos de Teclado Completos**: Más de 15 atajos para navegación rápida
 - **Controles de Mouse**: Pan con botón central, zoom con rueda, selección con clic
 - **Navegación Inteligente**: Centrado automático, reseteo de vista y enfoque en dispositivos
-- **Panel NetPONPy**: Acceso rápido con Ctrl+N al sistema de simulación
+- **Panel Simulación**: Acceso rápido con Ctrl+N al sistema de simulación
 
 ## 🛠️ Tecnologías y Arquitectura
 
@@ -198,7 +198,7 @@ python main.py
 | `Ctrl+P` | **Panel Componentes** | Muestra/oculta el panel de dispositivos             |
 | `Ctrl+G` | **Cuadrícula**        | Muestra/oculta la cuadrícula y origen               |
 | `Ctrl+I` | **Panel Info**        | Muestra/oculta el panel de información              |
-| `Ctrl+N` | **Panel NetPONPy**    | Muestra/oculta el panel de simulación integrado     |
+| `Ctrl+N` | **Panel Simulación**  | Muestra/oculta el panel de simulación               |
 | `Ctrl+S` | **Guardar**           | Guarda el proyecto actual                           |
 | `Ctrl+O` | **Abrir**             | Abre un proyecto existente                          |
 | `Delete` | **Eliminar**          | Elimina dispositivos/conexiones seleccionados       |
