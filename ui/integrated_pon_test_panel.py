@@ -3,16 +3,26 @@ Integrated PON Test Panel
 Panel de prueba mejorado que usa el adaptador integrado y muestra gráficos automáticamente
 """
 
+import os
+
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, 
                              QPushButton, QComboBox, QSpinBox, QTextEdit,
                              QGroupBox, QGridLayout, QSizePolicy, QProgressBar,
-                             QCheckBox, QSlider, QSplitter)
+                             QCheckBox, QSlider, QSplitter, QFileDialog)
 from PyQt5.QtCore import Qt, QTimer, pyqtSignal
 from PyQt5.QtGui import QFont
 from core.pon_adapter import PONAdapter
 from .pon_simulation_results_panel import PONResultsPanel
 from .auto_graphics_saver import AutoGraphicsSaver
 from .graphics_popup_window import GraphicsPopupWindow
+
+# Importar ModelManager con manejo de errores
+try:
+    from core.rl_integration.model_bridge import ModelManager
+    MODEL_BRIDGE_AVAILABLE = True
+except ImportError as e:
+    MODEL_BRIDGE_AVAILABLE = False
+    print(f"[WARNING] Model Bridge no disponible: {e}")
 
 
 class IntegratedPONTestPanel(QWidget):
@@ -44,6 +54,12 @@ class IntegratedPONTestPanel(QWidget):
         self.orchestrator_initialized = False
         self.auto_initialize = True  # Habilitar inicialización automática
         
+        # Gestión de modelos RL
+        self.model_manager = None
+        self.current_rl_model = None
+        self.rl_model_path = None
+        self._initialize_model_manager()
+        
         self.setup_ui()
         self.check_pon_status()
         
@@ -58,6 +74,21 @@ class IntegratedPONTestPanel(QWidget):
         self.onu_update_timer = QTimer()
         self.onu_update_timer.timeout.connect(self.periodic_onu_update)
         self.onu_update_timer.start(5000)  # Cada 5 segundos (reducir frecuencia)
+    
+    def _initialize_model_manager(self):
+        """Inicializar ModelManager si está disponible"""
+        if MODEL_BRIDGE_AVAILABLE:
+            try:
+                self.model_manager = ModelManager(self)
+                # Conectar señales
+                self.model_manager.model_loaded.connect(self._on_rl_model_loaded)
+                self.model_manager.model_error.connect(self._on_rl_model_error)
+                print("[OK] ModelManager inicializado")
+            except Exception as e:
+                print(f"[ERROR] Error inicializando ModelManager: {e}")
+                self.model_manager = None
+        else:
+            print("[WARNING] ModelManager no disponible - modelos RL deshabilitados")
         
     def setup_ui(self):
         """Configurar interfaz de usuario"""
@@ -128,43 +159,72 @@ class IntegratedPONTestPanel(QWidget):
         config_layout.addWidget(QLabel("DBA:"), 1, 0)
         self.algorithm_combo = QComboBox()
         if self.adapter.is_pon_available():
-            self.algorithm_combo.addItems(self.adapter.get_available_algorithms())
+            algorithms = self.adapter.get_available_algorithms()
+            self.algorithm_combo.addItems(algorithms)
+            
+            # Agregar opción de agente RL si está disponible
+            if MODEL_BRIDGE_AVAILABLE:
+                self.algorithm_combo.addItem("RL Agent")
+        
         self.algorithm_combo.currentTextChanged.connect(self.on_algorithm_changed)
         config_layout.addWidget(self.algorithm_combo, 1, 1)
         
+        # Selector de modelo RL (inicialmente oculto)
+        config_layout.addWidget(QLabel("Modelo RL:"), 2, 0)
+        rl_layout = QHBoxLayout()
+        
+        self.rl_model_combo = QComboBox()
+        self.rl_model_combo.setVisible(False)
+        self.rl_model_combo.currentTextChanged.connect(self.on_rl_model_changed)
+        rl_layout.addWidget(self.rl_model_combo)
+        
+        self.load_model_btn = QPushButton("📁")
+        self.load_model_btn.setMaximumWidth(30)
+        self.load_model_btn.setVisible(False)
+        self.load_model_btn.setToolTip("Cargar modelo desde archivo")
+        self.load_model_btn.clicked.connect(self.load_rl_model_from_file)
+        rl_layout.addWidget(self.load_model_btn)
+        
+        rl_widget = QWidget()
+        rl_widget.setLayout(rl_layout)
+        config_layout.addWidget(rl_widget, 2, 1)
+        
+        # Actualizar lista de modelos RL
+        self._update_rl_models_list()
+        
         # Escenario de tráfico
-        config_layout.addWidget(QLabel("Escenario:"), 2, 0)
+        config_layout.addWidget(QLabel("Escenario:"), 3, 0)
         self.scenario_combo = QComboBox()
         if self.adapter.is_pon_available():
             self.scenario_combo.addItems(self.adapter.get_available_traffic_scenarios())
         self.scenario_combo.currentTextChanged.connect(self.on_scenario_changed)
-        config_layout.addWidget(self.scenario_combo, 2, 1)
+        config_layout.addWidget(self.scenario_combo, 3, 1)
         
         # Arquitectura de simulación
-        config_layout.addWidget(QLabel("Arquitectura:"), 3, 0)
+        config_layout.addWidget(QLabel("Arquitectura:"), 4, 0)
         self.hybrid_checkbox = QCheckBox("Híbrida Event-Driven")
         self.hybrid_checkbox.setChecked(True)  # Por defecto usar híbrida
         self.hybrid_checkbox.setToolTip("Usar arquitectura híbrida con control temporal estricto")
         self.hybrid_checkbox.toggled.connect(self.on_architecture_changed)
-        config_layout.addWidget(self.hybrid_checkbox, 3, 1)
+        config_layout.addWidget(self.hybrid_checkbox, 4, 1)
         
         # Tiempo de simulación (para arquitectura híbrida)
-        config_layout.addWidget(QLabel("Tiempo (s):"), 4, 0)
+        config_layout.addWidget(QLabel("Tiempo (s):"), 5, 0)
         self.duration_spinbox = QSpinBox()
         self.duration_spinbox.setRange(1, 120)
         self.duration_spinbox.setValue(10)
         self.duration_spinbox.setToolTip("Duración en segundos (solo arquitectura híbrida)")
         self.duration_spinbox.valueChanged.connect(self.on_duration_changed)
-        config_layout.addWidget(self.duration_spinbox, 4, 1)
+        config_layout.addWidget(self.duration_spinbox, 5, 1)
         
         # Pasos de simulación (para arquitectura clásica)
-        config_layout.addWidget(QLabel("Pasos:"), 5, 0)
+        config_layout.addWidget(QLabel("Pasos:"), 6, 0)
         self.steps_spinbox = QSpinBox()
         self.steps_spinbox.setRange(100, 10000)
         self.steps_spinbox.setValue(1000)
         self.steps_spinbox.setSingleStep(100)
         self.steps_spinbox.setToolTip("Número de pasos (solo arquitectura clásica)")
-        config_layout.addWidget(self.steps_spinbox, 5, 1)
+        config_layout.addWidget(self.steps_spinbox, 6, 1)
         
         layout.addWidget(config_group)
         
@@ -220,6 +280,24 @@ class IntegratedPONTestPanel(QWidget):
         options_layout.addWidget(self.auto_init_checkbox)
         
         sim_layout.addLayout(options_layout)
+        
+        # Panel de información del agente RL (inicialmente oculto)
+        self.rl_info_group = QGroupBox("Estado del Agente RL")
+        self.rl_info_group.setVisible(False)
+        rl_info_layout = QVBoxLayout(self.rl_info_group)
+        
+        self.rl_model_info_label = QLabel("Modelo: No cargado")
+        self.rl_model_info_label.setWordWrap(True)
+        rl_info_layout.addWidget(self.rl_model_info_label)
+        
+        self.rl_decisions_label = QLabel("Decisiones: 0")
+        rl_info_layout.addWidget(self.rl_decisions_label)
+        
+        self.rl_last_action_label = QLabel("Última acción: N/A")
+        self.rl_last_action_label.setWordWrap(True)
+        rl_info_layout.addWidget(self.rl_last_action_label)
+        
+        sim_layout.addWidget(self.rl_info_group)
         
         # Información sobre visualización de resultados
         info_label = QLabel("Los resultados se mostraran en una ventana emergente al terminar la simulacion")
@@ -367,6 +445,13 @@ class IntegratedPONTestPanel(QWidget):
     def on_algorithm_changed(self):
         """Manejar cambio de algoritmo DBA"""
         algorithm = self.algorithm_combo.currentText()
+        
+        # Mostrar/ocultar controles de modelo RL
+        is_rl_algorithm = (algorithm == "RL Agent")
+        self.rl_model_combo.setVisible(is_rl_algorithm)
+        self.load_model_btn.setVisible(is_rl_algorithm)
+        self.rl_info_group.setVisible(is_rl_algorithm)
+        
         if self.orchestrator_initialized and algorithm != self.last_algorithm:
             self.auto_reinitialize(f"algoritmo DBA ({algorithm})")
         self.last_algorithm = algorithm
@@ -384,6 +469,136 @@ class IntegratedPONTestPanel(QWidget):
         if self.orchestrator_initialized and duration != self.last_duration:
             self.auto_reinitialize(f"tiempo de simulación ({duration}s)")
         self.last_duration = duration
+    
+    def _update_rl_models_list(self):
+        """Actualizar lista de modelos RL disponibles"""
+        if not self.model_manager:
+            return
+        
+        self.rl_model_combo.clear()
+        available_models = self.model_manager.get_available_models()
+        
+        if available_models:
+            self.rl_model_combo.addItem("Seleccionar modelo...")
+            self.rl_model_combo.addItems(available_models)
+        else:
+            self.rl_model_combo.addItem("No hay modelos disponibles")
+    
+    def on_rl_model_changed(self):
+        """Manejar cambio de modelo RL seleccionado"""
+        model_name = self.rl_model_combo.currentText()
+        
+        if not model_name or model_name in ["Seleccionar modelo...", "No hay modelos disponibles"]:
+            self.current_rl_model = None
+            return
+        
+        # Obtener parámetros del entorno
+        env_params = {
+            'num_onus': self.get_onu_count_from_topology(),
+            'traffic_scenario': self.scenario_combo.currentText()
+        }
+        
+        # Cargar modelo
+        if self.model_manager:
+            self.current_rl_model = self.model_manager.load_model(model_name, env_params)
+            
+            if self.current_rl_model:
+                self.results_panel.add_log_message(f"[RL] Modelo cargado: {model_name}")
+                self._update_rl_info_display()
+                
+                # Reinicializar si es necesario
+                if self.orchestrator_initialized:
+                    self.auto_reinitialize(f"modelo RL ({model_name})")
+            else:
+                self.results_panel.add_log_message(f"[ERROR] Error cargando modelo RL: {model_name}")
+    
+    def load_rl_model_from_file(self):
+        """Cargar modelo RL desde archivo"""
+        if not self.model_manager:
+            return
+        
+        file_path, _ = QFileDialog.getOpenFileName(
+            self,
+            "Seleccionar modelo RL",
+            "",
+            "Modelos RL (*.zip);;Todos los archivos (*)"
+        )
+        
+        if file_path:
+            try:
+                # Copiar archivo a directorio de modelos si no está ahí
+                model_name = os.path.basename(file_path)
+                target_path = os.path.join(self.model_manager.models_directory, model_name)
+                
+                # Crear directorio si no existe
+                os.makedirs(self.model_manager.models_directory, exist_ok=True)
+                
+                # Copiar archivo si no existe en el directorio de modelos
+                if not os.path.exists(target_path):
+                    import shutil
+                    shutil.copy2(file_path, target_path)
+                    print(f"[OK] Modelo copiado a: {target_path}")
+                
+                # Actualizar lista y seleccionar el modelo
+                self._update_rl_models_list()
+                
+                # Seleccionar el modelo cargado
+                index = self.rl_model_combo.findText(model_name)
+                if index >= 0:
+                    self.rl_model_combo.setCurrentIndex(index)
+                
+                self.results_panel.add_log_message(f"[RL] Modelo cargado desde archivo: {file_path}")
+                
+            except Exception as e:
+                error_msg = f"Error cargando modelo desde archivo: {str(e)}"
+                print(f"[ERROR] {error_msg}")
+                self.results_panel.add_log_message(f"[ERROR] {error_msg}")
+    
+    def _on_rl_model_loaded(self, model_path):
+        """Callback cuando se carga un modelo RL"""
+        self.rl_model_path = model_path
+        print(f"[OK] Modelo RL cargado: {model_path}")
+    
+    def _on_rl_model_error(self, error_msg):
+        """Callback cuando hay error cargando modelo RL"""
+        print(f"[ERROR] Error modelo RL: {error_msg}")
+        if hasattr(self, 'results_panel'):
+            self.results_panel.add_log_message(f"[ERROR] RL: {error_msg}")
+    
+    def _update_rl_info_display(self):
+        """Actualizar visualización de información del agente RL"""
+        if self.current_rl_model:
+            # Obtener estadísticas del modelo
+            stats = self.current_rl_model.get_statistics()
+            
+            model_name = stats.get('name', 'Desconocido')
+            decisions_made = stats.get('decisions_made', 0)
+            model_loaded = stats.get('model_loaded', False)
+            
+            self.rl_model_info_label.setText(f"Modelo: {model_name}")
+            self.rl_decisions_label.setText(f"Decisiones: {decisions_made}")
+            
+            if model_loaded:
+                self.rl_model_info_label.setStyleSheet("color: green;")
+            else:
+                self.rl_model_info_label.setStyleSheet("color: red;")
+                
+            self.rl_last_action_label.setText("Última acción: Esperando simulación...")
+        else:
+            self.rl_model_info_label.setText("Modelo: No cargado")
+            self.rl_model_info_label.setStyleSheet("color: #666;")
+            self.rl_decisions_label.setText("Decisiones: 0")
+            self.rl_last_action_label.setText("Última acción: N/A")
+    
+    def _update_rl_stats_during_simulation(self):
+        """Actualizar estadísticas del agente RL durante la simulación"""
+        if self.current_rl_model and self.algorithm_combo.currentText() == "RL Agent":
+            try:
+                stats = self.current_rl_model.get_statistics()
+                decisions_made = stats.get('decisions_made', 0)
+                self.rl_decisions_label.setText(f"Decisiones: {decisions_made}")
+            except Exception as e:
+                print(f"Error actualizando estadísticas RL: {e}")
     
     def on_architecture_changed(self):
         """Manejar cambio de arquitectura"""
@@ -485,13 +700,23 @@ class IntegratedPONTestPanel(QWidget):
             self.last_onu_count = num_onus
             self.last_algorithm = algorithm
             
+            # Configurar bridge RL si se seleccionó agente RL
+            if algorithm == "RL Agent" and self.current_rl_model:
+                self.adapter.set_rl_model_bridge(self.current_rl_model)
+                self.results_panel.add_log_message(f"[RL] Bridge configurado: {self.current_rl_model.get_name()}")
+            elif algorithm != "RL Agent":
+                # Limpiar bridge RL si se cambió a otro algoritmo
+                self.adapter.set_rl_model_bridge(None)
+            
             # Configurar algoritmo
             if use_hybrid:
                 success_alg, msg_alg = self.adapter.set_hybrid_dba_algorithm(algorithm)
                 if not success_alg:
                     self.results_panel.add_log_message(f"Warning: {msg_alg}")
             else:
-                self.adapter.set_dba_algorithm(algorithm)
+                success_alg, msg_alg = self.adapter.set_dba_algorithm(algorithm)
+                if not success_alg:
+                    self.results_panel.add_log_message(f"Warning: {msg_alg}")
             
             arch_type = "híbrida" if use_hybrid else "clásica"
             self.status_label.setText(f"✅ Simulación {arch_type} inicializada")
@@ -618,6 +843,9 @@ class IntegratedPONTestPanel(QWidget):
         delay = data.get('mean_delay', 0)
         throughput = data.get('mean_throughput', 0)
         
+        # Actualizar estadísticas del agente RL si está activo
+        self._update_rl_stats_during_simulation()
+        
         # Real-time metrics display removed
         # self.steps_label.setText(f"Pasos: {steps}")
         # self.requests_label.setText(f"Solicitudes: {requests}")
@@ -641,6 +869,9 @@ class IntegratedPONTestPanel(QWidget):
         
         # NUEVO: Guardar gráficos automáticamente y mostrar ventana emergente
         self.handle_automatic_graphics_processing()
+        
+        # Actualización final de estadísticas RL
+        self._update_rl_stats_during_simulation()
         
         # Emitir señal
         self.simulation_finished.emit()
@@ -862,6 +1093,11 @@ class IntegratedPONTestPanel(QWidget):
             if hasattr(self, 'popup_window') and self.popup_window:
                 self.popup_window.close()
                 self.popup_window = None
+            
+            # Limpiar model manager
+            if hasattr(self, 'model_manager') and self.model_manager:
+                self.model_manager.cleanup()
+                self.model_manager = None
             
             print("Panel PON integrado limpiado")
             
