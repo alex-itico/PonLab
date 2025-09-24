@@ -97,7 +97,7 @@ class SplashScreen(QSplashScreen):
         version_font = QFont("Arial", 10)
         painter.setFont(version_font)
         
-        version_text = "Versión 1.0"
+        version_text = "Versión 1.3.0"
         version_rect = painter.fontMetrics().boundingRect(version_text)
         version_x = (self.width() - version_rect.width()) // 2
         version_y = subtitle_y + 30
