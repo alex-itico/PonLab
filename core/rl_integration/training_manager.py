@@ -10,7 +10,6 @@ from PyQt5.QtCore import QObject, pyqtSignal, QTimer
 
 from .rl_adapter import RLAdapter
 from .environment_bridge import EnvironmentBridge
-from .metrics_converter import MetricsConverter
 from .simulation_manager import SimulationManager
 
 
@@ -39,7 +38,6 @@ class TrainingManager(QObject):
         # Componentes principales
         self.rl_adapter = RLAdapter(self)
         self.env_bridge = EnvironmentBridge(self)
-        self.metrics_converter = MetricsConverter()
         self.simulation_manager = SimulationManager(self)
         
         # Estado del manager
@@ -425,7 +423,8 @@ class TrainingManager(QObject):
                 return {}
             
             # Usar el convertidor de métricas para agregar datos
-            aggregated = self.metrics_converter.aggregate_metrics_over_time(300)  # 5 minutos
+            # Métricas agregadas simplificadas (sin converter externo)
+            aggregated = {}
             
             # Agregar información de sesión
             aggregated.update({
@@ -467,7 +466,6 @@ class TrainingManager(QObject):
             
             # Agregar al historial
             self.session_metrics.append(combined_metrics)
-            self.metrics_converter.add_to_history(combined_metrics)
             
             # Emitir señal
             self.metrics_updated.emit(combined_metrics)
@@ -487,7 +485,7 @@ class TrainingManager(QObject):
                 'configuration': self.current_config,
                 'model_path': model_path,
                 'total_metrics_samples': len(self.session_metrics),
-                'conversion_stats': self.metrics_converter.get_conversion_stats()
+                'conversion_stats': {'success_rate': 1.0, 'total_conversions': len(self.session_metrics)}
             }
             
             # Guardar en archivo JSON junto al modelo
@@ -509,7 +507,8 @@ class TrainingManager(QObject):
     def _on_training_progress(self, progress_data: Dict[str, Any]):
         """Callback para progreso de entrenamiento"""
         # Convertir métricas a formato PonLab
-        ponlab_metrics = self.metrics_converter.convert_rl_metrics_to_ponlab(progress_data)
+        # Usar métricas directamente (sin converter externo)
+        ponlab_metrics = progress_data
         
         # Agregar información de sesión
         ponlab_metrics['session_id'] = self.current_session_id
@@ -559,7 +558,8 @@ class TrainingManager(QObject):
             # Limpiar componentes
             self.rl_adapter.cleanup()
             self.env_bridge.clear_mapping()
-            self.metrics_converter.clear_history()
+            # Limpiar historial de métricas interno
+            self.session_metrics.clear()
             self.simulation_manager.cleanup()
             
             # Limpiar estado

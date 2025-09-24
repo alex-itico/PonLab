@@ -19,14 +19,8 @@ except ImportError as e:
     print(f"ERROR cargando PON Core: {e}")
     PON_CORE_AVAILABLE = False
 
-# Importar bridge de modelos RL
-try:
-    from .rl_integration.model_bridge import RLModelDBABridge
-    RL_MODEL_BRIDGE_AVAILABLE = True
-    print("OK RL Model Bridge disponible")
-except ImportError as e:
-    RL_MODEL_BRIDGE_AVAILABLE = False
-    print(f"WARNING RL Model Bridge no disponible: {e}")
+# RL Model Bridge no disponible - eliminado para independencia
+RL_MODEL_BRIDGE_AVAILABLE = False
 
 
 class PONAdapter:
@@ -47,8 +41,6 @@ class PONAdapter:
         # Results storage
         self.last_simulation_results = None
         
-        # RL Model Bridge
-        self.rl_model_bridge = None
         
         # Default configuration
         self.config = {
@@ -348,13 +340,6 @@ class PONAdapter:
             self._log_event("ERROR", error_msg)
             return False, error_msg
     
-    def set_rl_model_bridge(self, rl_model_bridge):
-        """Configurar bridge de modelo RL"""
-        self.rl_model_bridge = rl_model_bridge
-        if rl_model_bridge:
-            self._log_event("CONFIG", f"Bridge RL configurado: {rl_model_bridge.get_name()}")
-        else:
-            self._log_event("CONFIG", "Bridge RL removido")
     
     def set_event_dba_algorithm(self, algorithm_name):
         """Cambiar algoritmo DBA específicamente para simulación por eventos (compatibilidad)"""
@@ -376,12 +361,6 @@ class PONAdapter:
             "RL-DBA": RLDBAAlgorithm
         }
         
-        # Manejar agente RL pre-entrenado
-        if algorithm_name == "RL Agent":
-            if self.rl_model_bridge is not None:
-                return self.rl_model_bridge
-            else:
-                raise ValueError("No se ha cargado ningún modelo RL. Seleccione un modelo primero.")
         
         if algorithm_name not in algorithms:
             raise ValueError(f"Algoritmo desconocido: {algorithm_name}")
