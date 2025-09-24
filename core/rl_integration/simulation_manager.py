@@ -11,7 +11,6 @@ from PyQt5.QtCore import QObject, pyqtSignal, QThread
 
 from .rl_adapter import RLAdapter
 from .environment_bridge import EnvironmentBridge
-from .metrics_converter import MetricsConverter
 
 
 class SimulationManager(QObject):
@@ -33,7 +32,6 @@ class SimulationManager(QObject):
         # Componentes principales
         self.rl_adapter = RLAdapter(self)
         self.env_bridge = EnvironmentBridge(self)
-        self.metrics_converter = MetricsConverter()
 
         # Estado de simulación
         self.is_simulating = False
@@ -216,8 +214,8 @@ class SimulationManager(QObject):
     def _on_simulation_progress(self, progress_data: Dict[str, Any]):
         """Callback para progreso de simulación"""
         try:
-            # Convertir métricas usando el converter
-            converted_metrics = self.metrics_converter.convert_simulation_metrics(progress_data)
+            # Usar métricas directamente (sin converter externo)
+            converted_metrics = progress_data
 
             # Agregar información de simulación
             converted_metrics.update({
@@ -314,7 +312,6 @@ class SimulationManager(QObject):
             # Limpiar componentes
             self.rl_adapter.cleanup()
             self.env_bridge.clear_mapping()
-            self.metrics_converter.clear_history()
 
             # Limpiar estado
             self.loaded_model = None
