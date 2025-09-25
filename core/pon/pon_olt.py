@@ -4,11 +4,11 @@ Optical Line Terminal integrado de netPONPy con algoritmos DBA modulares
 """
 
 from typing import Dict, List, Optional
-from .pon_request import Request
+from ..data.pon_request import Request
 from .pon_onu import ONU
-from .pon_connection import Connection
-from .pon_link import Link
-from .pon_dba import DBAAlgorithmInterface, FCFSDBAAlgorithm
+from ..connections.pon_connection import Connection
+from ..connections.pon_link import Link
+from ..algorithms.pon_dba import DBAAlgorithmInterface, FCFSDBAAlgorithm
 
 # Mapeo de prioridades para requests
 PRIORITY_MAP = {"highest": 0, "high": 1, "medium": 2, "low": 3, "lowest": 4}

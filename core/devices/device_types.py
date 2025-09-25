@@ -4,7 +4,7 @@ Implementaciones específicas para dispositivos OLT y ONU
 """
 
 from .device import Device
-from .upstream_scheduler import UpstreamScheduler
+from ..algorithms.upstream_scheduler import UpstreamScheduler
 from PyQt5.QtCore import QObject, pyqtSignal, QTimer
 import numpy as np
 import time

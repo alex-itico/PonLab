@@ -3,10 +3,12 @@ OLT híbrido con polling determinístico y asignación secuencial de grants
 Arquitectura event-driven con control temporal estricto
 """
 
-from typing import Dict, List, Optional, Any, Tuple
+from typing import Dict, List, Optional, Any, Tuple, TYPE_CHECKING
 from .event_queue import EventQueue, EventType, TimeSlotManager, CycleTimeManager
 from .pon_event_onu import HybridONU
-from .pon_dba import DBAAlgorithmInterface, FCFSDBAAlgorithm
+
+if TYPE_CHECKING:
+    from ..algorithms.pon_dba import DBAAlgorithmInterface
 
 
 class HybridOLT:
@@ -16,7 +18,7 @@ class HybridOLT:
     """
     
     def __init__(self, onus: Dict[str, HybridONU], 
-                 dba_algorithm: Optional[DBAAlgorithmInterface] = None,
+                 dba_algorithm: Optional['DBAAlgorithmInterface'] = None,
                  channel_capacity_mbps: float = 1024.0):
         """
         Args:
@@ -25,7 +27,12 @@ class HybridOLT:
             channel_capacity_mbps: Capacidad del canal en Mbps
         """
         self.onus = onus
-        self.dba_algorithm = dba_algorithm or FCFSDBAAlgorithm()
+        if dba_algorithm is None:
+            # Lazy import to avoid circular dependency
+            from ..algorithms.pon_dba import FCFSDBAAlgorithm
+            self.dba_algorithm = FCFSDBAAlgorithm()
+        else:
+            self.dba_algorithm = dba_algorithm
         self.channel_capacity = channel_capacity_mbps
         
         # Gestores de tiempo
@@ -359,6 +366,6 @@ class HybridOLT:
         self.last_reports.clear()
         self.pending_grants.clear()
     
-    def set_dba_algorithm(self, dba_algorithm: DBAAlgorithmInterface):
+    def set_dba_algorithm(self, dba_algorithm: 'DBAAlgorithmInterface'):
         """Cambiar algoritmo DBA"""
         self.dba_algorithm = dba_algorithm

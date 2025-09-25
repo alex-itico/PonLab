@@ -4,9 +4,9 @@ Motor de simulación PON realista con ciclos DBA
 """
 
 from typing import Optional, Dict, Any, List
-from .pon_olt import OLT
-from .pon_dba_cycle import DBACycleManager, DBAResult, DBAAllocation
-from .pon_request import Request
+from ..pon.pon_olt import OLT
+from ..algorithms.pon_dba_cycle import DBACycleManager, DBAResult, DBAAllocation
+from ..data.pon_request import Request
 
 
 class EventEvaluator:

@@ -12,7 +12,7 @@ from PyQt5.QtCore import Qt, QRectF, QPoint, pyqtSignal
 from PyQt5.QtGui import QPen, QBrush, QColor, QPainter, QCursor, QFont, QKeySequence
 from utils.constants import DEFAULT_CANVAS_WIDTH, DEFAULT_CANVAS_HEIGHT
 from utils.project_manager import ProjectManager
-from core import DeviceManager
+from core import DeviceManager, ConnectionManager
 
 class Canvas(QGraphicsView):
     """Clase de canvas con cuadrícula infinita centrada"""
@@ -57,7 +57,6 @@ class Canvas(QGraphicsView):
         self.device_manager.set_canvas_reference(self)  # Pasar referencia al canvas
         
         # Inicializar gestor de conexiones
-        from core.connection_manager import ConnectionManager
         self.connection_manager = ConnectionManager(self)
         
         # Inicializar gestor de proyectos con auto-save

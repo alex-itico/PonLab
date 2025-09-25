@@ -5,7 +5,7 @@ Interfaces para algoritmos DBA modulares integradas de netPONPy
 
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional
-from .pon_request import Request
+from ..data.pon_request import Request
 
 
 class DBAAlgorithmInterface(ABC):

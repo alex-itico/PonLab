@@ -6,7 +6,7 @@ from PyQt5.QtWidgets import QMessageBox
 from PyQt5.QtCore import QObject, pyqtSignal
 from typing import List, Optional
 from .connection import Connection
-from .device import Device
+from ..devices.device import Device
 
 
 class ConnectionManager(QObject):
@@ -45,6 +45,30 @@ class ConnectionManager(QObject):
         # Verificar si ya existe una conexión entre estos dispositivos
         if self.get_connection_between(device_a, device_b):
             return False, f"Ya existe una conexión entre {device_a.name} y {device_b.name}"
+        
+        # ⚠️ VALIDACIÓN PON: Las ONUs solo pueden conectarse a OLTs
+        if device_a.device_type == "ONU" and device_b.device_type == "ONU":
+            return False, (
+                "⚠️ Conexión no permitida: ONU ↔ ONU\n\n"
+                "Las ONUs únicamente pueden conectarse a una OLT.\n"
+                f"• {device_a.name} es una ONU\n"
+                f"• {device_b.name} es una ONU\n\n"
+                "Para conectar estos dispositivos necesitas:\n"
+                "1. Un dispositivo OLT en la topología\n"
+                "2. Conectar cada ONU al OLT por separado"
+            )
+        
+        # ℹ️ VALIDACIÓN PON: Conexiones entre OLTs no son típicas en PON
+        if device_a.device_type == "OLT" and device_b.device_type == "OLT":
+            return False, (
+                "ℹ️ Conexión no recomendada: OLT ↔ OLT\n\n"
+                "Las conexiones entre OLTs no son típicas en redes PON.\n"
+                f"• {device_a.name} es una OLT\n"
+                f"• {device_b.name} es una OLT\n\n"
+                "En una topología PON estándar:\n"
+                "• Cada OLT gestiona sus propias ONUs\n"
+                "• Las ONUs se conectan únicamente a su OLT"
+            )
         
         return True, ""
     
@@ -167,9 +191,20 @@ class ConnectionManager(QObject):
     def show_connection_error(self, message: str):
         """Mostrar mensaje de error al usuario"""
         msg_box = QMessageBox()
-        msg_box.setIcon(QMessageBox.Warning)
-        msg_box.setWindowTitle("Error de Conexión")
+        
+        # Configurar el tipo de mensaje según el contenido
+        if "⚠️" in message and "ONU ↔ ONU" in message:
+            msg_box.setIcon(QMessageBox.Critical)
+            msg_box.setWindowTitle("⚠️ Conexión PON no permitida")
+        elif "ℹ️" in message and "OLT ↔ OLT" in message:
+            msg_box.setIcon(QMessageBox.Information)
+            msg_box.setWindowTitle("ℹ️ Conexión PON no recomendada")
+        else:
+            msg_box.setIcon(QMessageBox.Warning)
+            msg_box.setWindowTitle("Error de Conexión")
+        
         msg_box.setText(message)
+        msg_box.setStandardButtons(QMessageBox.Ok)
         msg_box.exec_()
     
     def get_connections_count(self) -> int:

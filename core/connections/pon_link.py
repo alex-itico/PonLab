@@ -3,7 +3,7 @@ PON Link
 Clase de enlace óptico integrada de netPONPy
 """
 
-from .pon_request import Request
+from ..data.pon_request import Request
 
 
 class Link:

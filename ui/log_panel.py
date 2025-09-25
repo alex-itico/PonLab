@@ -51,8 +51,8 @@ class LogPanel(QWidget):
         
         header_layout.addStretch()
         
-        # Filtros de categoría
-        self.setup_category_filters(header_layout)
+        # Filtros de categoría - OCULTOS por solicitud del usuario
+        # self.setup_category_filters(header_layout)
         
         # Botón limpiar
         self.clear_button = QPushButton("🗑️ Limpiar")
