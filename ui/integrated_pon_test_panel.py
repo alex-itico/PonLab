@@ -536,24 +536,45 @@ class IntegratedPONTestPanel(QWidget):
     def unload_rl_model(self):
         """Desactivar modelo RL y volver a algoritmos normales"""
         try:
+            # Log estado inicial
+            self.results_panel.add_log_message("[DEBUG] Iniciando desactivación RL...")
+
+            # Verificar estado antes de desactivar
+            if hasattr(self.adapter, 'smart_rl_algorithm'):
+                has_smart_rl = self.adapter.smart_rl_algorithm is not None
+                self.results_panel.add_log_message(f"[DEBUG] PONAdapter.smart_rl_algorithm antes: {has_smart_rl}")
+
             # Descargar modelo del adapter (PONAdapter system)
             if hasattr(self.adapter, 'unload_rl_model'):
-                self.adapter.unload_rl_model()
+                success, message = self.adapter.unload_rl_model()
+                self.results_panel.add_log_message(f"[PON-ADAPTER] Desactivación: {message}")
+
+                # Verificar estado después
+                if hasattr(self.adapter, 'smart_rl_algorithm'):
+                    has_smart_rl_after = self.adapter.smart_rl_algorithm is not None
+                    self.results_panel.add_log_message(f"[DEBUG] PONAdapter.smart_rl_algorithm después: {has_smart_rl_after}")
 
             # Descargar modelo del training manager (TrainingManager system)
             if self.training_manager and hasattr(self.training_manager, 'simulation_manager'):
                 if hasattr(self.training_manager.simulation_manager, 'loaded_model'):
+                    had_model = self.training_manager.simulation_manager.loaded_model is not None
                     self.training_manager.simulation_manager.loaded_model = None
-                    self.results_panel.add_log_message("[TRAINING-MANAGER] Modelo RL de TrainingManager desactivado")
+                    self.results_panel.add_log_message(f"[TRAINING-MANAGER] Modelo desactivado (tenía modelo: {had_model})")
 
             # Restaurar algoritmos DBA normales
             self.algorithm_combo.clear()
             if self.adapter.is_pon_available():
                 algorithms = self.adapter.get_available_algorithms()
+                self.results_panel.add_log_message(f"[DEBUG] Algoritmos disponibles después: {algorithms}")
                 self.algorithm_combo.addItems(algorithms)
 
                 # Volver a FCFS por defecto
                 self.algorithm_combo.setCurrentText("FCFS")
+
+                # CRÍTICO: Actualizar algoritmo en el adapter
+                if hasattr(self.adapter, 'set_dba_algorithm'):
+                    self.adapter.set_dba_algorithm("FCFS")
+                    self.results_panel.add_log_message("[DEBUG] Algoritmo del adapter cambiado a FCFS")
 
             # Actualizar UI
             self.rl_status_label.setText("No hay modelo cargado")
