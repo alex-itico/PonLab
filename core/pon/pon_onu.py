@@ -26,7 +26,7 @@ class ONU:
             "low": 0.6,
             "lowest": 0.9,
         },
-        transmition_rate: float = 1024.0,  # Mbps
+        transmission_rate: float = 1024.0,  # Mbps (corregido typo)
         service_level_agreement: float = 1024.0,  # Mbps
         buffer_size: int = 512,  # Número máximo de solicitudes en buffer
         mean_arrival_rate: Optional[float] = None,  # requests/second
@@ -40,7 +40,7 @@ class ONU:
             id: Identificador único de la ONU
             name: Nombre descriptivo
             traffic_transmition_probs: Probabilidades por tipo de tráfico
-            transmition_rate: Tasa de transmisión en Mbps
+            transmission_rate: Tasa de transmisión en Mbps (corregido typo)
             service_level_agreement: SLA en Mbps
             buffer_size: Capacidad máxima del buffer
             mean_arrival_rate: Tasa media de llegadas (req/s)
@@ -58,7 +58,7 @@ class ONU:
             "low": (0.005, 0.015),      # 5-15KB
             "lowest": (0.001, 0.005)    # 1-5KB
         }
-        self.transmition_rate = transmition_rate
+        self.transmission_rate = transmission_rate  # Corregido typo
         self.service_level_agreement = service_level_agreement
         
         # Calcular tasa de llegadas si no se proporciona
@@ -208,7 +208,7 @@ class ONU:
         return {
             'id': self.id,
             'name': self.name,
-            'transmition_rate': self.transmition_rate,
+            'transmission_rate': self.transmission_rate,  # Corregido typo
             'sla': self.service_level_agreement,
             'buffer_occupancy': self.get_buffer_occupancy(),
             'buffer_stats': self.buffer.get_buffer_stats(),

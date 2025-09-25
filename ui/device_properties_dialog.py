@@ -31,15 +31,15 @@ class DevicePropertiesDialog(QDialog):
         """Configurar la interfaz de usuario"""
         self.setWindowTitle(f"Propiedades - {self.device.name}")
         self.setModal(True)
-        self.setFixedSize(400, 350)
+        self.setFixedSize(500, 450)  # Aumentado de 400x350 a 500x450
         
         # Eliminar botón de "What's This?" (signo de interrogación)
         self.setWindowFlags(self.windowFlags() & ~Qt.WindowContextHelpButtonHint)
         
         # Layout principal
         main_layout = QVBoxLayout(self)
-        main_layout.setSpacing(10)
-        main_layout.setContentsMargins(15, 15, 15, 15)
+        main_layout.setSpacing(15)  # Aumentado de 10 a 15
+        main_layout.setContentsMargins(20, 20, 20, 20)  # Aumentado de 15 a 20
         
         # Título
         title_label = QLabel(f"Propiedades del Dispositivo")
@@ -72,41 +72,49 @@ class DevicePropertiesDialog(QDialog):
         """Configurar sección de información básica"""
         basic_group = QGroupBox("Información Básica")
         basic_layout = QFormLayout(basic_group)
+        basic_layout.setSpacing(8)  # Espaciado entre filas
         
         # ID (solo lectura)
         self.id_edit = QLineEdit(self.device.id)
         self.id_edit.setReadOnly(True)
+        self.id_edit.setMinimumWidth(300)  # Ancho mínimo
         basic_layout.addRow("ID:", self.id_edit)
         
         # Tipo (solo lectura)
         self.type_edit = QLineEdit(self.device.device_type)
         self.type_edit.setReadOnly(True)
+        self.type_edit.setMinimumWidth(300)
         basic_layout.addRow("Tipo:", self.type_edit)
         
         # Nombre (editable)
         self.name_edit = QLineEdit(self.device.name)
         self.name_edit.setMaxLength(50)
+        self.name_edit.setMinimumWidth(300)
         basic_layout.addRow("Nombre:", self.name_edit)
         
         # Coordenadas (editables)
         coord_layout = QHBoxLayout()
+        coord_layout.setSpacing(10)
         
         self.x_spinbox = QDoubleSpinBox()
         self.x_spinbox.setRange(-9999.0, 9999.0)
         self.x_spinbox.setDecimals(1)
         self.x_spinbox.setSuffix(" px")
         self.x_spinbox.setValue(self.device.x)
+        self.x_spinbox.setMinimumWidth(120)
         
         self.y_spinbox = QDoubleSpinBox()
         self.y_spinbox.setRange(-9999.0, 9999.0)
         self.y_spinbox.setDecimals(1)
         self.y_spinbox.setSuffix(" px")
         self.y_spinbox.setValue(self.device.y)
+        self.y_spinbox.setMinimumWidth(120)
         
         coord_layout.addWidget(QLabel("X:"))
         coord_layout.addWidget(self.x_spinbox)
         coord_layout.addWidget(QLabel("Y:"))
         coord_layout.addWidget(self.y_spinbox)
+        coord_layout.addStretch()  # Espacio flexible al final
         
         basic_layout.addRow("Coordenadas:", coord_layout)
         
@@ -123,12 +131,30 @@ class DevicePropertiesDialog(QDialog):
         """Configurar información específica de OLT"""
         olt_group = QGroupBox("Información OLT")
         olt_layout = QFormLayout(olt_group)
+        olt_layout.setSpacing(8)  # Espaciado entre filas
         
         # Número de ONUs conectadas (calculado)
         connected_onus = self.calculate_connected_onus()
         self.onus_edit = QLineEdit(str(connected_onus))
         self.onus_edit.setReadOnly(True)
+        self.onus_edit.setMinimumWidth(200)
         olt_layout.addRow("ONUs Conectadas:", self.onus_edit)
+        
+        # Tasa de transmisión (editable)
+        self.transmission_rate_spinbox = QDoubleSpinBox()
+        self.transmission_rate_spinbox.setDecimals(1)
+        self.transmission_rate_spinbox.setMinimum(1.0)
+        self.transmission_rate_spinbox.setMaximum(100000.0)  # 100 Gbps máximo
+        self.transmission_rate_spinbox.setSuffix(" Mbps")
+        self.transmission_rate_spinbox.setSingleStep(512.0)  # Incrementos de 512 Mbps
+        # El valor se establecerá en load_device_data() para reflejar el valor actual
+        self.transmission_rate_spinbox.setValue(4096.0)  # Valor temporal, se actualiza en load_device_data()
+        self.transmission_rate_spinbox.setMinimumWidth(200)
+        
+        # Conectar la señal para actualización en tiempo real
+        self.transmission_rate_spinbox.valueChanged.connect(self.on_transmission_rate_changed)
+        
+        olt_layout.addRow("Tasa de Transmisión:", self.transmission_rate_spinbox)
         
         main_layout.addWidget(olt_group)
     
@@ -136,29 +162,37 @@ class DevicePropertiesDialog(QDialog):
         """Configurar información específica de ONU"""
         onu_group = QGroupBox("Información ONU")
         onu_layout = QFormLayout(onu_group)
+        onu_layout.setSpacing(8)  # Espaciado entre filas
         
         # Distancia de la OLT conectada (calculado)
         olt_distance = self.calculate_olt_distance()
         distance_text = f"{olt_distance:.1f} m" if olt_distance is not None else "No conectada"
         self.distance_edit = QLineEdit(distance_text)
         self.distance_edit.setReadOnly(True)
+        self.distance_edit.setMinimumWidth(200)
         onu_layout.addRow("Distancia a OLT:", self.distance_edit)
         
         main_layout.addWidget(onu_group)
     
     def setup_buttons(self, main_layout):
         """Configurar botones del diálogo"""
+        # Agregar espacio flexible antes de los botones
+        main_layout.addStretch()
+        
         buttons_layout = QHBoxLayout()
+        buttons_layout.setSpacing(10)  # Espaciado entre botones
         buttons_layout.addStretch()
         
         # Botón Cancelar
         self.cancel_button = QPushButton("Cancelar")
+        self.cancel_button.setMinimumWidth(100)
         self.cancel_button.clicked.connect(self.reject)
         buttons_layout.addWidget(self.cancel_button)
         
         # Botón OK
         self.ok_button = QPushButton("Guardar")
         self.ok_button.setObjectName("ok_button")
+        self.ok_button.setMinimumWidth(100)
         self.ok_button.clicked.connect(self.accept_changes)
         self.ok_button.setDefault(True)
         buttons_layout.addWidget(self.ok_button)
@@ -177,6 +211,14 @@ class DevicePropertiesDialog(QDialog):
             'x': self.device.x,
             'y': self.device.y
         }
+        
+        # Agregar transmission_rate para OLTs
+        if self.device.device_type == "OLT":
+            current_transmission_rate = self.device.properties.get('transmission_rate', 4096.0)
+            self.original_properties['transmission_rate'] = current_transmission_rate
+            # Actualizar el campo visual con el valor actual del dispositivo
+            if hasattr(self, 'transmission_rate_spinbox'):
+                self.transmission_rate_spinbox.setValue(current_transmission_rate)
     
     def calculate_connected_onus(self):
         """Calcular número de ONUs conectadas a esta OLT"""
@@ -229,6 +271,16 @@ class DevicePropertiesDialog(QDialog):
             'y': self.y_spinbox.value()
         }
         
+        # Agregar transmission_rate si es un OLT
+        if self.device.device_type == "OLT" and hasattr(self, 'transmission_rate_spinbox'):
+            new_transmission_rate = self.transmission_rate_spinbox.value()
+            new_properties['transmission_rate'] = new_transmission_rate
+            
+            # Usar el método update_property para sincronización automática
+            if hasattr(self.device, 'update_property'):
+                self.device.update_property('transmission_rate', new_transmission_rate)
+                print(f"🔄 Transmission rate actualizada desde UI: {new_transmission_rate} Mbps")
+        
         # Emitir señal con cambios
         self.properties_updated.emit(self.device.id, new_properties)
         
@@ -243,6 +295,14 @@ class DevicePropertiesDialog(QDialog):
             QMessageBox.warning(self, "Error de Validación", 
                               "El nombre del dispositivo no puede estar vacío.")
             return False
+        
+        # Validar transmission_rate para OLTs
+        if self.device.device_type == "OLT" and hasattr(self, 'transmission_rate_spinbox'):
+            transmission_rate = self.transmission_rate_spinbox.value()
+            if transmission_rate <= 0:
+                QMessageBox.warning(self, "Error de Validación", 
+                                  "La tasa de transmisión debe ser mayor a 0.")
+                return False
         
         return True
     
@@ -260,6 +320,16 @@ class DevicePropertiesDialog(QDialog):
                 changes[key] = value
         
         return changes
+    
+    def on_transmission_rate_changed(self, value):
+        """Manejar cambios en tiempo real del transmission_rate"""
+        if self.device and self.device.device_type == "OLT":
+            # Actualizar la propiedad inmediatamente
+            self.device.properties['transmission_rate'] = float(value)
+            
+            # Emitir la señal para actualizar el sidebar
+            new_properties = {'transmission_rate': float(value)}
+            self.properties_updated.emit(self.device.id, new_properties)
     
     def detect_theme(self):
         """Detectar si se está usando tema oscuro o claro"""

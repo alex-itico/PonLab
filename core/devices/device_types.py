@@ -23,6 +23,7 @@ class OLT(Device):
             'notes': '',
             'total_bandwidth': 10000,  # 10 Gbps
             'allocated_bandwidth': 0,
+            'transmission_rate': 4096.0,  # Tasa de transmisión en Mbps (4 Gbps por defecto)
             'polling_cycle_time': 2.0,  # Tiempo de ciclo de polling en ms
             'guard_time': 0.1,  # Tiempo de guarda entre transmisiones en ms
         }
@@ -147,6 +148,73 @@ class OLT(Device):
             'registered_onus': len(self.registered_onus),
             'total_bandwidth_requests': len(self.stats['bandwidth_requests'])
         }
+    
+    # ═══════════════════════════════════════════════════════════
+    # 🔗 INTEGRACIÓN CON PON OLT CORE
+    # ═══════════════════════════════════════════════════════════
+    
+    def create_pon_olt_instance(self, onus_dict: dict = None, links_data: dict = None):
+        """
+        Crear instancia de PON OLT core sincronizada con las propiedades del dispositivo
+        
+        Args:
+            onus_dict: Diccionario de ONUs {onu_id: ONU_instance}
+            links_data: Configuración de enlaces {link_id: {length: km}}
+        """
+        try:
+            # Import lazy para evitar dependencias circulares
+            from ..pon.pon_olt import OLT as PonOLT
+            
+            # Usar valores por defecto si no se proporcionan
+            if onus_dict is None:
+                onus_dict = {}
+            
+            if links_data is None:
+                links_data = {"0": {"length": 0.5}, "1": {"length": 0.5}}
+            
+            # Crear instancia PON OLT con propiedades sincronizadas
+            self._pon_olt_instance = PonOLT(
+                id=self.id,
+                onus=onus_dict,
+                dba_algorithm=None,  # Se puede configurar después
+                links_data=links_data,
+                transmission_rate=self.properties['transmission_rate'],  # ⚡ Sincronizado!
+                seed=12345
+            )
+            
+            print(f"🔗 PON OLT core creado para {self.name} con transmission_rate={self.properties['transmission_rate']} Mbps")
+            return self._pon_olt_instance
+            
+        except ImportError as e:
+            print(f"❌ Error importando PON OLT core: {e}")
+            return None
+        except Exception as e:
+            print(f"❌ Error creando PON OLT core: {e}")
+            return None
+    
+    def get_pon_olt_instance(self):
+        """Obtener instancia PON OLT (lazy loading)"""
+        if not hasattr(self, '_pon_olt_instance') or self._pon_olt_instance is None:
+            return self.create_pon_olt_instance()
+        return self._pon_olt_instance
+    
+    def sync_transmission_rate(self):
+        """Sincronizar tasa de transmisión con la instancia PON OLT core"""
+        if hasattr(self, '_pon_olt_instance') and self._pon_olt_instance is not None:
+            self._pon_olt_instance.transmission_rate = self.properties['transmission_rate']
+            print(f"🔄 Transmission rate sincronizada: {self.properties['transmission_rate']} Mbps")
+    
+    def update_property(self, key: str, value):
+        """Override para sincronizar cambios de propiedades con PON OLT core"""
+        if key in self.properties:
+            self.properties[key] = value
+            
+            # Sincronización especial para transmission_rate
+            if key == 'transmission_rate':
+                self.sync_transmission_rate()
+            
+            self.properties_changed.emit()
+            print(f"📝 Propiedad {key} actualizada a: {value}")
 
 
 class ONU(Device):
@@ -163,6 +231,7 @@ class ONU(Device):
             'notes': '',              # Notas adicionales
             'upstream_bandwidth': 1000,  # 1 Gbps max bandwidth
             'allocated_bandwidth': 0,
+            'transmission_rate': 1024.0,  # Tasa de transmisión en Mbps (1 Gbps por defecto)
             'traffic_profile': 'constant',
             'mean_rate': 500,  # Mbps
             'burst_size': 100,   # Mbps

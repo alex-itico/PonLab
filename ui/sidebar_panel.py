@@ -5,7 +5,7 @@ Panel lateral que contiene dispositivos y controles para el simulador de redes p
 
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, 
                              QScrollArea, QFrame, QPushButton, QSizePolicy, QApplication, 
-                             QGroupBox, QFormLayout, QLineEdit)
+                             QGroupBox, QFormLayout, QLineEdit, QDoubleSpinBox)
 from PyQt5.QtCore import Qt, pyqtSignal, QMimeData, QPoint
 from PyQt5.QtGui import QFont, QPixmap, QPainter, QColor, QPen, QBrush, QDrag
 from PyQt5.QtSvg import QSvgRenderer
@@ -530,12 +530,12 @@ class DevicePropertiesPanel(QFrame):
         """Configurar interfaz del panel de propiedades"""
         self.setFrameStyle(QFrame.StyledPanel)
         self.setLineWidth(1)
-        self.setFixedHeight(180)  # Altura fija
+        self.setFixedHeight(270)  # Altura aumentada para acomodar el botón guardar
         
         # Layout principal
         main_layout = QVBoxLayout(self)
-        main_layout.setContentsMargins(8, 8, 8, 8)
-        main_layout.setSpacing(5)
+        main_layout.setContentsMargins(10, 10, 10, 10)  # Márgenes más amplios
+        main_layout.setSpacing(8)  # Mayor espaciado
         
         # Título del panel
         title_label = QLabel("📱 Propiedades")
@@ -549,31 +549,36 @@ class DevicePropertiesPanel(QFrame):
         # Crear contenedor de propiedades
         self.properties_group = QGroupBox("")
         props_layout = QFormLayout(self.properties_group)
-        props_layout.setContentsMargins(5, 5, 5, 5)
-        props_layout.setSpacing(3)
+        props_layout.setContentsMargins(8, 8, 8, 8)  # Márgenes más amplios
+        props_layout.setSpacing(6)  # Espaciado aumentado entre campos
+        props_layout.setHorizontalSpacing(10)  # Espaciado horizontal entre labels y campos
         
         # Campos editables
         self.device_name_edit = QLineEdit()
         self.device_name_edit.setPlaceholderText("Nombre del dispositivo")
+        self.device_name_edit.setMinimumHeight(22)  # Altura mínima para mejor legibilidad
         self.device_name_edit.textChanged.connect(self.on_name_changed)
         
         self.device_id_label = QLabel("--")  # ID no editable
         self.device_id_label.setWordWrap(True)
+        self.device_id_label.setMinimumHeight(22)  # Consistencia en alturas
         
         # Campos de coordenadas editables
         coords_widget = QWidget()
         coords_layout = QHBoxLayout(coords_widget)
         coords_layout.setContentsMargins(0, 0, 0, 0)
-        coords_layout.setSpacing(5)
+        coords_layout.setSpacing(8)  # Mayor espaciado entre elementos
         
         self.x_coord_edit = QLineEdit()
         self.x_coord_edit.setPlaceholderText("X")
-        self.x_coord_edit.setFixedWidth(50)
+        self.x_coord_edit.setFixedWidth(60)  # Ancho aumentado
+        self.x_coord_edit.setMinimumHeight(22)  # Altura consistente
         self.x_coord_edit.textChanged.connect(self.on_coords_changed)
         
         self.y_coord_edit = QLineEdit()
         self.y_coord_edit.setPlaceholderText("Y")
-        self.y_coord_edit.setFixedWidth(50)
+        self.y_coord_edit.setFixedWidth(60)  # Ancho aumentado
+        self.y_coord_edit.setMinimumHeight(22)  # Altura consistente
         self.y_coord_edit.textChanged.connect(self.on_coords_changed)
         
         coords_layout.addWidget(QLabel("X:"))
@@ -584,20 +589,75 @@ class DevicePropertiesPanel(QFrame):
         
         self.specific_info_label = QLabel("--")  # Info específica no editable
         self.specific_info_label.setWordWrap(True)
+        self.specific_info_label.setMinimumHeight(22)  # Altura consistente
+        
+        # Campo específico para OLT - Tasa de transmisión
+        self.transmission_rate_edit = QDoubleSpinBox()
+        self.transmission_rate_edit.setRange(1.0, 10000.0)  # 1 Mbps a 10 Gbps
+        self.transmission_rate_edit.setValue(512.0)  # Valor inicial, se actualiza con el dispositivo
+        self.transmission_rate_edit.setSuffix(" Mbps")
+        self.transmission_rate_edit.setDecimals(1)
+        self.transmission_rate_edit.setSingleStep(512.0)  # Incrementos de 512 Mbps
+        self.transmission_rate_edit.setMinimumHeight(22)  # Altura consistente
+        self.transmission_rate_edit.setMinimumWidth(120)  # Ancho mínimo para mejor legibilidad
+        self.transmission_rate_edit.valueChanged.connect(self.on_transmission_rate_changed)
+        self.transmission_rate_edit.setVisible(False)  # Oculto por defecto
         
         # Agregar campos al formulario
         props_layout.addRow("Nombre:", self.device_name_edit)
         props_layout.addRow("ID:", self.device_id_label)
         props_layout.addRow("Posición:", coords_widget)
+        props_layout.addRow("Tasa Transmisión:", self.transmission_rate_edit)
         props_layout.addRow("Info:", self.specific_info_label)
         
         main_layout.addWidget(self.properties_group)
         
+        # Contenedor para botones
+        buttons_widget = QWidget()
+        buttons_layout = QHBoxLayout(buttons_widget)
+        buttons_layout.setContentsMargins(0, 0, 0, 0)
+        buttons_layout.setSpacing(8)
+        
+        # Botón para guardar cambios
+        self.save_button = QPushButton("💾 Guardar")
+        self.save_button.setFixedHeight(28)
+        self.save_button.setStyleSheet("""
+            QPushButton {
+                font-weight: bold;
+                padding: 4px 8px;
+                background-color: #4CAF50;
+                color: white;
+                border: 1px solid #45a049;
+                border-radius: 4px;
+            }
+            QPushButton:hover {
+                background-color: #45a049;
+            }
+            QPushButton:disabled {
+                background-color: #cccccc;
+                color: #666666;
+                border: 1px solid #cccccc;
+            }
+        """)
+        self.save_button.clicked.connect(self.on_save_changes)
+        self.save_button.setEnabled(False)  # Deshabilitado inicialmente
+        
         # Botón para edición completa
         self.edit_button = QPushButton("✏️ Editar Completo")
-        self.edit_button.setFixedHeight(25)
+        self.edit_button.setFixedHeight(28)  # Altura aumentada
+        self.edit_button.setStyleSheet("""
+            QPushButton {
+                font-weight: bold;
+                padding: 4px 8px;
+                margin-top: 4px;
+            }
+        """)
         self.edit_button.clicked.connect(self.on_edit_requested)
-        main_layout.addWidget(self.edit_button)
+        
+        # Agregar botones al layout
+        buttons_layout.addWidget(self.save_button)
+        buttons_layout.addWidget(self.edit_button)
+        main_layout.addWidget(buttons_widget)
         
         # Estado inicial
         self.show_no_selection()
@@ -616,8 +676,12 @@ class DevicePropertiesPanel(QFrame):
         self.y_coord_edit.setText("")
         self.y_coord_edit.setEnabled(False)
         
+        # Ocultar campo transmission_rate
+        self.transmission_rate_edit.setVisible(False)
+        
         self.specific_info_label.setText("")
         self.edit_button.setEnabled(False)
+        self.save_button.setEnabled(False)  # Deshabilitar botón guardar
         self.current_device = None
     
     def update_device_properties(self, device, connection_manager=None):
@@ -636,6 +700,7 @@ class DevicePropertiesPanel(QFrame):
         self.device_name_edit.textChanged.disconnect()
         self.x_coord_edit.textChanged.disconnect()
         self.y_coord_edit.textChanged.disconnect()
+        self.transmission_rate_edit.valueChanged.disconnect()
         
         # Actualizar campos editables
         self.device_name_edit.setText(device.name)
@@ -649,10 +714,23 @@ class DevicePropertiesPanel(QFrame):
         self.y_coord_edit.setText(f"{device.y:.1f}")
         self.y_coord_edit.setEnabled(True)
         
+        # Manejar campo transmission_rate específico para OLT
+        if device.device_type == "OLT":
+            self.transmission_rate_edit.setVisible(True)
+            # Obtener el valor desde las propiedades del dispositivo
+            current_rate = device.properties.get('transmission_rate', 4096.0)
+            self.transmission_rate_edit.setValue(current_rate)
+        else:
+            self.transmission_rate_edit.setVisible(False)
+        
         # Reconectar señales
         self.device_name_edit.textChanged.connect(self.on_name_changed)
         self.x_coord_edit.textChanged.connect(self.on_coords_changed)
         self.y_coord_edit.textChanged.connect(self.on_coords_changed)
+        self.transmission_rate_edit.valueChanged.connect(self.on_transmission_rate_changed)
+        
+        # Resetear estado del botón guardar
+        self.save_button.setEnabled(False)
         
         # Información específica por tipo (no editable)
         if device.device_type == "OLT":
@@ -696,18 +774,19 @@ class DevicePropertiesPanel(QFrame):
         if self.current_device:
             self.edit_device_requested.emit(self.current_device.id)
     
-    def on_name_changed(self):
-        """Manejar cambio de nombre del dispositivo"""
-        if self.current_device and self.device_name_edit.text().strip():
-            new_name = self.device_name_edit.text().strip()
-            if new_name != self.current_device.name:
-                self.emit_property_change({'name': new_name})
-    
-    def on_coords_changed(self):
-        """Manejar cambio de coordenadas del dispositivo"""
+    def on_save_changes(self):
+        """Guardar todos los cambios pendientes"""
         if not self.current_device:
             return
-            
+        
+        changes = {}
+        
+        # Verificar cambio de nombre
+        new_name = self.device_name_edit.text().strip()
+        if new_name and new_name != self.current_device.name:
+            changes['name'] = new_name
+        
+        # Verificar cambio de coordenadas
         try:
             x_text = self.x_coord_edit.text().strip()
             y_text = self.y_coord_edit.text().strip()
@@ -717,10 +796,68 @@ class DevicePropertiesPanel(QFrame):
                 new_y = float(y_text)
                 
                 if new_x != self.current_device.x or new_y != self.current_device.y:
-                    self.emit_property_change({'x': new_x, 'y': new_y})
+                    changes['x'] = new_x
+                    changes['y'] = new_y
         except ValueError:
-            # Ignorar valores inválidos
-            pass
+            pass  # Ignorar valores inválidos
+        
+        # Verificar cambio de transmission_rate para OLT
+        if (self.current_device.device_type == "OLT" and 
+            self.transmission_rate_edit.isVisible()):
+            new_rate = self.transmission_rate_edit.value()
+            current_rate = self.current_device.properties.get('transmission_rate', 4096.0)
+            if abs(new_rate - current_rate) > 0.1:
+                changes['transmission_rate'] = new_rate
+        
+        # Aplicar cambios si hay alguno
+        if changes:
+            self.emit_property_change(changes)
+            # Deshabilitar botón después de guardar
+            self.save_button.setEnabled(False)
+            print(f"💾 Cambios guardados: {changes}")
+        else:
+            print("⚠️ No hay cambios para guardar")
+    
+    def mark_changes_pending(self):
+        """Marcar que hay cambios pendientes de guardar"""
+        if hasattr(self, 'save_button'):
+            self.save_button.setEnabled(True)
+    
+    def on_name_changed(self):
+        """Manejar cambio de nombre del dispositivo"""
+        if self.current_device and self.device_name_edit.text().strip():
+            new_name = self.device_name_edit.text().strip()
+            if new_name != self.current_device.name:
+                self.mark_changes_pending()
+    
+    def on_coords_changed(self):
+        """Manejar cambio de coordenadas del dispositivo"""
+        if not self.current_device:
+            return
+        
+        try:
+            x_text = self.x_coord_edit.text().strip()
+            y_text = self.y_coord_edit.text().strip()
+            
+            if x_text and y_text:
+                new_x = float(x_text)
+                new_y = float(y_text)
+                
+                if new_x != self.current_device.x or new_y != self.current_device.y:
+                    self.mark_changes_pending()
+        except ValueError:
+            pass  # Ignorar valores inválidos
+    
+    def on_transmission_rate_changed(self):
+        """Manejar cambio de tasa de transmisión del dispositivo OLT"""
+        if not self.current_device or self.current_device.device_type != "OLT":
+            return
+        
+        new_rate = self.transmission_rate_edit.value()
+        current_rate = self.current_device.properties.get('transmission_rate', 4096.0)
+        
+        if abs(new_rate - current_rate) > 0.1:  # Comparación con tolerancia para floats
+            self.mark_changes_pending()
     
     def emit_property_change(self, properties):
         """Emitir señal de cambio de propiedades"""
@@ -734,6 +871,73 @@ class DevicePropertiesPanel(QFrame):
         # - resources/styles/dark_theme.qss
         # - resources/styles/light_theme.qss
         # No necesitamos setStyleSheet aquí, se aplican automáticamente
+    
+    def update_device_properties_from_external(self, device_id, new_properties):
+        """Actualizar propiedades del dispositivo desde una fuente externa (como el diálogo)"""
+        if not self.current_device or self.current_device.id != device_id:
+            return
+        
+        # Desconectar señales temporalmente para evitar loops
+        self.transmission_rate_edit.valueChanged.disconnect()
+        
+        try:
+            # Actualizar transmission_rate si está en las nuevas propiedades
+            if 'transmission_rate' in new_properties and self.current_device.device_type == "OLT":
+                new_rate = float(new_properties['transmission_rate'])
+                self.transmission_rate_edit.setValue(new_rate)
+            
+            # Actualizar otros campos si es necesario
+            if 'name' in new_properties:
+                self.device_name_edit.setText(new_properties['name'])
+            
+            if 'x' in new_properties:
+                self.x_coord_edit.setText(f"{new_properties['x']:.1f}")
+            
+            if 'y' in new_properties:
+                self.y_coord_edit.setText(f"{new_properties['y']:.1f}")
+                
+        except Exception as e:
+            print(f"❌ Error actualizando propiedades en sidebar: {e}")
+        
+        finally:
+            # Reconectar señales
+            self.transmission_rate_edit.valueChanged.connect(self.on_transmission_rate_changed)
+
+    def update_device_properties_from_dialog(self, device_id, new_properties):
+        """Actualizar las propiedades mostradas cuando cambian desde el diálogo"""
+        try:
+            # Solo actualizar si es el dispositivo actualmente mostrado
+            if self.current_device and self.current_device.id == device_id:
+                
+                # Actualizar transmission_rate si cambió
+                if 'transmission_rate' in new_properties:
+                    new_rate = float(new_properties['transmission_rate'])
+                    
+                    # Desconectar temporalmente la señal para evitar bucles
+                    self.transmission_rate_edit.valueChanged.disconnect()
+                    
+                    # Actualizar el valor mostrado
+                    self.transmission_rate_edit.setValue(new_rate)
+                    print(f"[DEBUG] Sidebar actualizado - transmission_rate: {new_rate} Mbps")
+                    
+                    # Reconectar la señal
+                    self.transmission_rate_edit.valueChanged.connect(self.on_transmission_rate_changed)
+                
+                # Actualizar otros campos si es necesario
+                if 'name' in new_properties:
+                    self.device_name_edit.setText(new_properties['name'])
+                    
+                if 'x' in new_properties or 'y' in new_properties:
+                    if 'x' in new_properties:
+                        self.x_coord_edit.setText(f"{new_properties['x']:.1f}")
+                    if 'y' in new_properties:
+                        self.y_coord_edit.setText(f"{new_properties['y']:.1f}")
+                
+                # Limpiar estado de cambios pendientes ya que se actualizó externamente
+                self.clear_changes_pending()
+                
+        except Exception as e:
+            print(f"❌ Error actualizando sidebar: {e}")
 
 
 class SidebarPanel(QWidget):
@@ -969,7 +1173,8 @@ class SidebarPanel(QWidget):
     
     def update_device_properties(self, device, connection_manager=None):
         """Actualizar el panel de propiedades con un dispositivo seleccionado"""
-        self.properties_panel.update_device_properties(device, connection_manager)
+        if hasattr(self, 'properties_panel') and self.properties_panel:
+            self.properties_panel.update_device_properties(device, connection_manager)
     
     def clear_device_selection(self):
         """Limpiar selección de dispositivo"""
