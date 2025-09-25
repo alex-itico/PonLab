@@ -927,6 +927,9 @@ Tamaño de cuadrícula: {self.grid_size}px
                 # Refrescar canvas para mostrar cambios
                 self.update()
                 
+                # Actualizar sidebar si está visible
+                self.notify_sidebar_device_properties_update(device_id, new_properties)
+                
                 # Actualizar auto-guardado
                 self.auto_save_project()
                 
@@ -935,6 +938,25 @@ Tamaño de cuadrícula: {self.grid_size}px
                 
         except Exception as e:
             print(f"❌ Error en update_device_properties: {e}")
+    
+    def notify_sidebar_device_properties_update(self, device_id, new_properties):
+        """Notificar al sidebar que las propiedades del dispositivo cambiaron"""
+        try:
+            # Buscar la ventana principal para acceder al sidebar
+            main_window = self.parent()
+            while main_window and not hasattr(main_window, 'sidebar'):
+                main_window = main_window.parent()
+                
+            if main_window and hasattr(main_window, 'sidebar'):
+                sidebar = main_window.sidebar
+                if hasattr(sidebar, 'properties_panel') and sidebar.properties_panel:
+                    # Actualizar el panel de propiedades del sidebar
+                    sidebar.properties_panel.update_device_properties_from_external(device_id, new_properties)
+                    
+        except Exception as e:
+            print(f"❌ Error notificando al sidebar: {e}")
+            import traceback
+            traceback.print_exc()
     
     def open_device_properties_by_id(self, device_id):
         """Abrir propiedades de dispositivo por ID (para uso desde sidebar)"""

@@ -24,7 +24,7 @@ class OLT:
         onus: Dict[str, ONU],
         dba_algorithm: Optional[DBAAlgorithmInterface] = None,
         links_data: Dict[str, Dict] = {"0": {"length": 0.5}, "1": {"length": 0.5}},
-        transmition_rate: float = 4096.0,  # Mbps
+        transmission_rate: float = 4096.0,  # Mbps (corregido typo)
         seed: int = 12345,
     ):
         """
@@ -35,7 +35,7 @@ class OLT:
             onus: Diccionario de ONUs registradas {onu_id: ONU}
             dba_algorithm: Algoritmo DBA a usar
             links_data: Configuración de enlaces {link_id: {length: km}}
-            transmition_rate: Tasa de transmisión en Mbps
+            transmission_rate: Tasa de transmisión en Mbps (corregido typo)
             seed: Semilla para reproducibilidad
         """
         self.__id = id
@@ -43,7 +43,7 @@ class OLT:
         self._onu_ids = list(self.onus.keys())
         self._n_onus = len(self._onu_ids)
         self.links: Dict[str, Link] = self.create_links(links_data)
-        self.transmition_rate = transmition_rate
+        self.transmission_rate = transmission_rate  # Corregido typo
         self.__seed = seed
         self.clock: float = 0.0
         self.fragmented_time = 0.0
@@ -119,7 +119,7 @@ class OLT:
         # Ejecutar algoritmo DBA usando la interfaz
         allocations = self.dba_algorithm.allocate_bandwidth(
             onu_requests, 
-            self.transmition_rate, 
+            self.transmission_rate,  # Corregido typo
             self._last_action
         )
         
@@ -197,11 +197,11 @@ class OLT:
     def compute_time_slot(self, request: Request) -> float:
         """Calcular duración de time slot para una solicitud"""
         total_traffic = request.get_total_traffic()
-        transmition_speed = min(
-            self.onus[request.source_id].transmition_rate, self.transmition_rate
+        transmission_speed = min(
+            self.onus[request.source_id].transmission_rate, self.transmission_rate  # Corregido typo
         )
         # TODO: Considerar tiempo de guarda y tiempo de tx en el time_slot
-        time_slot = total_traffic / transmition_speed if transmition_speed > 0 else 0
+        time_slot = total_traffic / transmission_speed if transmission_speed > 0 else 0
         return time_slot
 
     def establish_connection(self, request: Request) -> Connection:
@@ -209,14 +209,14 @@ class OLT:
         path_links_id = [request.source_id]
         path = [self.links[link_id] for link_id in path_links_id if link_id in self.links]
         
-        transmition_speed = min(
-            self.onus[request.source_id].transmition_rate, self.transmition_rate
+        transmission_speed = min(
+            self.onus[request.source_id].transmission_rate, self.transmission_rate  # Corregido typo
         )
         
         return Connection(
             self.clock,
             path,
-            transmition_speed,
+            transmission_speed,  # Corregido typo
         )
 
     def proccess(self, request: Request) -> tuple[bool, Request]:
@@ -288,7 +288,7 @@ class OLT:
             'clock': self.clock,
             'fragmented_time': self.fragmented_time,
             'registered_onus': len(self._onu_ids),
-            'transmition_rate': self.transmition_rate,
+            'transmission_rate': self.transmission_rate,  # Corregido typo
             'dba_algorithm': self.dba_algorithm.get_algorithm_name(),
             'total_polls': self.total_polls,
             'successful_transmissions': self.successful_transmissions,

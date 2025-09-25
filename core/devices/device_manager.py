@@ -569,8 +569,16 @@ class DeviceManager(QObject):
             
             # Actualizar otras propiedades si existen
             for key, value in new_properties.items():
-                if key not in ['name', 'x', 'y'] and hasattr(device, key):
-                    setattr(device, key, value)
+                if key not in ['name', 'x', 'y']:
+                    # Verificar si es una propiedad específica del dispositivo (como transmission_rate)
+                    if hasattr(device, 'properties') and key in device.properties:
+                        device.properties[key] = value
+                        # Sincronizar con PON core si es necesario
+                        if hasattr(device, 'update_property'):
+                            device.update_property(key, value)
+                        print(f"📝 Propiedad {key} actualizada a: {value}")
+                    elif hasattr(device, key):
+                        setattr(device, key, value)
             
             # Actualizar gráficos
             if device_id in self.graphics_items:
