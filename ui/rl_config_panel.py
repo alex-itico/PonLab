@@ -27,8 +27,8 @@ class RLConfigPanel(QWidget):
     training_stopped = pyqtSignal()
     model_saved = pyqtSignal(str)  # Ruta del modelo guardado
     model_loaded = pyqtSignal(str)  # Modelo cargado para simulación
-    simulation_started = pyqtSignal(dict)  # Simulación con RL iniciada
-    simulation_stopped = pyqtSignal()  # Simulación detenida
+    # simulation_started = pyqtSignal(dict)  # DESHABILITADO - Simulación movida al panel principal
+    # simulation_stopped = pyqtSignal()  # DESHABILITADO - Simulación movida al panel principal
     
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -62,14 +62,17 @@ class RLConfigPanel(QWidget):
         main_layout.setContentsMargins(8, 8, 8, 8)
         main_layout.setSpacing(8)
 
-        # Crear pestañas para separar Entrenamiento y Simulación
+        # Nota informativa sobre el cambio
+        info_label = QLabel("💡 La simulación con RL ahora está integrada en la pestaña principal de simulación.\nUse 'Smart-RL' como algoritmo DBA después de cargar un modelo entrenado.")
+        info_label.setStyleSheet("color: #2196F3; background-color: #E3F2FD; padding: 8px; border-radius: 4px; margin: 4px;")
+        info_label.setWordWrap(True)
+        main_layout.addWidget(info_label)
+
+        # Pestaña de Entrenamiento RL solamente (simulación movida a pestaña principal)
         self.tab_widget = QTabWidget()
 
         # Pestaña 1: Entrenamiento RL
         self.setup_training_tab()
-
-        # Pestaña 2: Simulación con RL
-        self.setup_simulation_tab()
 
         main_layout.addWidget(self.tab_widget)
 
@@ -134,7 +137,10 @@ class RLConfigPanel(QWidget):
         self.tab_widget.addTab(training_widget, "Entrenamiento")
 
     def setup_simulation_tab(self):
-        """Configurar la pestaña de simulación con RL"""
+        """MÉTODO DESHABILITADO - Simulación RL movida al panel principal de simulación"""
+        # Este método ya no se usa. La simulación RL ahora se maneja
+        # directamente desde IntegratedPONTestPanel con el algoritmo Smart-RL
+        return
         simulation_widget = QWidget()
 
         # Área de scroll para el contenido de simulación

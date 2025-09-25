@@ -1,6 +1,6 @@
 """
-Training Manager
-Gestor de entrenamiento RL que coordina todos los componentes
+Training Manager - COMPLETAMENTE INTERNO
+Gestor de entrenamiento RL completamente interno - SIN dependencias externas
 """
 
 import os
@@ -15,7 +15,8 @@ from .simulation_manager import SimulationManager
 
 class TrainingManager(QObject):
     """
-    Gestor principal que coordina el entrenamiento RL entre PonLab y netPONpy
+    Gestor principal que coordina el entrenamiento RL completamente interno
+    SIN dependencias externas - Completamente independiente
     """
     
     # Señales principales
@@ -95,10 +96,9 @@ class TrainingManager(QObject):
         try:
             print("Inicializando sesion de entrenamiento...")
             
-            # Verificar disponibilidad de netPONpy
-            if not self.rl_adapter.is_available():
-                self.error_occurred.emit("netPONpy RL no está disponible. Instale las dependencias.")
-                return False
+            # Sistema interno - siempre disponible
+            print("[INFO] Usando sistema de entrenamiento interno (sin dependencias externas)")
+            # El sistema interno siempre está disponible
             
             # Generar ID de sesión
             self.current_session_id = self._generate_session_id()

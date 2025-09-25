@@ -3,14 +3,17 @@ PON Adapter - Adaptador unificado para simulación PON
 Combina todas las funcionalidades de simulación en una interfaz limpia
 """
 
+from typing import Dict, Any
+
 # Importar clases core de PON
 try:
     from .pon_orchestrator import PONOrchestrator
     from .pon_dba import (
-        FCFSDBAAlgorithm, 
-        PriorityDBAAlgorithm, 
+        FCFSDBAAlgorithm,
+        PriorityDBAAlgorithm,
         RLDBAAlgorithm
     )
+    from .smart_rl_dba import SmartRLDBAAlgorithm
     from .pon_simulator import PONSimulator, EventEvaluator
     from .pon_traffic import get_available_scenarios, print_scenario_info
     PON_CORE_AVAILABLE = True
@@ -37,6 +40,10 @@ class PONAdapter:
         self.simulation_mode = "events"  # "cycles" o "events"
         self.detailed_logging = True
         self.log_callback = None
+
+        # Smart RL DBA management
+        self.smart_rl_algorithm = None
+        self.loaded_model_path = None
         
         # Results storage
         self.last_simulation_results = None
@@ -355,21 +362,33 @@ class PONAdapter:
     
     def _get_dba_algorithm_by_name(self, algorithm_name):
         """Obtener instancia de algoritmo DBA por nombre"""
+        # Manejar Smart RL DBA
+        if algorithm_name == "Smart-RL":
+            if self.smart_rl_algorithm:
+                return self.smart_rl_algorithm
+            else:
+                raise ValueError("No hay modelo RL cargado. Use 'load_rl_model()' primero.")
+
         algorithms = {
             "FCFS": FCFSDBAAlgorithm,
             "Priority": PriorityDBAAlgorithm,
             "RL-DBA": RLDBAAlgorithm
         }
-        
-        
+
         if algorithm_name not in algorithms:
             raise ValueError(f"Algoritmo desconocido: {algorithm_name}")
-            
+
         return algorithms[algorithm_name]()
     
     def get_available_algorithms(self):
         """Obtener lista de algoritmos DBA disponibles"""
-        return ["FCFS", "Priority", "RL-DBA"]
+        algorithms = ["FCFS", "Priority", "RL-DBA"]
+
+        # Agregar Smart RL DBA si hay modelo cargado
+        if self.smart_rl_algorithm:
+            algorithms.append("Smart-RL")
+
+        return algorithms
     
     # ===== TRAFFIC SCENARIOS =====
     
@@ -520,6 +539,72 @@ class PONAdapter:
         self.set_simulation_mode(mode)
     
     
+    # ===== SMART RL MODEL MANAGEMENT =====
+
+    def load_rl_model(self, model_path: str, env_params: Dict[str, Any] = None):
+        """
+        Cargar modelo RL entrenado para usar con Smart-RL DBA
+
+        Args:
+            model_path: Ruta al archivo del modelo (.zip)
+            env_params: Parámetros del entorno (opcional)
+
+        Returns:
+            tuple: (success, message)
+        """
+        try:
+            # Configurar parámetros del entorno
+            if env_params is None:
+                env_params = {
+                    'num_onus': self.config.get('num_onus', 4),
+                    'traffic_scenario': self.config.get('traffic_scenario', 'residential_medium'),
+                    'episode_duration': self.config.get('episode_duration', 1.0),
+                    'simulation_timestep': self.config.get('simulation_timestep', 0.0005)
+                }
+
+            # Crear Smart RL DBA Algorithm
+            self.smart_rl_algorithm = SmartRLDBAAlgorithm(model_path)
+            self.smart_rl_algorithm.set_environment_params(env_params)
+
+            # Verificar que se cargó correctamente
+            if self.smart_rl_algorithm.agent is None:
+                self.smart_rl_algorithm = None
+                return False, f"Error cargando modelo: {model_path}"
+
+            self.loaded_model_path = model_path
+            self._log_event("RL_MODEL", f"Modelo RL cargado: {model_path}")
+
+            return True, f"Modelo RL cargado exitosamente: {model_path}"
+
+        except Exception as e:
+            error_msg = f"Error cargando modelo RL: {str(e)}"
+            self._log_event("ERROR", error_msg)
+            self.smart_rl_algorithm = None
+            self.loaded_model_path = None
+            return False, error_msg
+
+    def unload_rl_model(self):
+        """Descargar modelo RL actual"""
+        if self.smart_rl_algorithm:
+            self.smart_rl_algorithm.cleanup()
+            self.smart_rl_algorithm = None
+            self.loaded_model_path = None
+            self._log_event("RL_MODEL", "Modelo RL descargado")
+            return True, "Modelo RL descargado exitosamente"
+        else:
+            return False, "No hay modelo RL cargado"
+
+    def get_rl_model_info(self):
+        """Obtener información del modelo RL actual"""
+        if self.smart_rl_algorithm:
+            return self.smart_rl_algorithm.get_statistics()
+        else:
+            return None
+
+    def is_smart_rl_available(self):
+        """Verificar si Smart RL DBA está disponible"""
+        return self.smart_rl_algorithm is not None
+
     # ===== CLEANUP =====
     
     def cleanup(self):
@@ -534,6 +619,11 @@ class PONAdapter:
         if self.orchestrator:
             self.orchestrator = None
         
+        # Limpiar Smart RL DBA
+        if self.smart_rl_algorithm:
+            self.smart_rl_algorithm.cleanup()
+            self.smart_rl_algorithm = None
+
         self.log_callback = None
         self.last_simulation_results = None
         

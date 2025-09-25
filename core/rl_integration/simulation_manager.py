@@ -602,7 +602,19 @@ class SimulationThread(QThread):
                 if isinstance(obs, tuple):
                     obs = obs[0]  # Extraer solo las observaciones si es tupla
 
-                action, _ = self.model.predict(obs, deterministic=True)
+                # Manejar diferentes tipos de modelo
+                if hasattr(self.model, 'predict'):
+                    # Modelo real de stable-baselines3
+                    action, _ = self.model.predict(obs, deterministic=True)
+                elif isinstance(self.model, dict) and 'smart_rl_algorithm' in self.model:
+                    # Modelo interno Smart RL
+                    smart_algorithm = self.model['smart_rl_algorithm']
+                    action = smart_algorithm.agent.predict(obs)
+                else:
+                    # Fallback - acción aleatoria
+                    action_space_size = self.env.action_space.shape[0] if hasattr(self.env, 'action_space') else 4
+                    action = np.random.uniform(0, 1, action_space_size)
+                    action = action / np.sum(action)  # Normalizar
 
                 # Ejecutar acción en el entorno - manejar ambas APIs
                 try:
