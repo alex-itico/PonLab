@@ -7,10 +7,10 @@ import numpy as np
 from typing import Dict, List, Any, Optional
 from enum import Enum
 
-from .pon_dba import DBAAlgorithmInterface, FCFSDBAAlgorithm
-from .pon_olt import OLT
-from .pon_onu import ONU
-from .pon_traffic import get_traffic_scenario, calculate_realistic_lambda
+from ..algorithms.pon_dba import DBAAlgorithmInterface, FCFSDBAAlgorithm
+from ..pon.pon_olt import OLT
+from ..pon.pon_onu import ONU
+from ..utilities.pon_traffic import get_traffic_scenario, calculate_realistic_lambda
 
 
 class SimulatorStatus(Enum):

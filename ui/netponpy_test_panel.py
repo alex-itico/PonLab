@@ -8,7 +8,8 @@ from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel,
                              QGroupBox, QGridLayout, QSizePolicy)
 from PyQt5.QtCore import Qt, QTimer, pyqtSignal
 from PyQt5.QtGui import QFont
-from core.netponpy_adapter import NetPONPyAdapter
+# from core.netponpy_adapter import NetPONPyAdapter  # TODO: Verificar si este adaptador existe
+from core import PONAdapter
 
 class NetPONPyTestPanel(QWidget):
     """Panel de prueba para la integración con netPONpy"""
@@ -18,7 +19,7 @@ class NetPONPyTestPanel(QWidget):
     
     def __init__(self):
         super().__init__()
-        self.adapter = NetPONPyAdapter()
+        self.adapter = PONAdapter()
         self.simulation_timer = QTimer()
         self.simulation_timer.timeout.connect(self.step_simulation)
         self.simulation_running = False
@@ -463,5 +464,15 @@ class NetPONPyTestPanel(QWidget):
         
     def cleanup(self):
         """Limpiar recursos"""
-        self.stop_simulation()
-        self.adapter.cleanup()
+        try:
+            # Asegurar que la limpieza se haga en el hilo principal
+            if hasattr(self, 'simulation_timer') and self.simulation_timer:
+                if self.simulation_timer.isActive():
+                    self.simulation_timer.stop()
+            
+            self.stop_simulation()
+            
+            if hasattr(self, 'adapter') and self.adapter:
+                self.adapter.cleanup()
+        except Exception as e:
+            print(f"Warning en cleanup de netponpy_test_panel: {e}")

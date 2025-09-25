@@ -4,7 +4,7 @@ Coordinador principal de la simulación PON que integra todos los componentes
 """
 
 from PyQt5.QtCore import QObject, pyqtSignal, QTimer
-from .device_types import OLT, ONU
+from ..devices.device_types import OLT, ONU
 import time
 
 class SimulationManager(QObject):

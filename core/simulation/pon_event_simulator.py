@@ -5,11 +5,11 @@ Versión mejorada que previene consumo excesivo de memoria y CPU
 
 from typing import Dict, List, Optional, Any, Callable
 import numpy as np
-from .event_queue import EventQueue, EventType
-from .pon_event_onu import HybridONU
-from .pon_event_olt import HybridOLT
-from .pon_traffic import get_traffic_scenario, calculate_realistic_lambda
-from .pon_dba import DBAAlgorithmInterface, FCFSDBAAlgorithm
+from ..events.event_queue import EventQueue, EventType
+from ..events.pon_event_onu import HybridONU
+from ..events.pon_event_olt import HybridOLT
+from ..utilities.pon_traffic import get_traffic_scenario, calculate_realistic_lambda
+from ..algorithms.pon_dba import DBAAlgorithmInterface, FCFSDBAAlgorithm
 
 
 class OptimizedHybridPONSimulator:
@@ -98,7 +98,7 @@ class OptimizedHybridPONSimulator:
             dba_algorithm = FCFSDBAAlgorithm()
         
         # Usar ciclos menos frecuentes para reducir carga computacional
-        from .event_queue import CycleTimeManager, TimeSlotManager
+        from ..events.event_queue import CycleTimeManager, TimeSlotManager
         
         self.olt = HybridOLT(self.onus, dba_algorithm, self.channel_capacity)
         # Reemplazar el cycle manager con intervalo más largo

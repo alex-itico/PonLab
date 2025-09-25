@@ -3,8 +3,8 @@ PON Queue
 Sistema de colas para generación de tráfico integrado de netPONPy
 """
 
-from .pon_event import Event
-from .pon_random import ExpVariable
+from ..events.pon_event import Event
+from ..utilities.pon_random import ExpVariable
 
 
 class Queue:

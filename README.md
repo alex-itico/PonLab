@@ -110,11 +110,38 @@ _Una aplicación de escritorio avanzada para la simulación, diseño y análisis
 │   ├── PONResultsPanel (Panel de resultados)
 │   └── GraphicsPopupWindow (Ventana emergente)
 ├── ⚙️ Core Logic (core/)
-│   ├── DeviceManager (Gestión de dispositivos)
-│   ├── ConnectionManager (Gestión de conexiones)
-│   ├── PONAdapter (Adaptador simulación)
-│   ├── SimulationManager (Gestor de simulaciones)
-│   └── ProjectManager (Gestión de proyectos)
+│   ├── 📱 devices/ (Gestión de dispositivos)
+│   │   ├── DeviceManager (Gestor principal)
+│   │   ├── DeviceGraphicsItem (Representación gráfica)
+│   │   └── DeviceTypes (Creación de dispositivos)
+│   ├── 🔗 connections/ (Gestión de conexiones)
+│   │   ├── ConnectionManager (Gestor de conexiones)
+│   │   ├── ConnectionPoints (Puntos de conexión)
+│   │   └── PONConnection (Conexiones PON)
+│   ├── 🌐 pon/ (Componentes PON específicos)
+│   │   ├── PONAdapter (Interfaz principal)
+│   │   ├── PON_OLT (Terminal óptico)
+│   │   └── PON_ONU (Unidad de red óptica)
+│   ├── 🧮 algorithms/ (Algoritmos DBA y scheduling)
+│   │   ├── UpstreamScheduler (Planificador upstream)
+│   │   ├── PON_DBA (Algoritmos de asignación)
+│   │   └── DBA_Cycle (Gestión de ciclos)
+│   ├── 🎯 simulation/ (Motores de simulación)
+│   │   ├── SimulationManager (Gestor principal)
+│   │   ├── PONOrchestrator (Orquestador)
+│   │   └── EventSimulator (Simulador de eventos)
+│   ├── ⚡ events/ (Sistema de eventos discretos)
+│   │   ├── EventQueue (Cola de eventos)
+│   │   ├── PONEvent (Eventos PON)
+│   │   └── HybridOLT/ONU (Componentes híbridos)
+│   ├── 📊 data/ (Estructuras de datos)
+│   │   ├── PONQueue (Colas PON)
+│   │   ├── PONRequest (Peticiones)
+│   │   └── TrafficGeneration (Generación de tráfico)
+│   └── 🛠️ utilities/ (Funciones de utilidad)
+│       ├── PONTraffic (Escenarios de tráfico)
+│       ├── PONRandom (Generadores aleatorios)
+│       └── Helpers (Funciones auxiliares)
 └── 🛠️ Utils Layer (utils/)
     ├── ConfigManager (Configuraciones)
     ├── ResourceManager (Recursos)
@@ -267,20 +294,66 @@ PonLab/
 ├── 📄 README.md                 # 📖 Documentación principal
 ├── 📄 .gitignore               # 🚫 Archivos ignorados por Git
 │
-├── 📁 core/                     # ⚙️ Lógica principal del negocio
+├── 📁 core/                     # ⚙️ Lógica principal del negocio (REORGANIZADO)
 │   ├── 📄 __init__.py
-│   ├── 📄 device.py            # 🔧 Clases de dispositivos (OLT, ONU)
-│   ├── 📄 device_manager.py    # 📱 Gestión de dispositivos
-│   ├── 📄 connection.py        # 🔗 Sistema de conexiones
-│   ├── 📄 connection_manager.py # 🔗 Gestión de conexiones
-│   └── 📄 project_manager.py   # 📁 Gestión de proyectos
+│   ├── � devices/             # 📱 Gestión de dispositivos
+│   │   ├── 📄 __init__.py
+│   │   ├── 📄 device.py        # 🔧 Clase base de dispositivos
+│   │   ├── 📄 device_manager.py # 📱 Gestor de dispositivos
+│   │   └── 📄 device_types.py  # 🏭 Factory de dispositivos
+│   ├── � connections/         # 🔗 Sistema de conexiones
+│   │   ├── 📄 __init__.py
+│   │   ├── 📄 connection.py    # 🔗 Clase de conexión base
+│   │   ├── 📄 connection_manager.py # 🔗 Gestor de conexiones
+│   │   ├── 📄 connection_points.py # 📍 Puntos de conexión
+│   │   ├── 📄 pon_connection.py # 🌐 Conexiones PON específicas
+│   │   └── 📄 pon_link.py      # 🔌 Enlaces PON
+│   ├── 📁 pon/                 # 🌐 Componentes PON específicos
+│   │   ├── 📄 __init__.py
+│   │   ├── 📄 pon_adapter.py   # 🔄 Adaptador principal PON
+│   │   ├── 📄 pon_olt.py       # 🔴 Terminal de línea óptica
+│   │   ├── 📄 pon_onu.py       # 🔵 Unidad de red óptica
+│   │   └── 📄 pon_types.py     # 📋 Tipos y constantes PON
+│   ├── 📁 algorithms/          # 🧮 Algoritmos DBA y scheduling
+│   │   ├── 📄 __init__.py
+│   │   ├── 📄 upstream_scheduler.py # ⬆️ Planificador upstream
+│   │   ├── 📄 pon_dba.py       # 🎯 Algoritmos DBA principales
+│   │   └── 📄 pon_dba_cycle.py # 🔄 Gestión de ciclos DBA
+│   ├── 📁 simulation/          # 🎯 Motores de simulación
+│   │   ├── 📄 __init__.py
+│   │   ├── 📄 simulation_manager.py # 🎮 Gestor principal
+│   │   ├── 📄 pon_orchestrator.py # 🎼 Orquestador PON
+│   │   ├── 📄 pon_simulator.py    # 🔬 Simulador principal
+│   │   ├── � pon_event_simulator.py # ⚡ Simulador de eventos
+│   │   ├── 📄 pon_cycle_simulator.py # 🔄 Simulador por ciclos
+│   │   └── 📄 pon_netsim.py       # 🌐 Simulador de red
+│   ├── �📁 events/              # ⚡ Sistema de eventos discretos
+│   │   ├── 📄 __init__.py
+│   │   ├── 📄 event_queue.py   # 📋 Cola de eventos
+│   │   ├── 📄 pon_event.py     # ⚡ Eventos PON base
+│   │   ├── 📄 pon_event_olt.py # 🔴 Eventos OLT híbridos
+│   │   └── 📄 pon_event_onu.py # 🔵 Eventos ONU híbridos
+│   ├── 📁 data/                # 📊 Estructuras de datos
+│   │   ├── 📄 __init__.py
+│   │   ├── 📄 pon_queue.py     # 📋 Colas PON
+│   │   ├── 📄 pon_request.py   # 📤 Peticiones PON
+│   │   └── 📄 project_manager.py # 📁 Gestor de proyectos
+│   └── 📁 utilities/           # 🛠️ Funciones de utilidad
+│       ├── 📄 __init__.py
+│       ├── 📄 pon_traffic.py   # 🚦 Generación de tráfico
+│       ├── 📄 pon_random.py    # 🎲 Variables aleatorias
+│       └── 📄 helpers.py       # 🔧 Funciones auxiliares
 │
 ├── 📁 ui/                       # 🎨 Componentes de interfaz
 │   ├── 📄 __init__.py
 │   ├── 📄 main_window.py       # 🏢 Ventana principal
 │   ├── 📄 canvas.py            # 🎨 Canvas principal de dibujo
 │   ├── 📄 sidebar_panel.py     # 📋 Panel lateral de dispositivos
-│   ├── 📄 info_panel.py        # ℹ️ Panel de información
+│   ├── 📄 netponpy_sidebar.py  # 🧪 Panel de simulación NetPONPy
+│   ├── 📄 integrated_pon_test_panel.py # 🔬 Panel simulador integrado
+│   ├── 📄 pon_simulation_results_panel.py # 📊 Panel de resultados
+│   ├── 📄 graphics_popup_window.py # 🖼️ Ventana emergente gráficos
+│   ├── 📄 log_panel.py         # 📋 Panel de log de eventos
 │   ├── 📄 map_view.py          # 🗺️ Vista de mapas (MapBox)
 │   ├── 📄 map_overlay_toggle.py # 🔘 Botón toggle para mapas
 │   └── 📄 splash_screen.py     # 🎬 Pantalla de carga
@@ -291,8 +364,7 @@ PonLab/
 │   ├── 📄 constants.py         # 📊 Constantes de la aplicación
 │   ├── 📄 helpers.py           # 🔧 Funciones auxiliares
 │   ├── 📄 resource_manager.py  # 📦 Gestor de recursos
-│   ├── 📄 validators.py        # ✅ Validadores
-│   └── 📄 coordinate_system.py # 📍 Sistema de coordenadas
+│   └── 📄 validators.py        # ✅ Validadores
 │
 ├── 📁 resources/               # 🎨 Recursos gráficos y assets
 │   ├── 📁 devices/            # 📱 Iconos de dispositivos
@@ -307,10 +379,9 @@ PonLab/
 │   │   ├── 📄 app_icon_64x64.png
 │   │   └── 📄 app_icon_128x128.png
 │   ├── 📁 images/             # 🖼️ Imágenes adicionales
-│   ├── 📁 styles/             # 🎨 Archivos de estilo CSS
-│   │   ├── 📄 dark_theme.qss  # Tema oscuro
-│   │   └── 📄 light_theme.qss # Tema claro
-│   └── 📄 map_template.html   # 🌐 Template HTML para mapas
+│   └── 📁 styles/             # 🎨 Archivos de estilo CSS
+│       ├── 📄 dark_theme.qss  # Tema oscuro
+│       └── 📄 light_theme.qss # Tema claro
 │
 └── 📁 temp/                    # 🗂️ Archivos temporales (auto-generado)
     └── 📄 autosave_*.pon      # 💾 Auto-guardado de proyectos

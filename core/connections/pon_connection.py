@@ -4,8 +4,8 @@ Clase de conexión integrada de netPONPy
 """
 
 from typing import List
-from .pon_types import Path
-from .pon_request import Request
+from ..pon.pon_types import Path
+from ..data.pon_request import Request
 from .pon_link import Link
 
 

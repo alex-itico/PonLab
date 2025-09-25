@@ -5,8 +5,8 @@ Manejo de ciclos DBA realistas para simulación PON
 
 from typing import Dict, List, Tuple, Optional
 from dataclasses import dataclass
-from .pon_request import Request
-from .pon_onu import ONU
+from ..data.pon_request import Request
+from ..pon.pon_onu import ONU
 from .pon_dba import DBAAlgorithmInterface
 
 

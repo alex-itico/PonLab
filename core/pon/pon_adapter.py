@@ -5,19 +5,36 @@ Combina todas las funcionalidades de simulación en una interfaz limpia
 
 # Importar clases core de PON
 try:
-    from .pon_orchestrator import PONOrchestrator
-    from .pon_dba import (
+    # Imports básicos primero
+    from ..algorithms.pon_dba import (
         FCFSDBAAlgorithm, 
         PriorityDBAAlgorithm, 
         RLDBAAlgorithm
     )
-    from .pon_simulator import PONSimulator, EventEvaluator
-    from .pon_traffic import get_available_scenarios, print_scenario_info
+    from ..utilities.pon_traffic import get_available_scenarios, print_scenario_info
+    
+    # Imports que pueden tener dependencias circulares - lazy loading
+    PONOrchestrator = None
+    PONSimulator = None
+    EventEvaluator = None
+    
+    def _import_simulation_classes():
+        global PONOrchestrator, PONSimulator, EventEvaluator
+        if PONOrchestrator is None:
+            from ..simulation.pon_orchestrator import PONOrchestrator
+            from ..simulation.pon_simulator import PONSimulator, EventEvaluator
+        return PONOrchestrator, PONSimulator, EventEvaluator
+    
     PON_CORE_AVAILABLE = True
     print("OK PON Core cargado exitosamente")
 except ImportError as e:
     print(f"ERROR cargando PON Core: {e}")
     PON_CORE_AVAILABLE = False
+    PONOrchestrator = None
+    PONSimulator = None
+    EventEvaluator = None
+    def _import_simulation_classes():
+        return None, None, None
 
 
 class PONAdapter:
@@ -110,10 +127,15 @@ class PONAdapter:
     def _initialize_simulator_from_topology(self, num_onus):
         """Inicializar simulador desde topología"""
         try:
+            # Importación lazy para evitar ciclos
+            PONOrchestrator_cls, PONSimulator_cls, EventEvaluator_cls = _import_simulation_classes()
+            if not all([PONOrchestrator_cls, PONSimulator_cls, EventEvaluator_cls]):
+                return False
+            
             dba_algorithm = self._get_dba_algorithm()
             
             # Crear simulador unificado
-            self.simulator = PONSimulator(simulation_mode=self.simulation_mode)
+            self.simulator = PONSimulator_cls(simulation_mode=self.simulation_mode)
             
             if self.simulation_mode == "events":
                 self.simulator.setup_event_simulation(
@@ -139,7 +161,12 @@ class PONAdapter:
     def _initialize_orchestrator(self, num_onus):
         """Inicializar orquestador para simulación por ciclos"""
         try:
-            self.orchestrator = PONOrchestrator(
+            # Importación lazy para evitar ciclos
+            PONOrchestrator_cls, PONSimulator_cls, EventEvaluator_cls = _import_simulation_classes()
+            if not PONOrchestrator_cls:
+                return False
+            
+            self.orchestrator = PONOrchestrator_cls(
                 num_onus=num_onus,
                 traffic_scenario=self.config['traffic_scenario'],
                 episode_duration=self.config['episode_duration'],
@@ -162,10 +189,15 @@ class PONAdapter:
     def _initialize_simulator(self, num_onus):
         """Inicializar simulador unificado"""
         try:
+            # Importación lazy para evitar ciclos
+            PONOrchestrator_cls, PONSimulator_cls, EventEvaluator_cls = _import_simulation_classes()
+            if not PONSimulator_cls:
+                return False
+                
             dba_algorithm = self._get_dba_algorithm()
             
             # Crear simulador unificado
-            self.simulator = PONSimulator(simulation_mode=self.simulation_mode)
+            self.simulator = PONSimulator_cls(simulation_mode=self.simulation_mode)
             
             if self.simulation_mode == "events":
                 self.simulator.setup_event_simulation(

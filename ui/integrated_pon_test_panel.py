@@ -9,7 +9,7 @@ from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel,
                              QCheckBox, QSlider, QSplitter)
 from PyQt5.QtCore import Qt, QTimer, pyqtSignal
 from PyQt5.QtGui import QFont
-from core.pon_adapter import PONAdapter
+from core import PONAdapter
 from .pon_simulation_results_panel import PONResultsPanel
 from .auto_graphics_saver import AutoGraphicsSaver
 from .graphics_popup_window import GraphicsPopupWindow
@@ -878,10 +878,16 @@ class IntegratedPONTestPanel(QWidget):
     def cleanup(self):
         """Limpiar recursos del panel"""
         try:
-            # Parar timer de actualización de ONUs
+            # Parar timer de actualización de ONUs de forma segura
             if hasattr(self, 'onu_update_timer') and self.onu_update_timer:
-                self.onu_update_timer.stop()
+                if self.onu_update_timer.isActive():
+                    self.onu_update_timer.stop()
+                self.onu_update_timer.deleteLater()
                 self.onu_update_timer = None
+                
+            # Limpiar results_panel si existe
+            if hasattr(self, 'results_panel') and self.results_panel:
+                self.results_panel.cleanup()
             
             if hasattr(self, 'adapter') and self.adapter:
                 # Limpiar adapter si es necesario

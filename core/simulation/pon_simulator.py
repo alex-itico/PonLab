@@ -5,14 +5,14 @@ Combina simulación por ciclos DBA y por eventos discretos
 
 from typing import Optional, Dict, Any, List, Callable
 import numpy as np
-from .pon_olt import OLT
-from .pon_dba_cycle import DBACycleManager, DBAResult, DBAAllocation
-from .pon_request import Request
-from .event_queue import EventQueue, EventType
-from .pon_event_onu import HybridONU
-from .pon_event_olt import HybridOLT
-from .pon_traffic import get_traffic_scenario, calculate_realistic_lambda
-from .pon_dba import DBAAlgorithmInterface, FCFSDBAAlgorithm
+from ..pon.pon_olt import OLT
+from ..algorithms.pon_dba_cycle import DBACycleManager, DBAResult, DBAAllocation
+from ..data.pon_request import Request
+from ..events.event_queue import EventQueue, EventType
+from ..events.pon_event_onu import HybridONU
+from ..events.pon_event_olt import HybridOLT
+from ..utilities.pon_traffic import get_traffic_scenario, calculate_realistic_lambda
+from ..algorithms.pon_dba import DBAAlgorithmInterface, FCFSDBAAlgorithm
 
 
 class EventEvaluator:
@@ -177,7 +177,7 @@ class PONSimulator:
         if dba_algorithm is None:
             dba_algorithm = FCFSDBAAlgorithm()
         
-        from .event_queue import CycleTimeManager
+        from ..events.event_queue import CycleTimeManager
         
         self.olt = HybridOLT(self.onus, dba_algorithm, self.channel_capacity)
         self.olt.cycle_manager = CycleTimeManager(self.MIN_CYCLE_INTERVAL)

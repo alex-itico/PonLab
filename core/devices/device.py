@@ -4,7 +4,7 @@ Clase base para todos los dispositivos de la red óptica
 """
 
 from PyQt5.QtCore import QObject, pyqtSignal, Qt
-from PyQt5.QtGui import QPixmap, QPainter
+from PyQt5.QtGui import QPixmap, QPainter, QColor, QBrush, QPen
 from PyQt5.QtSvg import QSvgRenderer
 import os
 import uuid
@@ -65,8 +65,9 @@ class Device(QObject):
         """Obtener ruta del icono SVG (implementar en subclases)"""
         # Construir ruta al directorio de recursos
         current_file = os.path.abspath(__file__)
-        core_dir = os.path.dirname(current_file)  # core/
-        project_root = os.path.dirname(core_dir)  # PonLab/
+        devices_dir = os.path.dirname(current_file)    # core/devices/
+        core_dir = os.path.dirname(devices_dir)        # core/
+        project_root = os.path.dirname(core_dir)       # PonLab/
         devices_path = os.path.join(project_root, 'resources', 'devices')
         
         if self.device_type == "OLT":
@@ -134,14 +135,14 @@ class Device(QObject):
         
         # Dibujar un rectángulo simple con el tipo de dispositivo
         if self.device_type == "OLT":
-            painter.setBrush(painter.brush().color().blue())
+            painter.setBrush(QBrush(QColor(0, 0, 255)))  # Azul
         else:
-            painter.setBrush(painter.brush().color().green())
+            painter.setBrush(QBrush(QColor(0, 255, 0)))  # Verde
         
         painter.drawRoundedRect(4, 4, size-8, size-8, 8, 8)
         
         # Dibujar texto
-        painter.setPen(painter.pen().color().white())
+        painter.setPen(QPen(QColor(255, 255, 255)))  # Blanco
         painter.drawText(pixmap.rect(), 0x0084, self.device_type)  # Qt.AlignCenter
         
         painter.end()

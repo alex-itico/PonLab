@@ -6,10 +6,10 @@ Unidad de Red Óptica integrada de netPONPy con generación de tráfico realista
 import numpy as np
 from typing import Dict, Optional, List
 from .pon_types import Traffic_Probability
-from .pon_request import Request
-from .pon_connection import Connection
-from .pon_buffer import Buffer
-from .pon_queue import Queue
+from ..data.pon_request import Request
+from ..connections.pon_connection import Connection
+from ..data.pon_buffer import Buffer
+from ..data.pon_queue import Queue
 
 
 class ONU:

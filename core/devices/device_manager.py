@@ -7,7 +7,7 @@ from PyQt5.QtCore import QObject, pyqtSignal, Qt
 from PyQt5.QtWidgets import QGraphicsPixmapItem, QGraphicsItem, QGraphicsRectItem, QGraphicsTextItem
 from PyQt5.QtGui import QPen, QBrush, QColor, QFont
 from .device_types import create_device
-from .connection_points import ConnectionPointsManager
+from ..connections.connection_points import ConnectionPointsManager
 import json
 
 class DeviceGraphicsItem(QGraphicsPixmapItem):

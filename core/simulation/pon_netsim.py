@@ -4,8 +4,8 @@ Motor de simulación integrado de netPONPy
 """
 
 from typing import Optional, Dict, Any
-from .pon_request import Request
-from .pon_olt import OLT
+from ..data.pon_request import Request
+from ..pon.pon_olt import OLT
 
 
 class EventEvaluator:

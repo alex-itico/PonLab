@@ -10,7 +10,7 @@ from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel,
                              QProgressBar, QSplitter, QScrollArea, QFrame)
 from PyQt5.QtCore import Qt, QTimer, pyqtSignal
 from PyQt5.QtGui import QFont, QColor
-from core.pon_adapter import PONAdapter
+from core import PONAdapter
 from .pon_metrics_charts import PONMetricsChartsPanel
 
 
@@ -495,3 +495,17 @@ class PONResultsPanel(QWidget):
     def update_status(self, status):
         """Actualizar estado general"""
         self.status_label.setText(status)
+        
+    def cleanup(self):
+        """Limpiar recursos del panel de resultados"""
+        try:
+            # Parar timer de actualización de forma segura
+            if hasattr(self, 'update_timer') and self.update_timer:
+                if self.update_timer.isActive():
+                    self.update_timer.stop()
+                self.update_timer.deleteLater()
+                self.update_timer = None
+                
+            print("Panel de resultados PON limpiado")
+        except Exception as e:
+            print(f"Warning en cleanup de resultados PON: {e}")
