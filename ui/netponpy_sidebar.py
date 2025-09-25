@@ -87,7 +87,7 @@ class NetPONPySidebar(QWidget):
         self.panel_stack = QStackedWidget()
         
         # Panel de simulación (actual)
-        self.simulation_panel = IntegratedPONTestPanel()
+        self.simulation_panel = IntegratedPONTestPanel(training_manager=self.training_manager)
         self.simulation_panel.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         
         # Panel de aprendizaje reforzado (nuevo)

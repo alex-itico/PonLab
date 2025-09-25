@@ -57,3 +57,4 @@ temp/
 ui/buttons.py
 ui/panel_design_view.py
 simulation_results
+models
