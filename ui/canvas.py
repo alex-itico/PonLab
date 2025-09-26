@@ -1179,7 +1179,7 @@ Tamaño de cuadrícula: {self.grid_size}px
             text_data = event.mimeData().text()
             if '|' in text_data:
                 device_name, device_type = text_data.split('|', 1)
-                if device_type in ['OLT', 'ONU']:
+                if device_type in ['OLT', 'OLT_SDN', 'ONU']:
                     event.acceptProposedAction()
                     return
         
@@ -1191,7 +1191,7 @@ Tamaño de cuadrícula: {self.grid_size}px
             text_data = event.mimeData().text()
             if '|' in text_data:
                 device_name, device_type = text_data.split('|', 1)
-                if device_type in ['OLT', 'ONU']:
+                if device_type in ['OLT', 'OLT_SDN', 'ONU']:
                     event.acceptProposedAction()
                     
                     # Actualizar cursor para indicar que se puede hacer drop
@@ -1215,7 +1215,7 @@ Tamaño de cuadrícula: {self.grid_size}px
             if '|' in text_data:
                 try:
                     device_name, device_type = text_data.split('|', 1)
-                    if device_type in ['OLT', 'ONU']:
+                    if device_type in ['OLT', 'OLT_SDN', 'ONU']:
                         # Convertir posición del drop a coordenadas de escena
                         scene_pos = self.mapToScene(event.pos())
                         x = scene_pos.x()

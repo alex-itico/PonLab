@@ -8,7 +8,7 @@ try:
     # Dispositivos - imports directos
     from .devices.device import Device
     from .devices.device_manager import DeviceManager
-    from .devices.device_types import OLT, ONU, create_device
+    from .devices.device_types import OLT, OLT_SDN, ONU, create_device
     
     # Conexiones - imports directos
     from .connections.connection_manager import ConnectionManager
@@ -27,6 +27,6 @@ except ImportError as e:
 
 # Exports principales
 __all__ = [
-    'Device', 'DeviceManager', 'OLT', 'ONU', 'create_device',
+    'Device', 'DeviceManager', 'OLT', 'OLT_SDN', 'ONU', 'create_device',
     'ConnectionManager', 'SimulationManager', 'PONAdapter'
 ]

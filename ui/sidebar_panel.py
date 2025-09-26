@@ -83,6 +83,8 @@ class DeviceItem(QFrame):
         # Determinar archivo de icono según tipo
         if self.device_type == "OLT":
             icon_file = "olt_icon.svg"
+        elif self.device_type == "OLT_SDN":
+            icon_file = "olt_sdn_icon.svg"
         elif self.device_type == "ONU":
             icon_file = "onu_icon.svg"
         else:
@@ -149,6 +151,8 @@ class DeviceItem(QFrame):
         # Color según tipo de dispositivo
         if self.device_type == "OLT":
             color = QColor(52, 152, 219)  # Azul
+        elif self.device_type == "OLT_SDN":
+            color = QColor(156, 39, 176)  # Morado (coincide con el ícono)
         elif self.device_type == "ONU":
             color = QColor(46, 204, 113)  # Verde
         else:
@@ -593,7 +597,7 @@ class DevicePropertiesPanel(QFrame):
         
         # Campo específico para OLT - Tasa de transmisión
         self.transmission_rate_edit = QDoubleSpinBox()
-        self.transmission_rate_edit.setRange(1.0, 10000.0)  # 1 Mbps a 10 Gbps
+        self.transmission_rate_edit.setRange(1.0, 100000.0)  # 1 Mbps a 100 Gbps
         self.transmission_rate_edit.setValue(512.0)  # Valor inicial, se actualiza con el dispositivo
         self.transmission_rate_edit.setSuffix(" Mbps")
         self.transmission_rate_edit.setDecimals(1)
@@ -714,8 +718,8 @@ class DevicePropertiesPanel(QFrame):
         self.y_coord_edit.setText(f"{device.y:.1f}")
         self.y_coord_edit.setEnabled(True)
         
-        # Manejar campo transmission_rate específico para OLT
-        if device.device_type == "OLT":
+        # Manejar campo transmission_rate específico para OLT y OLT_SDN
+        if device.device_type in ["OLT", "OLT_SDN"]:
             self.transmission_rate_edit.setVisible(True)
             # Obtener el valor desde las propiedades del dispositivo
             current_rate = device.properties.get('transmission_rate', 4096.0)
@@ -733,7 +737,7 @@ class DevicePropertiesPanel(QFrame):
         self.save_button.setEnabled(False)
         
         # Información específica por tipo (no editable)
-        if device.device_type == "OLT":
+        if device.device_type in ["OLT", "OLT_SDN"]:
             connected_onus = self.calculate_connected_onus(device)
             self.specific_info_label.setText(f"ONUs conectadas: {connected_onus}")
         elif device.device_type == "ONU":
@@ -746,7 +750,7 @@ class DevicePropertiesPanel(QFrame):
         self.edit_button.setEnabled(True)
     
     def calculate_connected_onus(self, olt_device):
-        """Calcular ONUs conectadas a una OLT"""
+        """Calcular ONUs conectadas a una OLT o OLT_SDN"""
         if not self.connection_manager:
             return 0
         
@@ -758,14 +762,14 @@ class DevicePropertiesPanel(QFrame):
         return count
     
     def calculate_olt_distance(self, onu_device):
-        """Calcular distancia de ONU a OLT conectada"""
+        """Calcular distancia de ONU a OLT/OLT_SDN conectada"""
         if not self.connection_manager:
             return None
         
         for connection in self.connection_manager.connections:
-            if connection.device_a.id == onu_device.id and connection.device_b.device_type == "OLT":
+            if connection.device_a.id == onu_device.id and connection.device_b.device_type in ["OLT", "OLT_SDN"]:
                 return connection.calculate_distance()
-            elif connection.device_b.id == onu_device.id and connection.device_a.device_type == "OLT":
+            elif connection.device_b.id == onu_device.id and connection.device_a.device_type in ["OLT", "OLT_SDN"]:
                 return connection.calculate_distance()
         return None
     
@@ -801,8 +805,8 @@ class DevicePropertiesPanel(QFrame):
         except ValueError:
             pass  # Ignorar valores inválidos
         
-        # Verificar cambio de transmission_rate para OLT
-        if (self.current_device.device_type == "OLT" and 
+        # Verificar cambio de transmission_rate para OLT/OLT_SDN
+        if (self.current_device.device_type in ["OLT", "OLT_SDN"] and 
             self.transmission_rate_edit.isVisible()):
             new_rate = self.transmission_rate_edit.value()
             current_rate = self.current_device.properties.get('transmission_rate', 4096.0)
@@ -849,8 +853,8 @@ class DevicePropertiesPanel(QFrame):
             pass  # Ignorar valores inválidos
     
     def on_transmission_rate_changed(self):
-        """Manejar cambio de tasa de transmisión del dispositivo OLT"""
-        if not self.current_device or self.current_device.device_type != "OLT":
+        """Manejar cambio de tasa de transmisión del dispositivo OLT/OLT_SDN"""
+        if not self.current_device or self.current_device.device_type not in ["OLT", "OLT_SDN"]:
             return
         
         new_rate = self.transmission_rate_edit.value()
@@ -882,7 +886,7 @@ class DevicePropertiesPanel(QFrame):
         
         try:
             # Actualizar transmission_rate si está en las nuevas propiedades
-            if 'transmission_rate' in new_properties and self.current_device.device_type == "OLT":
+            if 'transmission_rate' in new_properties and self.current_device.device_type in ["OLT", "OLT_SDN"]:
                 new_rate = float(new_properties['transmission_rate'])
                 self.transmission_rate_edit.setValue(new_rate)
             
@@ -1053,6 +1057,7 @@ class SidebarPanel(QWidget):
         # Lista de dispositivos disponibles
         devices = [
             ("Terminal de Linea Óptica", "OLT"),      # nombre_mostrado, tipo_para_icono
+            ("Terminal de Linea Óptica (SDN)", "OLT_SDN"),  # nombre_mostrado, tipo_para_icono
             ("Unidad de Red Óptica", "ONU"), # nombre_mostrado, tipo_para_icono
         ]
         
