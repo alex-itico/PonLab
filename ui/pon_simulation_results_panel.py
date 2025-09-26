@@ -27,6 +27,7 @@ class PONResultsPanel(QWidget):
         self.update_timer = QTimer()
         self.update_timer.timeout.connect(self.refresh_results)
         self.dark_theme = False  # Estado del tema
+        self.sdn_metrics_updated = pyqtSignal(dict)  # Nueva señal para métricas SDN
         
         self.setup_ui()
         

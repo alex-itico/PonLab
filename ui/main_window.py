@@ -4,7 +4,7 @@ Ventana principal del simulador de redes pasivas ópticas
 """
 
 from PyQt5.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, 
-                             QMenuBar, QAction, QActionGroup, QMessageBox)
+                             QMenuBar, QAction, QActionGroup, QMessageBox, QDockWidget)
 from PyQt5.QtCore import Qt, QEvent
 from PyQt5.QtGui import QIcon, QKeySequence, QPixmap, QPainter
 import os
@@ -18,10 +18,13 @@ from utils.resource_manager import resource_manager
 from utils.config_manager import config_manager
 from .canvas import Canvas
 from .sidebar_panel import SidebarPanel
+from .pon_sdn_dashboard import PONSDNDashboard
+from .pon_simulation_results_panel import PONResultsPanel
 from .netponpy_sidebar import NetPONPySidebar
 from .log_panel import LogPanel
+from .mainwindow_sdn import MainWindowSDNMixin
 
-class MainWindow(QMainWindow):
+class MainWindow(QMainWindow, MainWindowSDNMixin):
     """Clase de la ventana principal para el simulador de redes pasivas ópticas"""
     
     def __init__(self):
@@ -33,17 +36,23 @@ class MainWindow(QMainWindow):
         self.simulation_visible = config_manager.get_setting('simulation_visible', True)
         self.netponpy_visible = config_manager.get_setting('netponpy_visible', True)
         self.log_panel_visible = config_manager.get_setting('log_panel_visible', True)
+        self.sdn_dashboard_visible = config_manager.get_setting('sdn_dashboard_visible', False)
         # El origen siempre sigue el estado de la cuadrícula
         self.origin_visible = self.grid_visible
         self.dark_theme = config_manager.get_theme_settings()
         
         # Componentes principales
         self.canvas = None
+        self.sdn_dashboard = None
+        self.sdn_dock = None
         
         # Inicializar ventana principal
         self.setup_ui()
         self.setup_menubar()
         self.setup_window_properties()
+        
+        # Inicializar dashboard SDN
+        self.setup_sdn_dashboard()
         
         # Restaurar configuraciones del canvas
         if self.canvas:
@@ -185,6 +194,15 @@ class MainWindow(QMainWindow):
         self.components_action.setStatusTip('Mostrar u ocultar panel de componentes (Ctrl+P)')
         self.components_action.triggered.connect(self.toggle_components)
         view_menu.addAction(self.components_action)
+        
+        # Mostrar/Ocultar Dashboard SDN
+        self.sdn_dashboard_action = QAction('Mostrar/Ocultar &Dashboard SDN', self)
+        self.sdn_dashboard_action.setCheckable(True)
+        self.sdn_dashboard_action.setChecked(self.sdn_dashboard_visible)
+        self.sdn_dashboard_action.setShortcut('Ctrl+D')
+        self.sdn_dashboard_action.setStatusTip('Mostrar u ocultar el panel de métricas SDN (Ctrl+D)')
+        self.sdn_dashboard_action.triggered.connect(self.toggle_sdn_dashboard)
+        view_menu.addAction(self.sdn_dashboard_action)
         
         # Mostrar/Ocultar Cuadrícula (incluye el origen)
         self.grid_action = QAction('Mostrar/Ocultar &Cuadrícula', self)
@@ -365,6 +383,12 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage(f'Dispositivo seleccionado: {device_name} ({device_type}) - Arrastra al canvas', 3000)
         print(f"Dispositivo para arrastrar: {device_name} - {device_type}")
     
+    def update_sdn_metrics(self, sdn_metrics):
+        """Actualizar métricas del dashboard SDN"""
+        if self.sdn_dashboard and self.sdn_dashboard_visible:
+            print(f"Actualizando dashboard SDN con métricas: {sdn_metrics}")
+            self.sdn_dashboard.update_metrics(sdn_metrics)
+    
     def on_device_dropped(self, device_name, device_type, x, y):
         """Manejar drop de dispositivo en el canvas"""
         self.statusBar().showMessage(f'Dispositivo {device_type} agregado en ({x:.1f}, {y:.1f})', 4000)
@@ -374,6 +398,20 @@ class MainWindow(QMainWindow):
         device_count = self.canvas.get_device_manager().get_device_count()
         print(f"📊 Total de dispositivos en canvas: {device_count}")
     
+    def setup_sdn_dashboard(self):
+        """Configurar el dashboard SDN"""
+        if not self.sdn_dashboard:
+            print("Inicializando Dashboard SDN...")
+            self.sdn_dashboard = PONSDNDashboard()
+            self.sdn_dock = QDockWidget("Dashboard SDN", self)
+            self.sdn_dock.setWidget(self.sdn_dashboard)
+            self.sdn_dock.setAllowedAreas(Qt.RightDockWidgetArea | Qt.LeftDockWidgetArea)
+            self.addDockWidget(Qt.RightDockWidgetArea, self.sdn_dock)
+            
+            # Ajustar visibilidad según configuración
+            self.sdn_dock.setVisible(self.sdn_dashboard_visible)
+            print(f"Dashboard SDN creado y {'visible' if self.sdn_dashboard_visible else 'oculto'}")
+            
     def on_topology_changed(self):
         """Manejar cambios en la topología del canvas"""
         # Notificar al panel NetPONPy que la topología cambió
@@ -440,6 +478,31 @@ class MainWindow(QMainWindow):
         self.simulation_visible = not self.simulation_visible
         print(f"Simulación {'mostrada' if self.simulation_visible else 'oculta'}")
         # TODO: Implementar lógica para mostrar/ocultar simulación
+        
+    def toggle_sdn_dashboard(self):
+        """Alternar visibilidad del dashboard SDN"""
+        self.sdn_dashboard_visible = not self.sdn_dashboard_visible
+        
+        # Asegurar que existe el dashboard
+        if not self.sdn_dashboard:
+            self.setup_sdn_dashboard()
+        else:
+            # Solo alternar visibilidad
+            self.sdn_dock.setVisible(self.sdn_dashboard_visible)
+        
+        print(f"Dashboard SDN {'mostrado' if self.sdn_dashboard_visible else 'oculto'}")
+        
+        if self.sdn_dashboard_visible:
+            self.sdn_dock.show()
+        else:
+            self.sdn_dock.hide()
+        
+        # Actualizar estado del menú
+        self.sdn_dashboard_action.setChecked(self.sdn_dashboard_visible)
+        print(f"Dashboard SDN {'mostrado' if self.sdn_dashboard_visible else 'oculto'}")
+        
+        # Guardar configuración
+        config_manager.save_setting('sdn_dashboard_visible', self.sdn_dashboard_visible)
     
     def toggle_netponpy(self):
         """Alternar visibilidad del panel NetPONPy"""
