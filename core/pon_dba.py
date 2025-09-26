@@ -224,3 +224,120 @@ class RLDBAAlgorithm(DBAAlgorithmInterface):
     
     def get_algorithm_name(self) -> str:
         return "RL-DBA"
+    
+class TESTDBAAlgorithm(DBAAlgorithmInterface):
+    """
+    Algoritmo TEST para validación de integración.
+    Política: reparto uniforme sobre las ONUs con demanda > 0.
+    Útil para verificar el flujo allocate_bandwidth -> Grants.
+    """
+    def allocate_bandwidth(self, onu_requests: Dict[str, float],
+                           total_bandwidth: float, action: Any = None) -> Dict[str, float]:
+        allocations: Dict[str, float] = {}
+        active = [onu for onu, req in onu_requests.items() if req > 0]
+        if not active or total_bandwidth <= 0:
+            return allocations
+
+        share = total_bandwidth / len(active)
+        for onu in active:
+            allocations[onu] = min(onu_requests[onu], share)
+        return allocations
+
+    def get_algorithm_name(self) -> str:
+        return "TEST"
+
+class StrictPriorityMinShareDBA(DBAAlgorithmInterface):
+    """
+    Ejemplo: primero asegura mínimos por TCONT (1>2>3>4) y luego reparte sobrante
+    proporcional a la demanda remanente. Todas las cantidades están en BYTES.
+    """
+    def __init__(self, min_share_per_tcont=None):
+        # mínimos por TCONT en fracción del presupuesto del ciclo (opcional)
+        # e.g., {'TCONT1': 0.20, 'TCONT2': 0.15, 'TCONT3': 0.10, 'TCONT4': 0.0}
+        self.min_share_per_tcont = min_share_per_tcont or {
+            'TCONT1': 0.20,
+            'TCONT2': 0.15,
+            'TCONT3': 0.10,
+            'TCONT4': 0.00,
+        }
+        self.tcont_prio = ['TCONT1', 'TCONT2', 'TCONT3', 'TCONT4']
+
+    def allocate_bandwidth(self, onu_requests, total_bandwidth, action=None):
+        # Asegura tipos
+        budget_bytes = int(total_bandwidth)  # total en BYTES para el ciclo
+        allocations = {}
+
+        # Demanda total por TCONT y por ONU/TCONT
+        demand_per_tcont = {t: 0 for t in self.tcont_prio}
+        for onu_id, tdict in onu_requests.items():
+            for tcont_id, req_bytes in tdict.items():
+                if tcont_id in demand_per_tcont:
+                    demand_per_tcont[tcont_id] += max(0, int(req_bytes or 0))
+
+        # 1) Asignar mínimos por TCONT (si hay demanda)
+        assigned = 0
+        for tcont_id in self.tcont_prio:
+            min_bytes = int(self.min_share_per_tcont.get(tcont_id, 0.0) * budget_bytes)
+            if min_bytes <= 0 or demand_per_tcont[tcont_id] <= 0:
+                continue
+            # repartir min_bytes proporcional a la demanda de cada ONU en ese TCONT
+            total_dem_t = demand_per_tcont[tcont_id]
+            for onu_id, tdict in onu_requests.items():
+                req = max(0, int(tdict.get(tcont_id, 0) or 0))
+                if req <= 0: 
+                    continue
+                share = int(min_bytes * (req / total_dem_t))
+                if share <= 0:
+                    continue
+                # asignar sin exceder request ni budget
+                give = min(share, req, budget_bytes - assigned)
+                if give <= 0:
+                    continue
+                allocations.setdefault(onu_id, {})[tcont_id] = allocations.get(onu_id, {}).get(tcont_id, 0) + give
+                assigned += give
+                if assigned >= budget_bytes:
+                    break
+            if assigned >= budget_bytes:
+                break
+
+        # 2) Repartir sobrante por prioridad (de arriba hacia abajo) proporcional a demanda remanente
+        if assigned < budget_bytes:
+            for tcont_id in self.tcont_prio:
+                # demanda restante en este TCONT
+                rem_total = 0
+                rem_per_onu = {}
+                for onu_id, tdict in onu_requests.items():
+                    req = max(0, int(tdict.get(tcont_id, 0) or 0))
+                    already = allocations.get(onu_id, {}).get(tcont_id, 0)
+                    rem = max(0, req - already)
+                    if rem > 0:
+                        rem_per_onu[onu_id] = rem
+                        rem_total += rem
+                if rem_total <= 0:
+                    continue
+
+                # presupuesto disponible en esta vuelta
+                leftover = budget_bytes - assigned
+                if leftover <= 0:
+                    break
+
+                for onu_id, rem in rem_per_onu.items():
+                    share = int(leftover * (rem / rem_total))
+                    if share <= 0:
+                        continue
+                    give = min(share, rem, budget_bytes - assigned)
+                    if give <= 0:
+                        continue
+                    allocations.setdefault(onu_id, {})[tcont_id] = allocations.get(onu_id, {}).get(tcont_id, 0) + give
+                    assigned += give
+                    if assigned >= budget_bytes:
+                        break
+                if assigned >= budget_bytes:
+                    break
+
+        # 3) Sanitizar: no negativos, no NaNs, no exceder presupuestos ni requests
+        for onu_id, tdict in allocations.items():
+            for tcont_id, v in list(tdict.items()):
+                req = max(0, int(onu_requests.get(onu_id, {}).get(tcont_id, 0) or 0))
+                tdict[tcont_id] = max(0, min(int(v), req))
+        return allocations

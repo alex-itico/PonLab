@@ -9,7 +9,10 @@ try:
     from .pon_dba import (
         FCFSDBAAlgorithm, 
         PriorityDBAAlgorithm, 
-        RLDBAAlgorithm
+        RLDBAAlgorithm,
+        TESTDBAAlgorithm,
+        StrictPriorityMinShareDBA,
+        
     )
     from .pon_simulator import PONSimulator, EventEvaluator
     from .pon_traffic import get_available_scenarios, print_scenario_info
@@ -353,7 +356,9 @@ class PONAdapter:
         algorithms = {
             "FCFS": FCFSDBAAlgorithm,
             "Priority": PriorityDBAAlgorithm,
-            "RL-DBA": RLDBAAlgorithm
+            "RL-DBA": RLDBAAlgorithm,
+            "TEST": TESTDBAAlgorithm,
+            "SP-MINSHARE": StrictPriorityMinShareDBA,
         }
         
         if algorithm_name not in algorithms:
@@ -363,7 +368,16 @@ class PONAdapter:
     
     def get_available_algorithms(self):
         """Obtener lista de algoritmos DBA disponibles"""
-        return ["FCFS", "Priority", "RL-DBA"]
+        return ["FCFS", "Priority", "RL-DBA", "TEST", "SP-MINSHARE"]
+    
+    def is_predictive_algorithm(self, name: str = None) -> bool:
+        """
+        Indica si el algoritmo es de tipo predictivo (p.ej., RL-DBA).
+        True solo para RL-DBA por ahora.
+        """
+        algo = (name or getattr(self, "current_algorithm", "") or "").strip().upper()
+        return algo == "RL-DBA"
+
     
     # ===== TRAFFIC SCENARIOS =====
     
