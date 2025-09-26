@@ -154,30 +154,42 @@ class IntegratedPONTestPanel(QWidget):
         
         # Selector de modelo RL (inicialmente oculto)
         config_layout.addWidget(QLabel("Modelo RL:"), 2, 0)
-        rl_layout = QHBoxLayout()
+        
+        # Layout vertical para organizar mejor los elementos RL
+        rl_main_layout = QVBoxLayout()
+        
+        # Layout horizontal para los botones
+        rl_buttons_layout = QHBoxLayout()
         
         # Smart RL model loading
         self.load_rl_model_btn = QPushButton("📁 Cargar Modelo RL")
         self.load_rl_model_btn.setToolTip("Cargar modelo RL entrenado (.zip)")
+        self.load_rl_model_btn.setMinimumWidth(150)  # Hacer el botón más ancho
         self.load_rl_model_btn.clicked.connect(self.load_smart_rl_model)
-        rl_layout.addWidget(self.load_rl_model_btn)
+        rl_buttons_layout.addWidget(self.load_rl_model_btn)
 
         # Botón para desactivar RL
         self.unload_rl_model_btn = QPushButton("❌ Desactivar RL")
         self.unload_rl_model_btn.setToolTip("Desactivar simulación RL y volver a algoritmos normales")
         self.unload_rl_model_btn.clicked.connect(self.unload_rl_model)
         self.unload_rl_model_btn.setVisible(False)  # Inicialmente oculto
-        rl_layout.addWidget(self.unload_rl_model_btn)
+        rl_buttons_layout.addWidget(self.unload_rl_model_btn)
+        
+        # Agregar espacio flexible para que los botones no se estiren demasiado
+        rl_buttons_layout.addStretch()
+        
+        # Agregar layout de botones al layout principal
+        rl_main_layout.addLayout(rl_buttons_layout)
 
-        # RL model status
+        # RL model status en una línea separada con margen
         self.rl_status_label = QLabel("No hay modelo cargado")
-        self.rl_status_label.setStyleSheet("color: #666; font-size: 8pt;")
-        rl_layout.addWidget(self.rl_status_label)
+        self.rl_status_label.setStyleSheet("color: #666; font-size: 8pt; margin-top: 5px;")
+        rl_main_layout.addWidget(self.rl_status_label)
 
         # LÍNEA 162 MODIFICADA - NO DEBE HABER ERROR AQUÍ
         # Crear widget de RL y agregarlo al layout
         rl_widget = QWidget()
-        rl_widget.setLayout(rl_layout)
+        rl_widget.setLayout(rl_main_layout)
         config_layout.addWidget(rl_widget, 2, 1)
 
         # RL model list update removed - use internal RL-DBA instead

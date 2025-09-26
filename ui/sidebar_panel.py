@@ -618,6 +618,7 @@ class DevicePropertiesPanel(QFrame):
         
         # Contenedor para botones
         buttons_widget = QWidget()
+        buttons_widget.setStyleSheet("QWidget { background-color: transparent; }")  # Fondo transparente
         buttons_layout = QHBoxLayout(buttons_widget)
         buttons_layout.setContentsMargins(0, 0, 0, 0)
         buttons_layout.setSpacing(8)
@@ -648,12 +649,11 @@ class DevicePropertiesPanel(QFrame):
         
         # Botón para edición completa
         self.edit_button = QPushButton("✏️ Editar Completo")
-        self.edit_button.setFixedHeight(28)  # Altura aumentada
+        self.edit_button.setFixedHeight(28)  # Misma altura que el botón guardar
         self.edit_button.setStyleSheet("""
             QPushButton {
                 font-weight: bold;
                 padding: 4px 8px;
-                margin-top: 4px;
             }
         """)
         self.edit_button.clicked.connect(self.on_edit_requested)

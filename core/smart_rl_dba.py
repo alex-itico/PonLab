@@ -10,7 +10,7 @@ import json
 import random
 import numpy as np
 from typing import Dict, List, Any, Optional
-from .pon_dba import DBAAlgorithmInterface
+from .algorithms.pon_dba import DBAAlgorithmInterface
 
 
 class InternalRLAgent:
