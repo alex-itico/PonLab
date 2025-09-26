@@ -5,9 +5,9 @@ import os
 
 class SplashScreen(QSplashScreen):
     def __init__(self):
-        # Crear un pixmap en blanco para el splash screen
-        pixmap = QPixmap(600, 400)
-        pixmap.fill(QColor(45, 45, 45))  # Fondo gris oscuro
+        # Crear un pixmap más grande para destacar el icono
+        pixmap = QPixmap(800, 400)  # Más grande para el icono
+        pixmap.fill(QColor(43, 43, 43, 204))  # Fondo #2b2b2b con 80% transparencia
         
         super().__init__(pixmap)
         
@@ -16,7 +16,7 @@ class SplashScreen(QSplashScreen):
         
         # Variables para la animación
         self.opacity_effect = 0.0
-        self.scale_factor = 0.8
+        self.scale_factor = 1.0  # Sin animación de zoom
         
         # Timer para controlar la duración
         self.timer = QTimer()
@@ -39,83 +39,98 @@ class SplashScreen(QSplashScreen):
     def setup_ui(self):
         """Configurar la interfaz del splash screen"""
         # Cargar el icono
-        self.icon_path = self.get_resource_path('resources/icons/app_icon_128x128.png')
+        self.icon_path = self.get_resource_path('resources/icons/app_icon_512x512.png')
         
     def paintEvent(self, event):
         """Dibujar el contenido del splash screen"""
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing, True)
         
-        # Fondo con gradiente
+        # Fondo con el color especificado y transparencia
         gradient = QLinearGradient(0, 0, 0, self.height())
-        gradient.setColorAt(0, QColor(60, 60, 60))
-        gradient.setColorAt(1, QColor(30, 30, 30))
+        gradient.setColorAt(0, QColor(43, 43, 43, 204))  # #2b2b2b con 80% transparencia
+        gradient.setColorAt(1, QColor(43, 43, 43, 180))  # Ligeramente más transparente abajo
         painter.fillRect(self.rect(), gradient)
         
-        # Dibujar el icono si existe
+        # Dibujar el icono si existe (mucho más grande y a la izquierda)
         if os.path.exists(self.icon_path):
             icon_pixmap = QPixmap(self.icon_path)
             
-            # Escalar el icono con la animación (tamaño aumentado)
-            scaled_size = int(160 * self.scale_factor)  # Aumentado de 128 a 160
+            # Icono aún más grande
+            scaled_size = 260  # Aún más grande (antes 220)
             icon_scaled = icon_pixmap.scaled(
                 scaled_size, scaled_size, 
                 Qt.KeepAspectRatio, 
                 Qt.SmoothTransformation
             )
             
-            # Centrar el icono
-            icon_x = (self.width() - icon_scaled.width()) // 2
-            icon_y = (self.height() - icon_scaled.height()) // 2 - 50
+            # Posicionar el icono a la izquierda
+            icon_x = 40  # Reducir margen para dar más espacio al icono más grande
+            icon_y = (self.height() - icon_scaled.height()) // 2
             
             painter.drawPixmap(icon_x, icon_y, icon_scaled)
         
-        # Dibujar el título
-        painter.setPen(QColor(255, 255, 255))
-        title_font = QFont("Arial", 24, QFont.Bold)
+        # Dibujar el título principal con el color magenta especificado
+        painter.setPen(QColor(226, 8, 215))  # Color #e208d7 especificado
+        title_font = QFont("Segoe UI", 40, QFont.Bold)  # Más grande y moderna
         painter.setFont(title_font)
         
-        title_rect = painter.fontMetrics().boundingRect("Simulador Redes de Ópticas Pasivas")
-        title_x = (self.width() - title_rect.width()) // 2
-        title_y = (self.height() + title_rect.height()) // 2 + 40
+        # Posicionar texto a la derecha del icono más grande
+        text_start_x = 340  # Más espacio para el icono aún más grande
         
-        painter.drawText(title_x, title_y, "Simulador Redes de Ópticas Pasivas")
+        title_text = "PonLab"
+        title_rect = painter.fontMetrics().boundingRect(title_text)
+        title_x = text_start_x
+        title_y = (self.height() - 40) // 2  # Centrado verticalmente
         
-        # Dibujar el subtítulo
-        painter.setPen(QColor(200, 200, 200))
-        subtitle_font = QFont("Arial", 12)
+        painter.drawText(title_x, title_y, title_text)
+        
+        # Dibujar el subtítulo "simulator" en la misma línea
+        painter.setPen(QColor(180, 180, 180))  # Gris claro para contraste
+        subtitle_font = QFont("Segoe UI", 30, QFont.Normal)  # Proporcionalmente más grande
         painter.setFont(subtitle_font)
         
-        subtitle_rect = painter.fontMetrics().boundingRect("Redes de Ópticas Pasivas")
-        subtitle_x = (self.width() - subtitle_rect.width()) // 2
-        subtitle_y = title_y + 35
+        # Calcular posición después de "PonLab"
+        subtitle_text = "simulator"
+        subtitle_x = title_x + title_rect.width() + 15  # Espacio
+        subtitle_y = title_y
         
-        painter.drawText(subtitle_x, subtitle_y, "Redes de Ópticas Pasivas")
+        painter.drawText(subtitle_x, subtitle_y, subtitle_text)
+        
+        # Dibujar descripción debajo del título principal
+        painter.setPen(QColor(160, 160, 160))
+        desc_font = QFont("Segoe UI", 14)  # Más grande
+        painter.setFont(desc_font)
+        
+        desc_text = "Simulador Redes de Ópticas Pasivas"
+        desc_x = text_start_x
+        desc_y = title_y + 60  # Debajo del título
+        
+        painter.drawText(desc_x, desc_y, desc_text)
         
         # Dibujar versión
-        painter.setPen(QColor(150, 150, 150))
-        version_font = QFont("Arial", 10)
+        painter.setPen(QColor(120, 120, 120))
+        version_font = QFont("Segoe UI", 12)
         painter.setFont(version_font)
         
-        version_text = "Versión 1.3.0"
-        version_rect = painter.fontMetrics().boundingRect(version_text)
-        version_x = (self.width() - version_rect.width()) // 2
-        version_y = subtitle_y + 30
+        version_text = "Versión 2.0.0"
+        version_x = text_start_x
+        version_y = desc_y + 30
         
         painter.drawText(version_x, version_y, version_text)
         
-        # Barra de progreso simple
-        progress_width = 200
-        progress_height = 4
-        progress_x = (self.width() - progress_width) // 2
-        progress_y = version_y + 40
+        # Barra de progreso con el color magenta especificado
+        progress_width = 280  # Más ancha
+        progress_height = 4   # Más gruesa
+        progress_x = text_start_x
+        progress_y = version_y + 30
         
-        # Fondo de la barra
-        painter.fillRect(progress_x, progress_y, progress_width, progress_height, QColor(100, 100, 100))
+        # Fondo de la barra más sutil
+        painter.fillRect(progress_x, progress_y, progress_width, progress_height, QColor(80, 80, 80))
         
-        # Progreso animado
+        # Progreso animado con el mismo color magenta del título
         progress_fill = int(progress_width * self.opacity_effect)
-        painter.fillRect(progress_x, progress_y, progress_fill, progress_height, QColor(0, 150, 255))
+        painter.fillRect(progress_x, progress_y, progress_fill, progress_height, QColor(226, 8, 215))  # #e208d7
     
     def show_splash(self, duration=2000):
         """Mostrar el splash screen por la duración especificada"""
