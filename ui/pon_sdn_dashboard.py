@@ -24,6 +24,7 @@ class MetricCard(QFrame):
     def __init__(self, title: str, value: str, description: str = "", parent=None):
         super().__init__(parent)
         self.setFrameStyle(QFrame.StyledPanel | QFrame.Raised)
+        self.setObjectName("MetricCard")  # Para identificación en CSS
         
         # Layout principal
         layout = QVBoxLayout(self)
@@ -31,6 +32,7 @@ class MetricCard(QFrame):
         
         # Título
         title_label = QLabel(title)
+        title_label.setObjectName("MetricTitle")
         title_font = QFont()
         title_font.setBold(True)
         title_label.setFont(title_font)
@@ -38,6 +40,7 @@ class MetricCard(QFrame):
         
         # Valor
         self.value_label = QLabel(value)
+        self.value_label.setObjectName("MetricValue")
         value_font = QFont()
         value_font.setPointSize(16)
         self.value_label.setFont(value_font)
@@ -47,6 +50,7 @@ class MetricCard(QFrame):
         # Descripción
         if description:
             desc_label = QLabel(description)
+            desc_label.setObjectName("MetricDescription")
             desc_font = QFont()
             desc_font.setPointSize(8)
             desc_label.setFont(desc_font)
@@ -62,6 +66,7 @@ class PONSDNDashboard(QWidget):
     
     def __init__(self, parent=None):
         super().__init__(parent)
+        self.setObjectName("PONSDNDashboard")  # Para identificación en CSS
         self.setup_ui()
         
     def setup_ui(self):
@@ -73,6 +78,7 @@ class PONSDNDashboard(QWidget):
         
         # Título del dashboard
         title_label = QLabel("📊 Dashboard SDN")
+        title_label.setObjectName("DashboardTitle")
         title_font = QFont()
         title_font.setBold(True)
         title_font.setPointSize(14)
@@ -82,11 +88,13 @@ class PONSDNDashboard(QWidget):
         
         # Área con scroll para métricas
         scroll_area = QScrollArea()
+        scroll_area.setObjectName("DashboardScrollArea")
         scroll_area.setWidgetResizable(True)
         scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         
         # Widget contenedor para métricas
         metrics_widget = QWidget()
+        metrics_widget.setObjectName("MetricsContainer")
         metrics_layout = QGridLayout(metrics_widget)
         
         # Métricas globales del controlador
@@ -120,6 +128,7 @@ class PONSDNDashboard(QWidget):
         
         # Tabla de métricas por ONU
         self.onu_table = QTableWidget()
+        self.onu_table.setObjectName("ONUMetricsTable")
         self.onu_table.setColumnCount(4)
         self.onu_table.setHorizontalHeaderLabels([
             "ONU ID",
@@ -129,6 +138,10 @@ class PONSDNDashboard(QWidget):
         ])
         header = self.onu_table.horizontalHeader()
         header.setSectionResizeMode(QHeaderView.Stretch)
+        
+        # Configurar alternancia de colores en filas
+        self.onu_table.setAlternatingRowColors(True)
+        
         metrics_layout.addWidget(self.onu_table, 2, 0, 1, 2)
         
         # Gráfica de fairness histórico (si PyQtChart está disponible)
@@ -176,7 +189,9 @@ class PONSDNDashboard(QWidget):
         
         for row, (onu_id, metrics) in enumerate(onu_metrics.items()):
             # ONU ID
-            self.onu_table.setItem(row, 0, QTableWidgetItem(onu_id))
+            onu_id_item = QTableWidgetItem(onu_id)
+            onu_id_item.setTextAlignment(Qt.AlignCenter)
+            self.onu_table.setItem(row, 0, onu_id_item)
             
             # Latencia promedio
             latency = QTableWidgetItem(f"{metrics.get('avg_latency', 0):.3f} ms")

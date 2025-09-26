@@ -521,9 +521,10 @@ class IntegratedPONTestPanel(QWidget):
                 self.rl_status_label.setText(f"✅ {model_name}")
                 self.rl_status_label.setStyleSheet("color: green; font-size: 8pt;")
 
-                # Cuando se carga un modelo RL, solo permitir Smart-RL
+                # Cuando se carga un modelo RL, permitir Smart-RL y Smart-RL-SDN
                 self.algorithm_combo.clear()
                 self.algorithm_combo.addItem("Smart-RL")
+                self.algorithm_combo.addItem("Smart-RL-SDN")
                 self.algorithm_combo.setCurrentText("Smart-RL")
 
                 # Marcar que hay un modelo RL cargado
@@ -536,7 +537,7 @@ class IntegratedPONTestPanel(QWidget):
                 QMessageBox.information(
                     self,
                     "Modelo Cargado",
-                    f"Modelo RL cargado exitosamente:\n{model_name}\n\nAlgoritmo cambiado automáticamente a 'Smart-RL'."
+                    f"Modelo RL cargado exitosamente:\n{model_name}\n\nAlgoritmos disponibles: 'Smart-RL' y 'Smart-RL-SDN'."
                 )
 
                 # Log
