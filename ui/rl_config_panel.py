@@ -475,6 +475,7 @@ class RLConfigPanel(QWidget):
         # Botón entrenar
         self.train_button = QPushButton("Entrenar")
         self.train_button.setMinimumHeight(35)
+        self.train_button.setMinimumWidth(120)
         self.train_button.clicked.connect(self.start_training)
         self.train_button.setToolTip("Iniciar entrenamiento del agente RL")
         buttons_layout1.addWidget(self.train_button)
@@ -1416,6 +1417,29 @@ class RLConfigPanel(QWidget):
                 QCheckBox {
                     color: #ffffff;
                 }
+                QTabWidget::pane {
+                    border: 1px solid #666666;
+                    background-color: #2c2c2c;
+                }
+                QTabBar::tab {
+                    background-color: #404040;
+                    color: #ffffff;
+                    border: 1px solid #666666;
+                    border-bottom: none;
+                    padding: 8px 20px;
+                    min-width: 100px;
+                    margin-right: 2px;
+                    border-top-left-radius: 4px;
+                    border-top-right-radius: 4px;
+                }
+                QTabBar::tab:selected {
+                    background-color: #2c2c2c;
+                    color: #ffffff;
+                    font-weight: bold;
+                }
+                QTabBar::tab:hover {
+                    background-color: #505050;
+                }
             """)
         else:
             self.setStyleSheet("""
@@ -1481,6 +1505,29 @@ class RLConfigPanel(QWidget):
                 }
                 QCheckBox {
                     color: #333333;
+                }
+                QTabWidget::pane {
+                    border: 1px solid #cccccc;
+                    background-color: #ffffff;
+                    border-radius: 4px;
+                }
+                QTabBar::tab {
+                    background-color: #f0f0f0;
+                    color: #333333;
+                    border: 1px solid #cccccc;
+                    padding: 8px 20px;
+                    min-width: 100px;
+                    margin-right: 2px;
+                    border-top-left-radius: 4px;
+                    border-top-right-radius: 4px;
+                }
+                QTabBar::tab:selected {
+                    background-color: #ffffff;
+                    border-bottom: 1px solid #ffffff;
+                    font-weight: bold;
+                }
+                QTabBar::tab:hover {
+                    background-color: #e8e8e8;
                 }
             """)
 
