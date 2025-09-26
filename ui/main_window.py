@@ -530,98 +530,186 @@ class MainWindow(QMainWindow):
         return os.path.join(base_path, relative_path)
     
     def mostrar_acerca_de(self):
-        """Mostrar información acerca de la aplicación"""
-        # Crear un QMessageBox personalizado
-        msg_box = QMessageBox(self)
-        msg_box.setWindowTitle('Acerca de')
+        """Mostrar información acerca de la aplicación con layout personalizado"""
+        from PyQt5.QtWidgets import QDialog, QHBoxLayout, QVBoxLayout, QPushButton, QLabel
+        from PyQt5.QtCore import Qt
+        from PyQt5.QtGui import QFont
+        
+        # Crear diálogo personalizado
+        dialog = QDialog(self)
+        dialog.setWindowTitle('Acerca de PonLab')
+        dialog.setModal(True)
+        dialog.setFixedSize(1000, 600)  # Tamaño fijo para evitar problemas de redimensionado
+        dialog.setWindowFlags(Qt.Dialog | Qt.WindowTitleHint | Qt.WindowCloseButtonHint)  # Evitar redimensionado
         
         # Aplicar el mismo estilo que la ventana principal
         window_bg = self.palette().color(self.palette().Window).name()
         text_color = self.palette().color(self.palette().WindowText).name()
         
-        msg_box.setStyleSheet(f"""
-            QMessageBox {{
+        dialog.setStyleSheet(f"""
+            QDialog {{
                 background-color: {window_bg};
                 color: {text_color};
             }}
-            QMessageBox QLabel {{
+            QLabel {{
                 background-color: transparent;
                 color: {text_color};
             }}
-            QMessageBox QPushButton {{
+            QPushButton {{
                 background-color: #2563eb;
                 color: white;
                 border: 1px solid #1e40af;
-                padding: 8px 16px;
-                border-radius: 4px;
+                padding: 10px 20px;
+                border-radius: 5px;
                 font-weight: bold;
+                font-size: 12px;
             }}
-            QMessageBox QPushButton:hover {{
+            QPushButton:hover {{
                 background-color: #3b82f6;
                 border-color: #2563eb;
             }}
-            QMessageBox QPushButton:pressed {{
+            QPushButton:pressed {{
                 background-color: #1d4ed8;
                 border-color: #1e3a8a;
             }}
         """)
         
-        # Configurar el icono personalizado con fondo adecuado
-        icon_path = self.get_resource_path('resources/icons/app_icon_64x64.png')
-        if os.path.exists(icon_path):
-            # Crear un pixmap con fondo que se adapte al tema
+        # Layout principal horizontal con configuración fija
+        main_layout = QHBoxLayout(dialog)
+        main_layout.setSpacing(50)  # Aumentado de 30 a 50 para más separación
+        main_layout.setContentsMargins(30, 30, 30, 30)
+        main_layout.setSizeConstraint(QHBoxLayout.SetFixedSize)  # Evitar redimensionado automático
+        
+        # Lado izquierdo: Icono grande con tamaño fijo
+        icon_widget = QWidget()  # Contenedor para el icono
+        icon_widget.setFixedSize(400, 400)
+        icon_layout = QVBoxLayout(icon_widget)
+        icon_layout.setContentsMargins(0, 0, 0, 0)
+        
+        icon_label = QLabel()
+        icon_label.setAlignment(Qt.AlignCenter)
+        icon_label.setFixedSize(400, 400)  # Tamaño fijo del icono
+        
+        # Buscar el icono de 512x512, sino usar el más grande disponible
+        icon_path_512 = self.get_resource_path('resources/icons/app_icon_512x512.png')
+        icon_path_128 = self.get_resource_path('resources/icons/app_icon_128x128.png')
+        icon_path_64 = self.get_resource_path('resources/icons/app_icon_64x64.png')
+        
+        icon_path = None
+        if os.path.exists(icon_path_512):
+            icon_path = icon_path_512
+        elif os.path.exists(icon_path_128):
+            icon_path = icon_path_128
+        elif os.path.exists(icon_path_64):
+            icon_path = icon_path_64
+        
+        if icon_path:
+            # Cargar y escalar el icono a un tamaño más pequeño
             original_pixmap = QPixmap(icon_path)
-            
-            # Crear un nuevo pixmap con fondo del tema
-            themed_pixmap = QPixmap(64, 64)
-            themed_pixmap.fill(self.palette().color(self.palette().Window))
-            
-            # Dibujar el icono original sobre el fondo temático
-            from PyQt5.QtGui import QPainter
-            painter = QPainter(themed_pixmap)
-            painter.setRenderHint(QPainter.Antialiasing, True)
-            
-            # Centrar el icono original en el nuevo pixmap
-            x = (themed_pixmap.width() - original_pixmap.width()) // 2
-            y = (themed_pixmap.height() - original_pixmap.height()) // 2
-            painter.drawPixmap(x, y, original_pixmap)
-            painter.end()
-            
-            msg_box.setIconPixmap(themed_pixmap)
+            scaled_pixmap = original_pixmap.scaled(
+                400, 400,  # Reducido de 512 a 400
+                Qt.KeepAspectRatio, 
+                Qt.SmoothTransformation
+            )
+            icon_label.setPixmap(scaled_pixmap)
         else:
-            msg_box.setIcon(QMessageBox.Information)
+            # Icono de respaldo si no se encuentra ninguno
+            icon_label.setText("🔬\nPonLab")
+            icon_label.setStyleSheet(f"font-size: 80px; color: {text_color};")  # Reducido de 100px
         
-        # Configurar el texto
-        msg_box.setText(
-            '''<h3>Simulador de Redes Pasivas Ópticas</h3>
-            <p>Versión 1.0</p>
-            <p>Una aplicación para simular y diseñar redes pasivas ópticas (PON).</p>
-            
-            <p><b>Características:</b></p>
-            <ul>
-            <li>Diseño de topologías PON</li>
-            <li>Simulación de redes pasivas ópticas</li>
-            <li>Análisis de rendimiento de fibra óptica</li>
-            </ul>
-            
-            <hr>
-            
-            <p><b>Elaborado por:</b></p>
-            <ul>
-            <li>Alex Aravena Tapia</li>
-            <li>Jesús Chaffe González</li>
-            <li>Eduardo Maldonado Zamora</li>
-            <li>Jorge Barrios Núñez</li>
-            </ul>
-            
-            <p><b>Repositorio GitHub:</b><br>
-            <a href="https://github.com/alex-itico/PonLab">https://github.com/alex-itico/PonLab</a><br>
-            
-            <p>© 2025 - Desarrollado con PyQt5</p>'''
-        )
+        # Añadir el icono al contenedor y el contenedor al layout principal
+        icon_layout.addWidget(icon_label)
+        main_layout.addWidget(icon_widget)
         
-        msg_box.setStandardButtons(QMessageBox.Ok)
-        msg_box.exec_()
+        # Lado derecho: Información de la aplicación con ancho fijo
+        info_widget = QWidget()
+        info_widget.setMinimumWidth(520)  # Ancho mínimo para mantener proporciones
+        info_layout = QVBoxLayout(info_widget)
+        info_layout.setSpacing(20)  # Aumentado de 15 a 20 para más separación vertical
+        
+        # Título principal
+        title_label = QLabel("PonLab Simulator")
+        title_font = QFont("Segoe UI", 32, QFont.Bold)  # Aumentado de 28 a 32
+        title_label.setFont(title_font)
+        title_label.setStyleSheet(f"color: #e208d7; margin-bottom: 10px;")  # Color magenta del splash
+        info_layout.addWidget(title_label)
+        
+        # Subtítulo
+        subtitle_label = QLabel("Simulador de Redes Pasivas Ópticas")
+        subtitle_font = QFont("Segoe UI", 18)  # Aumentado de 16 a 18
+        subtitle_label.setFont(subtitle_font)
+        subtitle_label.setStyleSheet(f"color: {text_color}; margin-bottom: 15px;")
+        info_layout.addWidget(subtitle_label)
+        
+        # Versión
+        version_label = QLabel("Versión 2.0.0")
+        version_font = QFont("Segoe UI", 16, QFont.Bold)  # Aumentado de 14 a 16
+        version_label.setFont(version_font)
+        version_label.setStyleSheet(f"color: #666666; margin-bottom: 20px;")
+        info_layout.addWidget(version_label)
+        
+        # Descripción
+        desc_label = QLabel("Una aplicación avanzada para simular y diseñar redes pasivas ópticas (PON).")
+        desc_font = QFont("Segoe UI", 14)  # Aumentado de 12 a 14
+        desc_label.setFont(desc_font)
+        desc_label.setWordWrap(True)
+        desc_label.setStyleSheet(f"color: {text_color}; margin-bottom: 15px;")
+        info_layout.addWidget(desc_label)
+        
+        # Características
+        features_label = QLabel("""<b>Características principales:</b><br>
+        • Diseño visual interactivo de topologías PON mediante drag & drop<br>
+        • Soporte para dispositivos OLT, OLT_SDN y múltiples tipos de ONU<br>
+        • Sistema de conexiones automáticas entre dispositivos de fibra óptica<br>
+        • Simulación completa con NetPONPy para análisis de rendimiento<br>
+        • Cálculos de potencia óptica, atenuación y presupuesto de enlace<br>
+        • Generación automática de gráficos y reportes de simulación<br>
+        • Guardado y carga de proyectos en formato .pon<br>
+        • Interfaz con temas claro y oscuro personalizables<br>
+        • Panel de propiedades editable para configuración de dispositivos<br>
+        • Sistema de logs integrado para seguimiento de operaciones""")
+        features_label.setWordWrap(True)
+        features_label.setStyleSheet(f"color: {text_color}; margin-bottom: 20px; font-size: 13px;")  # Añadido font-size: 13px
+        info_layout.addWidget(features_label)
+        
+        # Desarrolladores
+        dev_label = QLabel("""<b>Desarrollado por:</b><br>
+        • Alex Aravena Tapia<br>
+        • Jesús Chaffe González<br>
+        • Eduardo Maldonado Zamora<br>
+        • Jorge Barrios Núñez""")
+        dev_label.setWordWrap(True)
+        dev_label.setStyleSheet(f"color: {text_color}; margin-bottom: 15px; font-size: 13px;")  # Añadido font-size: 13px
+        info_layout.addWidget(dev_label)
+        
+        # Repositorio
+        repo_label = QLabel('<b>Repositorio GitHub:</b><br><a href="https://github.com/alex-itico/PonLab" style="color: #2563eb;">https://github.com/alex-itico/PonLab</a>')
+        repo_label.setWordWrap(True)
+        repo_label.setOpenExternalLinks(True)
+        repo_label.setStyleSheet(f"color: {text_color}; margin-bottom: 15px; font-size: 13px;")  # Añadido font-size: 13px
+        info_layout.addWidget(repo_label)
+        
+        # Copyright
+        copyright_label = QLabel("© 2025 - Desarrollado con PyQt5 y Python")
+        copyright_font = QFont("Segoe UI", 12)  # Aumentado de 10 a 12
+        copyright_label.setFont(copyright_font)
+        copyright_label.setStyleSheet(f"color: #888888;")
+        info_layout.addWidget(copyright_label)
+        
+        # Espaciador flexible
+        info_layout.addStretch()
+        
+        # Botón OK al final
+        ok_button = QPushButton("Aceptar")
+        ok_button.clicked.connect(dialog.accept)
+        ok_button.setFixedSize(100, 35)
+        info_layout.addWidget(ok_button, alignment=Qt.AlignRight)
+        
+        # Añadir widget de información al layout principal
+        main_layout.addWidget(info_widget)
+        
+        # Mostrar el diálogo
+        dialog.exec_()
     
     def setup_window_properties(self):
         """Configurar propiedades de la ventana"""
