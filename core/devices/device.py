@@ -72,6 +72,8 @@ class Device(QObject):
         
         if self.device_type == "OLT":
             return os.path.join(devices_path, 'olt_icon.svg')
+        elif self.device_type == "OLT_SDN":
+            return os.path.join(devices_path, 'olt_sdn_icon.svg')
         elif self.device_type == "ONU":
             return os.path.join(devices_path, 'onu_icon.svg')
         

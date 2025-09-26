@@ -284,8 +284,10 @@ class DeviceManager(QObject):
         try:
             # Generar nombre automático si no se proporciona
             if name is None:
-                self.device_counters[device_type] += 1
-                name = f"{device_type}_{self.device_counters[device_type]}"
+                # Para OLT_SDN, usar el contador de OLT
+                counter_type = "OLT" if device_type == "OLT_SDN" else device_type
+                self.device_counters[counter_type] += 1
+                name = f"{device_type}_{self.device_counters[counter_type]}"
             
             # Crear dispositivo
             device = create_device(device_type, name, x, y)
@@ -364,8 +366,13 @@ class DeviceManager(QObject):
     
     def get_devices_by_type(self, device_type):
         """Obtener dispositivos por tipo"""
-        return [device for device in self.devices.values() 
-                if device.device_type == device_type]
+        if device_type == "OLT":
+            # Para OLT, incluir tanto OLT como OLT_SDN
+            return [device for device in self.devices.values() 
+                    if device.device_type in ["OLT", "OLT_SDN"]]
+        else:
+            return [device for device in self.devices.values() 
+                    if device.device_type == device_type]
     
     def select_device(self, device_id):
         """Seleccionar dispositivo"""

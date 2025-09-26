@@ -217,6 +217,213 @@ class OLT(Device):
             print(f"📝 Propiedad {key} actualizada a: {value}")
 
 
+class OLT_SDN(Device):
+    """Software-Defined Optical Line Terminal - OLT con capacidades SDN"""
+    
+    def __init__(self, name=None, x=0, y=0):
+        super().__init__("OLT_SDN", name, x, y)
+        
+        # Propiedades básicas del OLT SDN (similar a OLT pero con extensiones SDN)
+        self.properties = {
+            'model': 'OLT-SDN-Generic',
+            'status': 'online',
+            'location': '',
+            'notes': '',
+            'total_bandwidth': 10000,  # 10 Gbps
+            'allocated_bandwidth': 0,
+            'transmission_rate': 4096.0,  # Tasa de transmisión en Mbps (4 Gbps por defecto)
+            'polling_cycle_time': 2.0,  # Tiempo de ciclo de polling en ms
+            'guard_time': 0.1,  # Tiempo de guarda entre transmisiones en ms
+            # Propiedades específicas de SDN
+            'sdn_controller': 'OpenFlow',
+            'flow_table_size': 1000,
+            'openflow_version': '1.3',
+            'dynamic_bandwidth_allocation': True,
+            'network_slicing_enabled': True,
+            'programmable_forwarding': True,
+        }
+        
+        # Estado del protocolo PON
+        self.registered_onus = {}  # ID -> ONU object
+        self.polling_timer = QTimer()
+        self.polling_timer.timeout.connect(self._poll_onus)
+        self.current_onu_index = 0
+        self.simulation_active = False
+        
+        # Estadísticas (incluye métricas SDN)
+        self.stats = {
+            'total_polls': 0,
+            'successful_responses': 0,
+            'timeouts': 0,
+            'bandwidth_requests': [],
+            'flow_rules_installed': 0,
+            'network_slices_active': 0,
+            'sdn_messages_processed': 0
+        }
+        
+        # Crear scheduler después de definir las propiedades
+        try:
+            self.scheduler = UpstreamScheduler(self.properties['total_bandwidth'])
+        except Exception as e:
+            print(f"Error al crear scheduler: {e}")
+            self.scheduler = None
+        
+        # SDN Flow Table simulada
+        self.flow_table = []
+        self.network_slices = {}
+        
+        # Referencia a instancia PON OLT core
+        self._pon_olt_instance = None
+    
+    def create_pon_olt_instance(self):
+        """Crear y configurar instancia PON OLT_SDN core para integración"""
+        try:
+            # Intentar importar clase PON OLT_SDN
+            from ..pon.pon_sdn import OLT_SDN as PON_OLT_SDN
+            
+            # Crear instancia con configuración actual
+            self._pon_olt_instance = PON_OLT_SDN(
+                id=self.name,
+                onus={},  # Se llenarán cuando se registren ONUs
+                transmission_rate=self.properties['transmission_rate']
+            )
+            print(f"✅ Instancia PON OLT_SDN creada: {self.name}")
+            return True
+            
+        except ImportError:
+            print("⚠️ No se pudo importar PON OLT_SDN - funcionando sin integración PON")
+            return False
+        except Exception as e:
+            print(f"❌ Error al crear instancia PON OLT_SDN: {e}")
+            return False
+    
+    def register_onu(self, onu):
+        """Registrar ONU en el OLT SDN"""
+        if onu.id not in self.registered_onus:
+            self.registered_onus[onu.id] = onu
+            onu.set_olt_reference(self)
+            print(f"🔗 ONU {onu.name} registrada en OLT SDN {self.name}")
+            
+            # Instalar flow rule básica para la nueva ONU
+            self.install_flow_rule(onu.id, {
+                'priority': 100,
+                'match': {'in_port': onu.id},
+                'actions': ['forward_to_uplink']
+            })
+    
+    def install_flow_rule(self, onu_id, rule):
+        """Instalar regla de flujo en la tabla de flujos SDN"""
+        rule['onu_id'] = onu_id
+        rule['timestamp'] = time.time()
+        self.flow_table.append(rule)
+        self.stats['flow_rules_installed'] += 1
+        print(f"📋 Flow rule instalada para ONU {onu_id}")
+    
+    def create_network_slice(self, slice_id, bandwidth_allocation, priority=1):
+        """Crear slice de red con asignación de ancho de banda"""
+        self.network_slices[slice_id] = {
+            'bandwidth': bandwidth_allocation,
+            'priority': priority,
+            'onus': [],
+            'created_at': time.time()
+        }
+        self.stats['network_slices_active'] += 1
+        print(f"🍰 Network slice {slice_id} creado con {bandwidth_allocation} Mbps")
+    
+    def _poll_onus(self):
+        """Polling de ONUs con lógica SDN mejorada"""
+        if not self.registered_onus or not self.simulation_active:
+            return
+        
+        # Obtener lista de ONUs registradas
+        onu_list = list(self.registered_onus.values())
+        
+        if self.current_onu_index >= len(onu_list):
+            self.current_onu_index = 0
+        
+        # Seleccionar ONU actual
+        current_onu = onu_list[self.current_onu_index]
+        
+        # Realizar polling con capacidades SDN
+        self._perform_sdn_poll(current_onu)
+        
+        # Avanzar al siguiente ONU
+        self.current_onu_index += 1
+        self.stats['total_polls'] += 1
+    
+    def _perform_sdn_poll(self, onu):
+        """Realizar polling con capacidades SDN"""
+        if not onu:
+            return
+        
+        try:
+            # Simular respuesta de la ONU con información SDN
+            response = onu.respond_to_poll()
+            
+            if response:
+                self.stats['successful_responses'] += 1
+                self.stats['sdn_messages_processed'] += 1
+                
+                # Procesamiento SDN de la respuesta
+                if 'bandwidth_request' in response:
+                    # Asignación dinámica de ancho de banda basada en SDN
+                    self._dynamic_bandwidth_allocation(onu, response['bandwidth_request'])
+            else:
+                self.stats['timeouts'] += 1
+                
+        except Exception as e:
+            print(f"❌ Error en SDN polling de {onu.name}: {e}")
+            self.stats['timeouts'] += 1
+    
+    def _dynamic_bandwidth_allocation(self, onu, bandwidth_request):
+        """Asignación dinámica de ancho de banda usando lógica SDN"""
+        if self.scheduler and self.properties['dynamic_bandwidth_allocation']:
+            # Asignar ancho de banda basado en políticas SDN
+            allocated = self.scheduler.allocate_bandwidth(onu.id, bandwidth_request)
+            
+            if allocated > 0:
+                onu.properties['allocated_bandwidth'] = allocated
+                print(f"📊 Ancho de banda SDN asignado a {onu.name}: {allocated} Mbps")
+    
+    def start_simulation(self):
+        """Iniciar simulación PON SDN"""
+        if not self.simulation_active:
+            self.simulation_active = True
+            self.current_onu_index = 0
+            
+            # Configurar timer de polling
+            if self.properties['polling_cycle_time'] > 0:
+                self.polling_timer.start(int(self.properties['polling_cycle_time']))
+                
+            print(f"▶️ Simulación PON SDN iniciada para {self.name}")
+            print(f"📡 Polling cada {self.properties['polling_cycle_time']} ms")
+    
+    def stop_simulation(self):
+        """Detener simulación PON SDN"""
+        if self.simulation_active:
+            self.simulation_active = False
+            self.polling_timer.stop()
+            print(f"⏹️ Simulación PON SDN detenida para {self.name}")
+    
+    def sync_transmission_rate(self):
+        """Sincronizar tasa de transmisión con la instancia PON OLT SDN core"""
+        if hasattr(self, '_pon_olt_instance') and self._pon_olt_instance is not None:
+            self._pon_olt_instance.transmission_rate = self.properties['transmission_rate']
+            print(f"🔄 SDN Transmission rate sincronizada: {self.properties['transmission_rate']} Mbps")
+    
+    def update_property(self, key: str, value):
+        """Override para sincronizar cambios de propiedades con PON OLT SDN core"""
+        if key in self.properties:
+            self.properties[key] = value
+            
+            # Sincronización especial para transmission_rate
+            if key == 'transmission_rate':
+                self.sync_transmission_rate()
+            
+            self.properties_changed.emit()
+            print(f"📝 Propiedad SDN {key} actualizada a: {value}")
+
+
 class ONU(Device):
     """Optical Network Unit - Equipo terminal de la red PON"""
     
@@ -409,6 +616,8 @@ def create_device(device_type, name=None, x=0, y=0):
     """Factory para crear dispositivos según tipo"""
     if device_type.upper() == "OLT":
         return OLT(name, x, y)
+    elif device_type.upper() == "OLT_SDN":
+        return OLT_SDN(name, x, y)
     elif device_type.upper() == "ONU":
         return ONU(name, x, y)
     else:

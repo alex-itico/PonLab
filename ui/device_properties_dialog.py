@@ -122,7 +122,7 @@ class DevicePropertiesDialog(QDialog):
     
     def setup_specific_info_section(self, main_layout):
         """Configurar sección de información específica del tipo"""
-        if self.device.device_type == "OLT":
+        if self.device.device_type in ["OLT", "OLT_SDN"]:
             self.setup_olt_info(main_layout)
         elif self.device.device_type == "ONU":
             self.setup_onu_info(main_layout)
@@ -213,7 +213,7 @@ class DevicePropertiesDialog(QDialog):
         }
         
         # Agregar transmission_rate para OLTs
-        if self.device.device_type == "OLT":
+        if self.device.device_type in ["OLT", "OLT_SDN"]:
             current_transmission_rate = self.device.properties.get('transmission_rate', 4096.0)
             self.original_properties['transmission_rate'] = current_transmission_rate
             # Actualizar el campo visual con el valor actual del dispositivo
@@ -222,7 +222,7 @@ class DevicePropertiesDialog(QDialog):
     
     def calculate_connected_onus(self):
         """Calcular número de ONUs conectadas a esta OLT"""
-        if not self.connection_manager or self.device.device_type != "OLT":
+        if not self.connection_manager or self.device.device_type not in ["OLT", "OLT_SDN"]:
             return 0
         
         connected_count = 0
@@ -240,9 +240,9 @@ class DevicePropertiesDialog(QDialog):
         
         for connection in self.connection_manager.connections:
             olt_device = None
-            if connection.device_a.id == self.device.id and connection.device_b.device_type == "OLT":
+            if connection.device_a.id == self.device.id and connection.device_b.device_type in ["OLT", "OLT_SDN"]:
                 olt_device = connection.device_b
-            elif connection.device_b.id == self.device.id and connection.device_a.device_type == "OLT":
+            elif connection.device_b.id == self.device.id and connection.device_a.device_type in ["OLT", "OLT_SDN"]:
                 olt_device = connection.device_a
             
             if olt_device:
@@ -272,7 +272,7 @@ class DevicePropertiesDialog(QDialog):
         }
         
         # Agregar transmission_rate si es un OLT
-        if self.device.device_type == "OLT" and hasattr(self, 'transmission_rate_spinbox'):
+        if self.device.device_type in ["OLT", "OLT_SDN"] and hasattr(self, 'transmission_rate_spinbox'):
             new_transmission_rate = self.transmission_rate_spinbox.value()
             new_properties['transmission_rate'] = new_transmission_rate
             
@@ -297,7 +297,7 @@ class DevicePropertiesDialog(QDialog):
             return False
         
         # Validar transmission_rate para OLTs
-        if self.device.device_type == "OLT" and hasattr(self, 'transmission_rate_spinbox'):
+        if self.device.device_type in ["OLT", "OLT_SDN"] and hasattr(self, 'transmission_rate_spinbox'):
             transmission_rate = self.transmission_rate_spinbox.value()
             if transmission_rate <= 0:
                 QMessageBox.warning(self, "Error de Validación", 
@@ -323,7 +323,7 @@ class DevicePropertiesDialog(QDialog):
     
     def on_transmission_rate_changed(self, value):
         """Manejar cambios en tiempo real del transmission_rate"""
-        if self.device and self.device.device_type == "OLT":
+        if self.device and self.device.device_type in ["OLT", "OLT_SDN"]:
             # Actualizar la propiedad inmediatamente
             self.device.properties['transmission_rate'] = float(value)
             
