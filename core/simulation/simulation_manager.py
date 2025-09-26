@@ -16,6 +16,7 @@ class SimulationManager(QObject):
     simulation_finished = pyqtSignal()
     simulation_step = pyqtSignal(int)  # Paso actual
     statistics_updated = pyqtSignal(dict)  # Estadísticas actualizadas
+    sdn_metrics_updated = pyqtSignal(dict)  # Métricas del controlador SDN
     
     def __init__(self):
         super().__init__()
@@ -224,6 +225,11 @@ class SimulationManager(QObject):
         if self.olt:
             olt_stats = self.olt.get_polling_stats()
             self.global_stats['total_polling_cycles'] = olt_stats.get('total_polls', 0)
+            
+            # Si es un OLT_SDN, recopilar métricas SDN
+            if hasattr(self.olt, 'get_sdn_dashboard'):
+                sdn_metrics = self.olt.get_sdn_dashboard()
+                self.sdn_metrics_updated.emit(sdn_metrics)
             
         # Estadísticas del scheduler
         if self.olt and self.olt.scheduler:

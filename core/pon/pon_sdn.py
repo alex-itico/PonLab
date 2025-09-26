@@ -24,18 +24,18 @@ class OLT_SDN:
         onus: Dict[str, ONU],
         dba_algorithm: Optional[DBAAlgorithmInterface] = None,
         links_data: Dict[str, Dict] = {"0": {"length": 0.5}, "1": {"length": 0.5}},
-        transmission_rate: float = 4096.0,  # Mbps (corregido typo)
+        transmission_rate: float = 4096.0,  # Mbps
         seed: int = 12345,
     ):
         """
-        Inicializar OLT_SDN con algoritmo DBA modular
+        Inicializar OLT_SDN con algoritmo DBA modular y controlador SDN integrado
         
         Args:
             id: Identificador único del OLT_SDN
             onus: Diccionario de ONUs registradas {onu_id: ONU}
             dba_algorithm: Algoritmo DBA a usar
             links_data: Configuración de enlaces {link_id: {length: km}}
-            transmission_rate: Tasa de transmisión en Mbps (corregido typo)
+            transmission_rate: Tasa de transmisión en Mbps
             seed: Semilla para reproducibilidad
         """
         self.__id = id
@@ -48,6 +48,38 @@ class OLT_SDN:
         self.clock: float = 0.0
         self.fragmented_time = 0.0
         
+        # Métricas SDN y estadísticas avanzadas
+        self.sdn_metrics = {
+            onu_id: {
+                'latency': [],
+                'losses': 0,
+                'throughput': [],
+                'grants_used': 0,
+                'grants_allocated': 0,
+                'last_adjustment_time': 0.0,
+                'cumulative_waiting_time': 0.0,
+            } for onu_id in self._onu_ids
+        }
+        
+        # Métricas globales del controlador SDN
+        self.sdn_controller_metrics = {
+            'reconfigurations': 0,
+            'fairness_history': [],
+            'total_grants': 0,
+            'utilized_grants': 0,
+            'adjustment_intervals': [],
+            'qos_violations': 0,
+        }
+        
+        # Parámetros ajustables del controlador SDN
+        self.sdn_parameters = {
+            'min_grant_size': 64,
+            'max_grant_size': 1500,
+            'target_latency': 0.001,
+            'adjustment_threshold': 0.1,
+            'fairness_target': 0.9,
+        }
+        
         # Algoritmo DBA modular
         self.dba_algorithm = dba_algorithm or FCFSDBAAlgorithm()
         
@@ -55,6 +87,38 @@ class OLT_SDN:
         self._last_action = None
         self._algorithm_state = {}
         self._last_processed_request = None
+        
+        # Métricas SDN y estadísticas avanzadas
+        self.sdn_metrics = {
+            onu_id: {
+                'latency': [],  # Lista de latencias
+                'losses': 0,    # Contador de pérdidas
+                'throughput': [],  # Lista de mediciones de throughput
+                'grants_used': 0,  # Grants utilizados
+                'grants_allocated': 0,  # Grants totales asignados
+                'last_adjustment_time': 0.0,  # Último ajuste de parámetros
+                'cumulative_waiting_time': 0.0,  # Tiempo acumulado de espera
+            } for onu_id in self._onu_ids
+        }
+        
+        # Métricas globales del controlador SDN
+        self.sdn_controller_metrics = {
+            'reconfigurations': 0,  # Número de reconfiguraciones de parámetros
+            'fairness_history': [],  # Histórico del índice de fairness
+            'total_grants': 0,       # Total de grants asignados
+            'utilized_grants': 0,    # Grants efectivamente utilizados
+            'adjustment_intervals': [],  # Intervalos entre ajustes
+            'qos_violations': 0,     # Violaciones de QoS detectadas
+        }
+        
+        # Parámetros ajustables del controlador SDN
+        self.sdn_parameters = {
+            'min_grant_size': 64,    # Tamaño mínimo de grant en bytes
+            'max_grant_size': 1500,  # Tamaño máximo de grant en bytes
+            'target_latency': 0.001, # Latencia objetivo en segundos
+            'adjustment_threshold': 0.1,  # Umbral para ajustes (10%)
+            'fairness_target': 0.9,  # Objetivo de fairness (0-1)
+        }
         
         # Estadísticas del OLT_SDN
         self.total_polls = 0
@@ -297,6 +361,138 @@ class OLT_SDN:
             'link_stats': link_stats
         }
     
+    def update_sdn_metrics(self, request: Request, was_transmitted: bool):
+        """Actualizar métricas SDN para una solicitud procesada"""
+        onu_id = request.source_id
+        current_time = self.clock
+        metrics = self.sdn_metrics[onu_id]
+        
+        # Calcular y actualizar latencia
+        if was_transmitted and request.departure_time is not None:
+            latency = request.departure_time - request.created_at
+            metrics['latency'].append(latency)
+            metrics['cumulative_waiting_time'] += latency
+            
+            # Calcular throughput (bytes/segundo)
+            traffic_size = request.get_total_traffic()
+            if latency > 0:
+                throughput = traffic_size / latency
+                metrics['throughput'].append(throughput)
+        
+        # Actualizar contadores de grants
+        metrics['grants_allocated'] += 1
+        if was_transmitted:
+            metrics['grants_used'] += 1
+        else:
+            metrics['losses'] += 1
+            
+        # Actualizar métricas globales del controlador
+        self.sdn_controller_metrics['total_grants'] += 1
+        if was_transmitted:
+            self.sdn_controller_metrics['utilized_grants'] += 1
+            
+        # Calcular y actualizar fairness index si hay suficientes datos
+        self._update_fairness_index()
+        
+    def _update_fairness_index(self):
+        """Calcular y actualizar el índice de fairness de Jain"""
+        throughputs = []
+        for onu_metrics in self.sdn_metrics.values():
+            if onu_metrics['throughput']:
+                avg_throughput = sum(onu_metrics['throughput']) / len(onu_metrics['throughput'])
+                throughputs.append(avg_throughput)
+        
+        if throughputs:
+            n = len(throughputs)
+            sum_x = sum(throughputs)
+            sum_x_square = sum(x * x for x in throughputs)
+            fairness = (sum_x * sum_x) / (n * sum_x_square) if sum_x_square > 0 else 0
+            self.sdn_controller_metrics['fairness_history'].append(fairness)
+            
+            # Verificar si se necesita ajustar parámetros
+            if fairness < self.sdn_parameters['fairness_target']:
+                self._adjust_grant_parameters()
+                
+    def _adjust_grant_parameters(self):
+        """Ajustar parámetros del controlador SDN basado en métricas"""
+        self.sdn_controller_metrics['reconfigurations'] += 1
+        current_time = self.clock
+        
+        # Analizar métricas para cada ONU
+        for onu_id, metrics in self.sdn_metrics.items():
+            avg_latency = sum(metrics['latency']) / len(metrics['latency']) if metrics['latency'] else 0
+            
+            # Detectar violaciones de QoS
+            if avg_latency > self.sdn_parameters['target_latency']:
+                self.sdn_controller_metrics['qos_violations'] += 1
+                
+            # Ajustar tamaños de grant basado en throughput y latencia
+            if metrics['throughput']:
+                avg_throughput = sum(metrics['throughput']) / len(metrics['throughput'])
+                
+                # Ajustar tamaño máximo de grant
+                if avg_latency > self.sdn_parameters['target_latency']:
+                    self.sdn_parameters['max_grant_size'] = max(
+                        int(self.sdn_parameters['max_grant_size'] * 0.9),
+                        self.sdn_parameters['min_grant_size']
+                    )
+                elif avg_throughput < self.transmission_rate * 0.7:  # Si el throughput es bajo
+                    self.sdn_parameters['max_grant_size'] = min(
+                        int(self.sdn_parameters['max_grant_size'] * 1.1),
+                        1500  # MTU típico
+                    )
+            
+            # Registrar intervalo de ajuste
+            if metrics['last_adjustment_time'] > 0:
+                adjustment_interval = current_time - metrics['last_adjustment_time']
+                self.sdn_controller_metrics['adjustment_intervals'].append(adjustment_interval)
+            
+            metrics['last_adjustment_time'] = current_time
+            
+    def get_sdn_dashboard(self) -> dict:
+        """Generar dashboard con métricas del controlador SDN"""
+        dashboard = {
+            'global_metrics': {
+                'total_reconfigurations': self.sdn_controller_metrics['reconfigurations'],
+                'grant_utilization': (
+                    self.sdn_controller_metrics['utilized_grants'] / 
+                    self.sdn_controller_metrics['total_grants'] * 100 
+                    if self.sdn_controller_metrics['total_grants'] > 0 else 0
+                ),
+                'qos_violations': self.sdn_controller_metrics['qos_violations'],
+                'current_fairness': (
+                    self.sdn_controller_metrics['fairness_history'][-1] 
+                    if self.sdn_controller_metrics['fairness_history'] else 0
+                ),
+                'avg_adjustment_interval': (
+                    sum(self.sdn_controller_metrics['adjustment_intervals']) / 
+                    len(self.sdn_controller_metrics['adjustment_intervals'])
+                    if self.sdn_controller_metrics['adjustment_intervals'] else 0
+                ),
+            },
+            'onu_metrics': {}
+        }
+        
+        # Agregar métricas por ONU
+        for onu_id, metrics in self.sdn_metrics.items():
+            dashboard['onu_metrics'][onu_id] = {
+                'avg_latency': sum(metrics['latency']) / len(metrics['latency']) if metrics['latency'] else 0,
+                'packet_loss_rate': (
+                    metrics['losses'] / metrics['grants_allocated'] * 100 
+                    if metrics['grants_allocated'] > 0 else 0
+                ),
+                'avg_throughput': (
+                    sum(metrics['throughput']) / len(metrics['throughput']) 
+                    if metrics['throughput'] else 0
+                ),
+                'grant_efficiency': (
+                    metrics['grants_used'] / metrics['grants_allocated'] * 100
+                    if metrics['grants_allocated'] > 0 else 0
+                )
+            }
+        
+        return dashboard
+
     def reset_stats(self):
         """Reiniciar estadísticas del OLT_SDN"""
         self.total_polls = 0
@@ -308,9 +504,86 @@ class OLT_SDN:
         # Reiniciar estadísticas de enlaces
         for link in self.links.values():
             link.reset_stats()
+        
+        # Reiniciar métricas SDN
+        for metrics in self.sdn_metrics.values():
+            metrics.update({
+                'latency': [],
+                'losses': 0,
+                'throughput': [],
+                'grants_used': 0,
+                'grants_allocated': 0,
+                'last_adjustment_time': 0.0,
+                'cumulative_waiting_time': 0.0
+            })
+        
+        # Reiniciar métricas del controlador
+        self.sdn_controller_metrics.update({
+            'reconfigurations': 0,
+            'fairness_history': [],
+            'total_grants': 0,
+            'utilized_grants': 0,
+            'adjustment_intervals': [],
+            'qos_violations': 0
+        })
     
     def __str__(self) -> str:
         return f"OLT_SDN(id={self.id}, onus={len(self._onu_ids)}, algorithm={self.dba_algorithm.get_algorithm_name()})"
     
     def __repr__(self) -> str:
         return self.__str__()
+        
+    def _update_sdn_metrics(self, request: Request, success: bool = True):
+        """Actualizar métricas SDN después de procesar una solicitud"""
+        onu_id = request.source_id
+        current_time = self.clock
+        metrics = self.sdn_metrics[onu_id]
+        
+        # Actualizar métricas de grants
+        metrics['grants_allocated'] += 1
+        self.sdn_controller_metrics['total_grants'] += 1
+        
+        if success:
+            metrics['grants_used'] += 1
+            self.sdn_controller_metrics['utilized_grants'] += 1
+            
+            # Calcular y actualizar latencia
+            latency = current_time - request.created_at
+            metrics['latency'].append(latency)
+            metrics['cumulative_waiting_time'] += latency
+            
+            # Calcular throughput (bytes/segundo)
+            traffic_size = request.get_total_traffic()
+            if latency > 0:
+                throughput = traffic_size / latency
+                metrics['throughput'].append(throughput)
+                
+            # Verificar violaciones de QoS
+            if latency > self.sdn_parameters['target_latency']:
+                self.sdn_controller_metrics['qos_violations'] += 1
+        else:
+            metrics['losses'] += 1
+            
+        # Calcular fairness si hay suficientes datos
+        self._calculate_fairness()
+        
+    def _calculate_fairness(self):
+        """Calcular el índice de fairness de Jain"""
+        throughputs = []
+        for metrics in self.sdn_metrics.values():
+            if metrics['throughput']:
+                avg_throughput = sum(metrics['throughput']) / len(metrics['throughput'])
+                throughputs.append(avg_throughput)
+        
+        if throughputs:
+            n = len(throughputs)
+            sum_x = sum(throughputs)
+            sum_x_square = sum(x * x for x in throughputs)
+            
+            if sum_x_square > 0:
+                fairness = (sum_x * sum_x) / (n * sum_x_square)
+                self.sdn_controller_metrics['fairness_history'].append(fairness)
+                
+                # Ajustar parámetros si el fairness está por debajo del objetivo
+                if fairness < self.sdn_parameters['fairness_target']:
+                    self._adjust_parameters()
