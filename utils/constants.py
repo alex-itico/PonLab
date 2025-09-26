@@ -28,10 +28,21 @@ DEFAULT_LINE_WIDTH = 2
 MIN_LINE_WIDTH = 1
 MAX_LINE_WIDTH = 10
 
-# Constantes de Dispositivos
+# Constantes de dispositivos
 OLT_DEFAULT_NAME = "OLT"
 ONU_DEFAULT_NAME = "ONU"
 MAX_ONUS_PER_OLT = 64
+
+# Algoritmos DBA disponibles
+AVAILABLE_DBA_ALGORITHMS = ["FCFS", "Priority", "RL-DBA", "SDN", "Smart-RL", "Smart-RL-SDN"]
+DBA_ALGORITHM_DESCRIPTIONS = {
+    "FCFS": "First Come First Served - Algoritmo básico FIFO",
+    "Priority": "Priority-based - Basado en prioridades",
+    "RL-DBA": "Reinforcement Learning DBA - Algoritmo RL clásico", 
+    "SDN": "Software Defined Network - Control centralizado con SDN",
+    "Smart-RL": "Smart Reinforcement Learning - RL inteligente interno",
+    "Smart-RL-SDN": "Smart RL + SDN - Híbrido de RL inteligente y SDN"
+}
 
 # Colores
 PRIMARY_COLOR = "#2196F3"

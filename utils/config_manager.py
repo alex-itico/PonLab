@@ -25,7 +25,12 @@ class ConfigManager:
             'components_visible': True,
             'simulation_visible': True,
             'info_panel_visible': False,
-            'zoom_factor': 1.0
+            'sdn_dashboard_visible': False,
+            'zoom_factor': 1.0,
+            'default_dba_algorithm': 'FCFS',
+            'rl_model_path': None,
+            'enable_sdn_features': True,
+            'enable_rl_features': True
         }
     
     def save_setting(self, key, value):
@@ -131,6 +136,8 @@ class ConfigManager:
             self.save_setting('components_visible', main_window.components_visible)
         if hasattr(main_window, 'simulation_visible'):
             self.save_setting('simulation_visible', main_window.simulation_visible)
+        if hasattr(main_window, 'sdn_dashboard_visible'):
+            self.save_setting('sdn_dashboard_visible', main_window.sdn_dashboard_visible)
     
     def restore_ui_settings(self, main_window):
         """Restaurar configuraciones de la UI"""
@@ -138,6 +145,32 @@ class ConfigManager:
             main_window.components_visible = self.get_setting('components_visible', True)
         if hasattr(main_window, 'simulation_visible'):
             main_window.simulation_visible = self.get_setting('simulation_visible', True)
+        if hasattr(main_window, 'sdn_dashboard_visible'):
+            main_window.sdn_dashboard_visible = self.get_setting('sdn_dashboard_visible', False)
+    
+    def save_rl_model_path(self, model_path):
+        """Guardar ruta del último modelo RL cargado"""
+        self.save_setting('rl_model_path', model_path)
+    
+    def get_rl_model_path(self):
+        """Obtener ruta del último modelo RL cargado"""
+        return self.get_setting('rl_model_path', None)
+    
+    def save_dba_algorithm(self, algorithm):
+        """Guardar último algoritmo DBA usado"""
+        self.save_setting('default_dba_algorithm', algorithm)
+    
+    def get_dba_algorithm(self):
+        """Obtener último algoritmo DBA usado"""
+        return self.get_setting('default_dba_algorithm', 'FCFS')
+    
+    def get_sdn_enabled(self):
+        """Verificar si las características SDN están habilitadas"""
+        return self.get_setting('enable_sdn_features', True)
+    
+    def get_rl_enabled(self):
+        """Verificar si las características RL están habilitadas"""
+        return self.get_setting('enable_rl_features', True)
     
     def reset_to_defaults(self):
         """Resetear todas las configuraciones a valores por defecto"""
