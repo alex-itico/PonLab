@@ -487,7 +487,15 @@ class PONAdapter:
         if algorithm_name not in algorithms:
             raise ValueError(f"Algoritmo desconocido: {algorithm_name}")
             
-        return algorithms[algorithm_name]()
+        algorithm = algorithms[algorithm_name]()
+        
+        if algorithm_name == "SDN":
+            self._log_event("DEBUG", "Usando algoritmo SDN con base FCFS")
+            self.use_sdn = True
+        else:
+            self.use_sdn = False
+            
+        return algorithm
     
     def get_available_algorithms(self):
         """Obtener lista de algoritmos DBA disponibles"""
