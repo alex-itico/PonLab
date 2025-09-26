@@ -132,7 +132,7 @@ class PONSimulator:
     
     def setup_event_simulation(self, num_onus: int = 4, traffic_scenario: str = "residential_medium",
                              dba_algorithm: Optional[DBAAlgorithmInterface] = None,
-                             channel_capacity_mbps: float = 1024.0):
+                             channel_capacity_mbps: float = 1024.0, use_sdn: bool = False):
         """
         Configurar simulación por eventos discretos
         
@@ -141,6 +141,7 @@ class PONSimulator:
             traffic_scenario: Escenario de tráfico a usar
             dba_algorithm: Algoritmo DBA (None = FCFS por defecto)
             channel_capacity_mbps: Capacidad del canal en Mbps
+            use_sdn: Si es True, usa OLT_SDN en lugar de HybridOLT
         """
         if self.simulation_mode != "events":
             raise ValueError("Este método solo funciona en modo 'events'")
@@ -151,9 +152,10 @@ class PONSimulator:
         
         # Inicializar ONUs con tráfico optimizado
         self._setup_onus(traffic_scenario)
-        self._setup_olt(dba_algorithm)
+        self._setup_olt(dba_algorithm, use_sdn)
         
-        print(f"Simulación por eventos configurada: {num_onus} ONUs, {traffic_scenario}, {channel_capacity_mbps} Mbps")
+        olt_type = "OLT_SDN" if use_sdn else "HybridOLT"
+        print(f"Simulación por eventos configurada: {num_onus} ONUs, {traffic_scenario}, {channel_capacity_mbps} Mbps, {olt_type}")
     
     def _setup_onus(self, traffic_scenario: str):
         """Configurar ONUs para simulación por eventos"""
@@ -172,14 +174,19 @@ class PONSimulator:
             
             self.onus[onu_id] = HybridONU(onu_id, lambda_rate, scenario_config)
     
-    def _setup_olt(self, dba_algorithm: Optional[DBAAlgorithmInterface]):
+    def _setup_olt(self, dba_algorithm: Optional[DBAAlgorithmInterface], use_sdn: bool = False):
         """Configurar OLT para simulación por eventos"""
         if dba_algorithm is None:
             dba_algorithm = FCFSDBAAlgorithm()
         
         from ..events.event_queue import CycleTimeManager
+        from ..pon.pon_sdn import OLT_SDN
         
-        self.olt = HybridOLT(self.onus, dba_algorithm, self.channel_capacity)
+        if use_sdn:
+            self.olt = OLT_SDN("OLT_SDN_1", self.onus, dba_algorithm, {"0": {"length": 0.5}, "1": {"length": 0.5}}, self.channel_capacity)
+        else:
+            self.olt = HybridOLT(self.onus, dba_algorithm, self.channel_capacity)
+            
         self.olt.cycle_manager = CycleTimeManager(self.MIN_CYCLE_INTERVAL)
     
     # ===== EJECUCIÓN DE SIMULACIÓN =====
