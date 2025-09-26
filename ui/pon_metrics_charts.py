@@ -602,6 +602,115 @@ class PONMetricsChart(FigureCanvas):
         self.fig.tight_layout()
         self.draw()
     
+    def plot_onu_tcont_analysis(self, simulation_data: Dict[str, Any]):
+        """Graficar análisis de tipos de TCONT por ONU"""
+        if not MATPLOTLIB_AVAILABLE:
+            return
+            
+        self.fig.clear()
+        
+        # Obtener datos de delays que contienen onu_id y tcont_id
+        episode_metrics = simulation_data.get('simulation_summary', {}).get('episode_metrics', {})
+        delays_data = episode_metrics.get('delays', [])
+        
+        if not delays_data:
+            # Intentar desde la raíz del objeto
+            delays_data = simulation_data.get('episode_metrics', {}).get('delays', [])
+        
+        if not delays_data:
+            self._plot_no_data("Sin datos de ONUs y TCONTs")
+            return
+        
+        # Analizar datos para extraer ONUs y sus TCONTs
+        onu_tcont_counts = {}
+        
+        for delay_entry in delays_data:
+            onu_id = delay_entry.get('onu_id', 'unknown')
+            tcont_id = delay_entry.get('tcont_id', 'unknown')
+            
+            if onu_id not in onu_tcont_counts:
+                onu_tcont_counts[onu_id] = {
+                    'lowest': 0, 'low': 0, 'medium': 0, 'high': 0, 'highest': 0
+                }
+            
+            if tcont_id in onu_tcont_counts[onu_id]:
+                onu_tcont_counts[onu_id][tcont_id] += 1
+        
+        if not onu_tcont_counts:
+            self._plot_no_data("No se encontraron datos de ONUs")
+            return
+        
+        # Crear subgráficas para cada ONU
+        num_onus = len(onu_tcont_counts)
+        
+        if num_onus == 1:
+            # Una sola ONU
+            rows, cols = 1, 1
+        elif num_onus == 2:
+            # Dos ONUs horizontalmente
+            rows, cols = 1, 2
+        elif num_onus <= 4:
+            # Hasta 4 ONUs en 2x2
+            rows, cols = 2, 2
+        elif num_onus <= 6:
+            # Hasta 6 ONUs en 2x3
+            rows, cols = 2, 3
+        else:
+            # Más ONUs en 3x3
+            rows, cols = 3, 3
+        
+        # Tipos de TCONT y colores
+        tcont_types = ['lowest', 'low', 'medium', 'high', 'highest']
+        tcont_colors = ['#ff4444', '#ff8800', '#ffdd00', '#4488ff', '#00aa44']
+        tcont_labels = ['Lowest', 'Low', 'Medium', 'High', 'Highest']
+        
+        # Crear gráficas para cada ONU
+        for i, (onu_id, tcont_data) in enumerate(onu_tcont_counts.items()):
+            if i >= rows * cols:  # Limitar número de gráficas
+                break
+                
+            ax = self.fig.add_subplot(rows, cols, i + 1)
+            
+            # Datos para la gráfica de barras
+            values = [tcont_data[tcont_type] for tcont_type in tcont_types]
+            
+            # Crear gráfica de barras
+            bars = ax.bar(tcont_labels, values, color=tcont_colors, alpha=0.7, edgecolor='black', linewidth=0.5)
+            
+            # Agregar valores encima de las barras
+            for bar, value in zip(bars, values):
+                if value > 0:
+                    height = bar.get_height()
+                    ax.text(bar.get_x() + bar.get_width()/2., height + max(values) * 0.01,
+                           f'{int(value)}', ha='center', va='bottom', fontweight='bold')
+            
+            # Configurar gráfica
+            ax.set_title(f'ONU {onu_id} - Distribución de TCONTs', fontweight='bold')
+            ax.set_xlabel('Tipo de TCONT')
+            ax.set_ylabel('Cantidad')
+            ax.grid(True, alpha=0.3, axis='y')
+            
+            # Rotar etiquetas si es necesario
+            if num_onus > 2:
+                ax.tick_params(axis='x', rotation=45)
+            
+            # Agregar estadísticas
+            total_tconts = sum(values)
+            max_tcont = max(values) if values else 0
+            most_used = tcont_labels[values.index(max_tcont)] if max_tcont > 0 else 'N/A'
+            
+            ax.text(0.02, 0.98, f'Total: {total_tconts}\nMás usado: {most_used}', 
+                    transform=ax.transAxes, verticalalignment='top',
+                    bbox=dict(boxstyle='round', facecolor='white', alpha=0.8),
+                    fontsize=8)
+        
+        # Título general
+        self.fig.suptitle(f'Análisis de TCONTs por ONU ({num_onus} ONUs detectadas)', 
+                         fontsize=14, fontweight='bold')
+        
+        self.fig.tight_layout()
+        self.draw()
+    
     def _simulate_delay_evolution(self, final_delay: float, num_points: int) -> np.ndarray:
         """Simular evolución realista de delay"""
         # Crear curva que converge al delay final
@@ -809,6 +918,9 @@ class PONMetricsChartsPanel(QWidget):
         # Tab 3: Análisis comparativo
         self.setup_comparative_charts_tab()
         
+        # Tab 4: Análisis ONUs
+        self.setup_onu_analysis_tab()
+        
     def setup_temporal_charts_tab(self):
         """Configurar tab de gráficos temporales"""
         tab = QWidget()
@@ -905,6 +1017,38 @@ class PONMetricsChartsPanel(QWidget):
         
         self.tabs.addTab(tab, "📈 Análisis")
     
+    def setup_onu_analysis_tab(self):
+        """Configurar tab de análisis de ONUs"""
+        tab = QWidget()
+        layout = QVBoxLayout(tab)
+        
+        # Crear área de scroll para manejar múltiples gráficas de ONUs
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        
+        # Widget container para las gráficas de ONUs
+        onu_widget = QWidget()
+        onu_layout = QVBoxLayout(onu_widget)
+        
+        # Grupo para análisis de TCONTs por ONU
+        onu_analysis_group = QGroupBox("Análisis de Tipos de TCONT por ONU")
+        onu_analysis_group.setObjectName("pon_charts_group")
+        onu_analysis_layout = QVBoxLayout(onu_analysis_group)
+        
+        # Gráfica principal para análisis de ONUs
+        self.charts['onu_tcont_analysis'] = PONMetricsChart(width=12, height=8)
+        onu_analysis_layout.addWidget(self.charts['onu_tcont_analysis'])
+        
+        onu_layout.addWidget(onu_analysis_group)
+        onu_layout.addStretch()
+        
+        scroll_area.setWidget(onu_widget)
+        layout.addWidget(scroll_area)
+        
+        self.tabs.addTab(tab, "🔍 Análisis ONUs")
+    
     def update_charts_with_data(self, simulation_data: Dict[str, Any]):
         """Actualizar todos los gráficos con nuevos datos"""
         if not MATPLOTLIB_AVAILABLE:
@@ -945,6 +1089,11 @@ class PONMetricsChartsPanel(QWidget):
         if 'jitter_ipdv' in self.charts:
             self.charts['jitter_ipdv'].plot_jitter_ipdv_evolution(simulation_data)
             self.chart_updated.emit('jitter_ipdv')
+        
+        # Análisis de ONUs
+        if 'onu_tcont_analysis' in self.charts:
+            self.charts['onu_tcont_analysis'].plot_onu_tcont_analysis(simulation_data)
+            self.chart_updated.emit('onu_tcont_analysis')
     
     def refresh_all_charts(self):
         """Actualizar todos los gráficos con los datos actuales"""
