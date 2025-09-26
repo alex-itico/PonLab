@@ -3,12 +3,15 @@ PON SDN
 Software-Defined Optical Line Terminal integrado de netPONPy con algoritmos DBA modulares
 """
 
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, TYPE_CHECKING
 from ..data.pon_request import Request
 from .pon_onu import ONU
-from ..connections.pon_connection import Connection
 from ..connections.pon_link import Link
 from ..algorithms.pon_dba import DBAAlgorithmInterface, FCFSDBAAlgorithm
+
+# Importación diferida para evitar ciclos
+if TYPE_CHECKING:
+    from ..connections.pon_connection import Connection
 
 # Mapeo de prioridades para requests
 PRIORITY_MAP = {"highest": 0, "high": 1, "medium": 2, "low": 3, "lowest": 4}
@@ -204,8 +207,11 @@ class OLT_SDN:
         time_slot = total_traffic / transmission_speed if transmission_speed > 0 else 0
         return time_slot
 
-    def establish_connection(self, request: Request) -> Connection:
+    def establish_connection(self, request: Request) -> "Connection":
         """Establecer conexión para una solicitud"""
+        # Importación dinámica para evitar ciclos
+        from ..connections.pon_connection import Connection
+        
         path_links_id = [request.source_id]
         path = [self.links[link_id] for link_id in path_links_id if link_id in self.links]
         

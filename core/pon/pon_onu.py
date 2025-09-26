@@ -4,12 +4,15 @@ Unidad de Red Óptica integrada de netPONPy con generación de tráfico realista
 """
 
 import numpy as np
-from typing import Dict, Optional, List
+from typing import Dict, Optional, List, TYPE_CHECKING
 from .pon_types import Traffic_Probability
 from ..data.pon_request import Request
-from ..connections.pon_connection import Connection
 from ..data.pon_buffer import Buffer
 from ..data.pon_queue import Queue
+
+# Importación diferida para evitar ciclos
+if TYPE_CHECKING:
+    from ..connections.pon_connection import Connection
 
 
 class ONU:
@@ -146,7 +149,7 @@ class ONU:
             return None
         return list(self.buffer)
 
-    def transmit(self, request_id_to_transmit: str, connection: Connection, time_slot: float) -> bool:
+    def transmit(self, request_id_to_transmit: str, connection: "Connection", time_slot: float) -> bool:
         """
         Transmitir solicitud específica
         
