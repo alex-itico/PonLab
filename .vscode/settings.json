@@ -1,0 +1,35 @@
+{
+  "python.analysis.autoImportCompletions": false,
+  "python.analysis.autoSearchPaths": false,
+  "python.analysis.stubPath": "",
+  "python.analysis.typeshedPaths": [],
+  "python.analysis.autoImportUserSymbols": false,
+  "python.linting.enabled": true,
+  "python.linting.pylintEnabled": false,
+  "python.linting.flake8Enabled": true,
+  "files.watcherExclude": {
+    "**/.git/objects/**": true,
+    "**/.git/subtree-cache/**": true,
+    "**/node_modules/*/**": true,
+    "**/__pycache__/**": true,
+    "**/ui/buttons.py": true,
+    "**/ui/panel_design_view.py": true
+  },
+  "files.exclude": {
+    "**/__pycache__": true,
+    "**/.pytest_cache": true
+  },
+  "python.analysis.include": [
+    "main.py",
+    "ui/main_window.py",
+    "ui/canvas.py",
+    "ui/splash_screen.py",
+    "ui/map_overlay_toggle.py",
+    "ui/map_view.py",
+    "ui/sidebar_panel.py",
+    "utils/**/*.py",
+    "core/**/*.py",
+    "resources/**/*"
+  ],
+  "python.analysis.exclude": ["ui/buttons.py", "ui/panel_design_view.py"]
+}
