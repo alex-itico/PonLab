@@ -825,6 +825,13 @@ class IntegratedPONTestPanel(QWidget):
                         cycle_num = data.get('data', {}).get('cycle_number', 0)
                         if cycle_num % 100 == 0:  # Log cada 100 ciclos
                             self.results_panel.add_log_message(f"Ciclo DBA: {cycle_num}")
+                            # Actualizar dashboard SDN durante la simulación
+                            sdn_metrics = self.adapter.get_sdn_metrics()
+                            if sdn_metrics:
+                                self.results_panel.add_log_message(f"📊 Actualizando métricas SDN (ciclo {cycle_num})")
+                                self.parent().update_sdn_metrics(sdn_metrics)
+                            else:
+                                self.results_panel.add_log_message("⚠️ No hay métricas SDN disponibles")
                     
                 elif event_type == "end":
                     self.progress_bar.setValue(100)
@@ -877,6 +884,21 @@ class IntegratedPONTestPanel(QWidget):
                 self.results_panel.add_log_message("❌ Error en simulación clásica")
                 self.on_simulation_finished()
     
+    def force_sdn_metrics_update(self, attempt_desc=""):
+        """Forzar actualización de métricas SDN con múltiples intentos"""
+        try:
+            sdn_metrics = self.adapter.get_sdn_metrics()
+            if sdn_metrics:
+                self.results_panel.add_log_message(f"📊 {attempt_desc}: Obtenidas métricas SDN para {len(sdn_metrics.get('onu_metrics', {}))} ONUs")
+                self.parent().update_sdn_metrics(sdn_metrics)
+                return True
+            else:
+                self.results_panel.add_log_message(f"⚠️ {attempt_desc}: No hay métricas SDN disponibles")
+                return False
+        except Exception as e:
+            self.results_panel.add_log_message(f"❌ {attempt_desc}: Error obteniendo métricas SDN: {e}")
+            return False
+            
     def process_hybrid_results(self, results):
         """Procesar resultados de simulación híbrida"""
         try:
@@ -885,6 +907,14 @@ class IntegratedPONTestPanel(QWidget):
                 # El simulador híbrido devuelve resultados completos
                 self.results_panel.update_simulation_results(results)
                 self.results_panel.add_log_message("📊 Resultados procesados y gráficos generados")
+                
+                # Forzar actualización final del dashboard SDN con múltiples intentos
+                # Intentar inmediatamente
+                if not self.force_sdn_metrics_update("Primer intento"):
+                    # Si falla, intentar 3 veces más con delays crecientes
+                    delays = [500, 1000, 2000]  # 0.5s, 1s, 2s
+                    for i, delay in enumerate(delays):
+                        QTimer.singleShot(delay, lambda: self.force_sdn_metrics_update(f"Intento {i+2}"))
                 
                 # Mostrar ventana emergente si está habilitada
                 if hasattr(self, 'show_popup_checkbox') and self.show_popup_checkbox.isChecked():
@@ -923,6 +953,21 @@ class IntegratedPONTestPanel(QWidget):
         
         # Actualizar resultados finales
         self.results_panel.refresh_results()
+        
+        # Múltiples intentos de actualizar el dashboard SDN
+        max_attempts = 3
+        for attempt in range(max_attempts):
+            self.results_panel.add_log_message(f"📊 Intento {attempt + 1} de {max_attempts} de obtener métricas SDN...")
+            sdn_metrics = self.adapter.get_sdn_metrics()
+            if sdn_metrics:
+                self.results_panel.add_log_message(f"📊 Dashboard SDN: Actualizando con {len(sdn_metrics.get('onu_metrics', {}))} ONUs")
+                self.parent().update_sdn_metrics(sdn_metrics)
+                self.results_panel.add_log_message("✅ Dashboard SDN actualizado exitosamente")
+                break
+            else:
+                self.results_panel.add_log_message("⚠️ Intento fallido de obtener métricas SDN")
+        else:
+            self.results_panel.add_log_message("❌ No se pudieron obtener métricas SDN después de múltiples intentos")
         
         # Mostrar gráficos automáticamente en panel si está habilitado
         if self.auto_charts_checkbox.isChecked():

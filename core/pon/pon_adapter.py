@@ -46,8 +46,21 @@ class PONAdapter:
         # State management
         self.is_available = PON_CORE_AVAILABLE
         self.current_algorithm = "FCFS"
+        self.use_sdn = False
+        
+        # Configuration
+        self.config = {
+            'num_onus': 4,
+            'traffic_scenario': 'residential_medium',
+            'episode_duration': 10.0,
+            'simulation_timestep': 0.1,
+            'channel_capacity_mbps': 1024.0,
+            'simulation_mode': 'hybrid'
+        }
+        
+        # Logging and mode
+        self.detailed_logging = False
         self.simulation_mode = "events"  # "cycles" o "events"
-        self.detailed_logging = True
         self.log_callback = None
 
         # Smart RL DBA management
@@ -57,15 +70,65 @@ class PONAdapter:
         # Results storage
         self.last_simulation_results = None
         
+    def get_olt(self):
+        """Obtener el OLT actual de la simulación"""
+        if self.simulator and hasattr(self.simulator, 'olt'):
+            return self.simulator.olt
+        return None
         
-        # Default configuration
-        self.config = {
-            'num_onus': 4,
-            'traffic_scenario': 'residential_medium',
-            'episode_duration': 10.0,
-            'simulation_timestep': 0.1,
-            'channel_capacity_mbps': 1024.0
+    def get_sdn_metrics(self):
+        """Obtener métricas SDN en formato para el dashboard"""
+        olt = self.get_olt()
+        if not olt:
+            self._log_event("DEBUG", "get_sdn_metrics: No hay OLT disponible")
+            return None
+        
+        if not hasattr(olt, 'sdn_metrics'):
+            self._log_event("DEBUG", "get_sdn_metrics: OLT no tiene sdn_metrics")
+            return None
+            
+        if not hasattr(olt, 'sdn_controller_metrics'):
+            self._log_event("DEBUG", "get_sdn_metrics: OLT no tiene sdn_controller_metrics")
+            return None
+            
+        self._log_event("DEBUG", f"get_sdn_metrics: OLT encontrado, tipo: {type(olt)}")
+            
+        # Calcular métricas globales
+        try:
+            global_metrics = {
+                'total_reconfigurations': olt.sdn_controller_metrics['reconfigurations'],
+                'grant_utilization': (olt.sdn_controller_metrics['utilized_grants'] / 
+                                    max(1, olt.sdn_controller_metrics['total_grants'])) * 100,
+                'current_fairness': olt.sdn_controller_metrics['fairness_history'][-1] if olt.sdn_controller_metrics['fairness_history'] else 0,
+                'qos_violations': olt.sdn_controller_metrics['qos_violations']
+            }
+            self._log_event("DEBUG", f"get_sdn_metrics: Métricas globales calculadas: {global_metrics}")
+        except Exception as e:
+            self._log_event("ERROR", f"get_sdn_metrics: Error calculando métricas globales: {str(e)}")
+            return None
+            
+        # Procesar métricas por ONU
+        onu_metrics = {}
+        try:
+            for onu_id, metrics in olt.sdn_metrics.items():
+                onu_metrics[onu_id] = {
+                    'avg_latency': sum(metrics['latency']) / max(1, len(metrics['latency'])),
+                    'packet_loss_rate': (metrics['losses'] / max(1, metrics['grants_allocated'])) * 100,
+                    'avg_throughput': sum(metrics['throughput']) / max(1, len(metrics['throughput']))
+                }
+            self._log_event("DEBUG", f"get_sdn_metrics: Métricas calculadas para {len(onu_metrics)} ONUs")
+        except Exception as e:
+            self._log_event("ERROR", f"get_sdn_metrics: Error calculando métricas de ONUs: {str(e)}")
+            return None
+            
+        return {
+            'global_metrics': global_metrics,
+            'onu_metrics': onu_metrics
         }
+        
+    def set_detailed_logging(self, enabled: bool):
+        """Activar o desactivar el logging detallado"""
+        self.detailed_logging = enabled
         
     # ===== CORE METHODS =====
     
@@ -143,7 +206,8 @@ class PONAdapter:
                     num_onus=num_onus,
                     traffic_scenario=self.config['traffic_scenario'],
                     dba_algorithm=dba_algorithm,
-                    channel_capacity_mbps=self.config['channel_capacity_mbps']
+                    channel_capacity_mbps=self.config['channel_capacity_mbps'],
+                    use_sdn=self.use_sdn
                 )
             elif self.simulation_mode == "cycles":
                 # Configurar simulación por ciclos (requiere orquestador)
@@ -201,7 +265,8 @@ class PONAdapter:
                     num_onus=num_onus,
                     traffic_scenario=self.config['traffic_scenario'],
                     dba_algorithm=dba_algorithm,
-                    channel_capacity_mbps=self.config['channel_capacity_mbps']
+                    channel_capacity_mbps=self.config['channel_capacity_mbps'],
+                    use_sdn=self.use_sdn
                 )
             elif self.simulation_mode == "cycles":
                 # Configurar simulación por ciclos (requiere orquestador)
@@ -272,6 +337,19 @@ class PONAdapter:
             if success:
                 # Almacenar resultados
                 self.last_simulation_results = results
+                
+                # Forzar actualización final de métricas SDN
+                if self.use_sdn:
+                    try:
+                        olt = self.get_olt()
+                        if olt:
+                            self._log_event("DEBUG", "Forzando actualización final de métricas SDN")
+                            # Asegurarse de que el OLT calcule las métricas finales
+                            if hasattr(olt, '_update_sdn_metrics'):
+                                self._log_event("DEBUG", "Actualizando métricas finales del OLT_SDN")
+                                olt._update_sdn_metrics(None, True)  # Forzar actualización final
+                    except Exception as e:
+                        self._log_event("ERROR", f"Error actualizando métricas SDN finales: {str(e)}")
                 
                 # Callback final
                 if callback:
@@ -345,6 +423,11 @@ class PONAdapter:
     def set_dba_algorithm(self, algorithm_name):
         """Configurar algoritmo DBA"""
         try:
+            # Actualizar estado SDN
+            self.use_sdn = algorithm_name == "SDN"
+            self.current_algorithm = algorithm_name
+            self._log_event("DEBUG", f"Configurando algoritmo: {algorithm_name} (SDN: {self.use_sdn})")
+            
             # Para simulador unificado
             if self.simulator and self.simulation_mode == "events":
                 dba_algorithm = self._get_dba_algorithm_by_name(algorithm_name)
@@ -383,9 +466,15 @@ class PONAdapter:
         if not PON_CORE_AVAILABLE:
             raise ValueError("PON Core no está disponible")
             
-        # Manejar Smart RL DBA
-        if algorithm_name == "Smart-RL":
+        # Manejar Smart RL DBA (incluye variante SDN)
+        if algorithm_name in ["Smart-RL", "Smart-RL-SDN"]:
             if self.smart_rl_algorithm:
+                # Configurar SDN para Smart-RL-SDN
+                if algorithm_name == "Smart-RL-SDN":
+                    self.use_sdn = True
+                    self._log_event("DEBUG", "Smart-RL ejecutándose con controlador SDN")
+                else:
+                    self.use_sdn = False
                 return self.smart_rl_algorithm
             else:
                 raise ValueError("No hay modelo RL cargado. Use 'load_rl_model()' primero.")
@@ -393,25 +482,38 @@ class PONAdapter:
         algorithms = {
             "FCFS": FCFSDBAAlgorithm,
             "Priority": PriorityDBAAlgorithm,
-            "RL-DBA": RLDBAAlgorithm
+            "RL-DBA": RLDBAAlgorithm,
+            "SDN": FCFSDBAAlgorithm  # Usar FCFS como base para SDN
         }
 
         if algorithm_name not in algorithms:
             raise ValueError(f"Algoritmo desconocido: {algorithm_name}")
-
+            
+        # Obtener clase del algoritmo
         algorithm_class = algorithms[algorithm_name]
         if algorithm_class is None:
             raise ValueError(f"Algoritmo {algorithm_name} no está disponible")
 
-        return algorithm_class()
+        # Crear instancia del algoritmo
+        algorithm = algorithm_class()
+        
+        # Configurar estado SDN si es necesario
+        if algorithm_name == "SDN":
+            self._log_event("DEBUG", "Usando algoritmo SDN con base FCFS")
+            self.use_sdn = True
+        elif algorithm_name not in ["Smart-RL-SDN"]:
+            # No desactivar SDN si es Smart-RL-SDN (ya se configuró arriba)
+            self.use_sdn = False
+            
+        return algorithm
     
     def get_available_algorithms(self):
         """Obtener lista de algoritmos DBA disponibles"""
-        algorithms = ["FCFS", "Priority", "RL-DBA"]
+        algorithms = ["FCFS", "Priority", "RL-DBA", "SDN"]
 
         # Agregar Smart RL DBA si hay modelo cargado
         if self.smart_rl_algorithm:
-            algorithms.append("Smart-RL")
+            algorithms.extend(["Smart-RL", "Smart-RL-SDN"])
 
         return algorithms
     
