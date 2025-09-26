@@ -2,3 +2,10 @@ PyQt5>=5.15.0
 PyQtWebEngine>=5.15.0
 numpy>=1.21.0
 matplotlib>=3.5.0
+
+# Dependencias para Aprendizaje Reforzado
+gymnasium>=0.28.0
+stable-baselines3>=2.0.0
+torch>=1.11.0
+pandas>=1.4.0
+scikit-learn>=1.1.0
