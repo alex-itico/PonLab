@@ -58,7 +58,8 @@ class OptimizedHybridPONSimulator:
             'total_requests': 0,
             'successful_transmissions': 0,
             'failed_transmissions': 0,
-            'utilization_history': []
+            'utilization_history': [],
+            'per_onu_bytes': {},
         }
         
         # Estadísticas de optimización
@@ -316,29 +317,45 @@ class OptimizedHybridPONSimulator:
                 'tcont_id': tcont_id,
                 'packets': packets,
                 'transmitted_bytes': transmitted_bytes,
-                'grant_bytes': grant_bytes
+                'grant_bytes': grant_bytes,
+                'slot_start': event.timestamp,
+                'slot_end': slot_end,
+                'slot_duration': slot_duration,
+                'line_rate_bps': event.data.get('line_rate_bps'),
+                'guard_time_s': event.data.get('guard_time_s'),
             }
         )
     
     def _handle_transmission_complete(self, event):
         """Manejar completación de transmisión con muestreo de métricas"""
         onu_id = event.onu_id
-        packets = event.data.get('packets', [])
-        transmitted_bytes = event.data.get('transmitted_bytes', 0)
-        
-        # Actualizar métricas con muestreo (no todos los paquetes)
+        data = event.data or {}
+
+        packets = data.get('packets', [])
+        transmitted_bytes = int(data.get('transmitted_bytes', 0))
+
+        # --- 1) Muestreo de delays y throughputs por paquete (capado por MAX_METRICS_STORED) ---
+        # Asegura que exista el contador de dropped
+        if 'metrics_dropped' not in self.optimization_stats:
+            self.optimization_stats['metrics_dropped'] = 0
+
+        # Evita llenar de más la lista de delays si ya alcanzaste el tope
         if len(self.metrics['delays']) < self.MAX_METRICS_STORED:
             for packet in packets:
-                delay = event.timestamp - packet.arrival_time
-                throughput_mbps = (packet.size_bytes / (1024 * 1024)) / delay if delay > 0 else 0
-                
+                # Retardo: desde que el paquete ingresó a cola hasta ahora (fin de transmisión)
+                # OJO: aquí tú ya usabas arrival_time como timestamp de ingreso
+                delay = float(event.timestamp - packet.arrival_time)
+
+                # Throughput instantáneo para ese paquete (MB / s)
+                throughput_mbps = ((packet.size_bytes / (1024 * 1024)) / delay) if delay > 0 else 0.0
+
                 self.metrics['delays'].append({
                     'delay': delay,
                     'onu_id': onu_id,
                     'tcont_id': packet.tcont_type,
                     'timestamp': event.timestamp
                 })
-                
+
                 self.metrics['throughputs'].append({
                     'throughput': throughput_mbps,
                     'onu_id': onu_id,
@@ -348,18 +365,28 @@ class OptimizedHybridPONSimulator:
         else:
             # Solo contar, no almacenar detalles
             self.optimization_stats['metrics_dropped'] += len(packets)
-        
-        # Actualizar contadores globales
+
+        # --- 2) Contadores globales y fairness por ONU ---
         if transmitted_bytes > 0:
+            # contabiliza éxito por cantidad de paquetes servidos en este slot
             self.metrics['successful_transmissions'] += len(packets)
-            self.metrics['total_transmitted'] += transmitted_bytes / (1024 * 1024)  # MB
+
+            # total_transmitted en MB
+            self.metrics['total_transmitted'] += transmitted_bytes / (1024 * 1024)
+
+            # Acumula bytes por ONU para calcular fairness de Jain al final
+            pob = self.metrics.get('per_onu_bytes', {})
+            pob[onu_id] = pob.get(onu_id, 0) + transmitted_bytes
+            self.metrics['per_onu_bytes'] = pob
         else:
             self.metrics['failed_transmissions'] += 1
-        
+
+        # Total de paquetes “atendidos” (o intentados) en este fin de grant
         self.metrics['total_requests'] += len(packets)
-        
-        # Notificar al OLT
+
+        # --- 3) Notificar al OLT (mantén tu lógica existente) ---
         self.olt.handle_transmission_complete(event.data, event.timestamp)
+
     
     def _update_buffer_metrics(self):
         """Actualizar métricas de buffer en MB reales"""
@@ -384,42 +411,74 @@ class OptimizedHybridPONSimulator:
     
     def _calculate_final_results(self) -> Dict[str, Any]:
         """Calcular resultados finales en formato compatible"""
-        
-        # Calcular estadísticas básicas
-        mean_delay = np.mean([d['delay'] for d in self.metrics['delays']]) if self.metrics['delays'] else 0
-        mean_throughput = self.metrics['total_transmitted'] / self.simulation_time if self.simulation_time > 0 else 0
-        
-        # Calcular utilización de red
+
+        # --- Delays y métricas derivadas ---
+        delays_list = [d['delay'] for d in self.metrics.get('delays', [])]
+        mean_delay = float(np.mean(delays_list)) if delays_list else 0.0
+        p95_delay = float(np.percentile(delays_list, 95)) if delays_list else 0.0
+
+        # Jitter estilo IPDV: promedio de |Δdelay| por ONU (diferencias sucesivas)
+        mean_jitter = 0.0
+        if self.metrics.get('delays'):
+            by_onu = {}
+            for d in self.metrics['delays']:
+                by_onu.setdefault(d['onu_id'], []).append(d['delay'])
+            ipdv_samples = []
+            for seq in by_onu.values():
+                if len(seq) > 1:
+                    # Si tus delays ya llegan en orden temporal, no es necesario ordenar
+                    diffs = [abs(seq[i] - seq[i-1]) for i in range(1, len(seq))]
+                    ipdv_samples.extend(diffs)
+            mean_jitter = float(np.mean(ipdv_samples)) if ipdv_samples else 0.0
+
+        # Throughput medio (MB/s) ya acumulado
+        mean_throughput = (self.metrics.get('total_transmitted', 0.0) / self.simulation_time) if self.simulation_time > 0 else 0.0
+
+        # Utilización de red (si no viene, usa 0)
         olt_stats = self.olt.get_olt_statistics()
-        network_utilization = olt_stats.get('average_utilization', 0)
-        
+        network_utilization = olt_stats.get('average_utilization', 0.0)
+
+        # Fairness de Jain por ONU con bytes transmitidos acumulados
+        per_onu = list(self.metrics.get('per_onu_bytes', {}).values())
+        if per_onu:
+            x = np.array(per_onu, dtype=float)
+            jain = float((x.sum() ** 2) / (len(x) * (x ** 2).sum())) if (x ** 2).sum() > 0 else 1.0
+        else:
+            jain = 1.0  # neutral si nadie transmitió
+
         # Estadísticas por ONU
         onu_stats = {}
         for onu_id, onu in self.onus.items():
             onu_stats[onu_id] = onu.get_onu_statistics()
-        
+
+        total_requests = self.metrics.get('total_requests', 0)
+        successful = self.metrics.get('successful_transmissions', 0)
+
         return {
             'simulation_summary': {
                 'simulation_stats': {
-                    'total_steps': olt_stats['current_cycle'],
+                    'total_steps': olt_stats.get('current_cycle', 0),
                     'simulation_time': self.simulation_time,
-                    'total_requests': self.metrics['total_requests'],
-                    'successful_requests': self.metrics['successful_transmissions'],
-                    'success_rate': (self.metrics['successful_transmissions'] / max(self.metrics['total_requests'], 1)) * 100,
+                    'total_requests': total_requests,
+                    'successful_requests': successful,
+                    'success_rate': (successful / max(total_requests, 1)) * 100.0,
                     'events_processed': self.events_processed
                 },
                 'performance_metrics': {
                     'mean_delay': mean_delay,
+                    'p95_delay': p95_delay,
+                    'jitter_ipdv_mean': mean_jitter,
                     'mean_throughput': mean_throughput,
                     'network_utilization': network_utilization,
-                    'total_capacity_served': self.metrics['total_transmitted']
+                    'total_capacity_served': self.metrics.get('total_transmitted', 0.0),
+                    'jain_fairness_per_onu': jain,
                 },
                 'episode_metrics': {
-                    'delays': self.metrics['delays'],
-                    'throughputs': self.metrics['throughputs'],
-                    'buffer_levels_history': self.metrics['buffer_levels_history'],
-                    'total_transmitted': self.metrics['total_transmitted'],
-                    'total_requests': self.metrics['total_requests']
+                    'delays': self.metrics.get('delays', []),
+                    'throughputs': self.metrics.get('throughputs', []),
+                    'buffer_levels_history': self.metrics.get('buffer_levels_history', []),
+                    'total_transmitted': self.metrics.get('total_transmitted', 0.0),
+                    'total_requests': total_requests
                 }
             },
             'olt_stats': olt_stats,
@@ -430,7 +489,8 @@ class OptimizedHybridPONSimulator:
                 'events_remaining': self.event_queue.get_pending_events_count(),
                 'events_processed': self.events_processed
             }
-        }
+    }
+
     
     def reset_simulation(self):
         """Reiniciar simulación manteniendo configuración"""
@@ -442,13 +502,14 @@ class OptimizedHybridPONSimulator:
         # Reiniciar métricas
         self.metrics = {
             'delays': [],
-            'throughputs': [],
+            'throughputs': [], 
             'buffer_levels_history': [],
             'total_transmitted': 0.0,
             'total_requests': 0,
             'successful_transmissions': 0,
             'failed_transmissions': 0,
-            'utilization_history': []
+            'utilization_history': [],
+            'per_onu_bytes': {},
         }
         
         # Reiniciar estadísticas de optimización
