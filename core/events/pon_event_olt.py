@@ -19,7 +19,8 @@ class HybridOLT:
     
     def __init__(self, onus: Dict[str, HybridONU], 
                  dba_algorithm: Optional['DBAAlgorithmInterface'] = None,
-                 channel_capacity_mbps: float = 1024.0):
+                 channel_capacity_mbps: float = 1024.0,
+                 guard_time_s: float = 2e-6):
         """
         Args:
             onus: Diccionario de ONUs {onu_id: HybridONU}
@@ -34,6 +35,7 @@ class HybridOLT:
         else:
             self.dba_algorithm = dba_algorithm
         self.channel_capacity = channel_capacity_mbps
+        self.guard_time_s = guard_time_s
         
         # Gestores de tiempo
         self.cycle_manager = CycleTimeManager(125e-6)  # 125 microsegundos
@@ -253,6 +255,10 @@ class HybridOLT:
                 onu_id, tcont_id, grant_mb, current_slot_start
             )
             
+            gt = getattr(self, 'guard_time_s', 0.0)
+            slot_end_with_guard = slot_end + gt
+            slot_duration_with_guard = slot_end_with_guard - slot_start
+            
             # Programar inicio de transmisión
             event_queue.schedule_event(
                 slot_start,
@@ -261,12 +267,14 @@ class HybridOLT:
                 {
                     'tcont_id': tcont_id,
                     'grant_bytes': grant_bytes,
-                    'slot_duration': slot_end - slot_start,
-                    'slot_end': slot_end
+                    'slot_duration': slot_duration_with_guard,
+                    'slot_end': slot_end_with_guard,
+                    'line_rate_bps': self.channel_capacity * 1e6,
+                    'guard_time_s': gt
                 }
             )
             
-            current_slot_start = slot_end  # Próximo slot después de este
+            current_slot_start = slot_end_with_guard  # Próximo slot después de este
     
     def _prioritize_grants(self, grants: Dict[str, Dict[str, int]]) -> List[Tuple[str, str, int]]:
         """

@@ -10,7 +10,8 @@ import os
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel,
                              QPushButton, QComboBox, QSpinBox, QTextEdit,
                              QGroupBox, QGridLayout, QSizePolicy, QProgressBar,
-                             QCheckBox, QSlider, QSplitter, QFileDialog, QMessageBox)
+                             QCheckBox, QSlider, QSplitter, QFileDialog, QMessageBox,
+                             QFrame)
 from PyQt5.QtCore import Qt, QTimer, pyqtSignal
 from PyQt5.QtGui import QFont
 from core import PONAdapter
@@ -158,28 +159,43 @@ class IntegratedPONTestPanel(QWidget):
         # Layout vertical para organizar mejor los elementos RL
         rl_main_layout = QVBoxLayout()
         
-        # Layout horizontal para los botones
-        rl_buttons_layout = QHBoxLayout()
+        # Layout vertical para los botones con mejor espaciado
+        rl_buttons_layout = QVBoxLayout()
+        rl_buttons_layout.setSpacing(8)  # Espacio entre botones
         
         # Smart RL model loading
         self.load_rl_model_btn = QPushButton("📁 Cargar Modelo RL")
         self.load_rl_model_btn.setToolTip("Cargar modelo RL entrenado (.zip)")
-        self.load_rl_model_btn.setMinimumWidth(150)  # Hacer el botón más ancho
+        self.load_rl_model_btn.setMinimumHeight(30)  # Altura mínima para botones
         self.load_rl_model_btn.clicked.connect(self.load_smart_rl_model)
         rl_buttons_layout.addWidget(self.load_rl_model_btn)
 
         # Botón para desactivar RL
         self.unload_rl_model_btn = QPushButton("❌ Desactivar RL")
         self.unload_rl_model_btn.setToolTip("Desactivar simulación RL y volver a algoritmos normales")
+        self.unload_rl_model_btn.setMinimumHeight(30)  # Altura mínima
         self.unload_rl_model_btn.clicked.connect(self.unload_rl_model)
         self.unload_rl_model_btn.setVisible(False)  # Inicialmente oculto
         rl_buttons_layout.addWidget(self.unload_rl_model_btn)
         
-        # Agregar espacio flexible para que los botones no se estiren demasiado
-        rl_buttons_layout.addStretch()
         
-        # Agregar layout de botones al layout principal
-        rl_main_layout.addLayout(rl_buttons_layout)
+        # Frame para contener los botones con mejor presentación vertical
+        rl_buttons_frame = QFrame()
+        rl_buttons_frame.setFrameStyle(QFrame.StyledPanel | QFrame.Raised)
+        rl_buttons_frame.setLineWidth(1)
+        rl_buttons_frame.setLayout(rl_buttons_layout)
+        rl_buttons_frame.setStyleSheet("""
+            QFrame {
+                background-color: rgba(240, 240, 240, 0.1);
+                border: 1px solid #ccc;
+                border-radius: 8px;
+                margin: 3px;
+                padding: 8px;
+            }
+        """)
+        
+        # Agregar frame de botones al layout principal
+        rl_main_layout.addWidget(rl_buttons_frame)
 
         # RL model status en una línea separada con margen
         self.rl_status_label = QLabel("No hay modelo cargado")
@@ -521,9 +537,10 @@ class IntegratedPONTestPanel(QWidget):
                 self.rl_status_label.setText(f"✅ {model_name}")
                 self.rl_status_label.setStyleSheet("color: green; font-size: 8pt;")
 
-                # Cuando se carga un modelo RL, solo permitir Smart-RL
+                # Cuando se carga un modelo RL, permitir Smart-RL y Smart-RL-SDN
                 self.algorithm_combo.clear()
                 self.algorithm_combo.addItem("Smart-RL")
+                self.algorithm_combo.addItem("Smart-RL-SDN")
                 self.algorithm_combo.setCurrentText("Smart-RL")
 
                 # Marcar que hay un modelo RL cargado
@@ -536,7 +553,7 @@ class IntegratedPONTestPanel(QWidget):
                 QMessageBox.information(
                     self,
                     "Modelo Cargado",
-                    f"Modelo RL cargado exitosamente:\n{model_name}\n\nAlgoritmo cambiado automáticamente a 'Smart-RL'."
+                    f"Modelo RL cargado exitosamente:\n{model_name}\n\nAlgoritmos disponibles: 'Smart-RL' y 'Smart-RL-SDN'."
                 )
 
                 # Log

@@ -568,3 +568,121 @@ QTabWidget#popup_tabs QTabBar::tab:hover {
 QTabWidget#popup_tabs QTabBar::tab:selected:hover {
     background-color: #106ebe;
 }
+
+/* ===== DASHBOARD SDN STYLES ===== */
+
+/* Dashboard SDN - Widget Principal */
+QWidget[objectName="PONSDNDashboard"] {
+    background-color: #2b2b2b;
+    color: #ffffff;
+}
+
+/* Dashboard SDN - Título */
+QLabel[objectName="DashboardTitle"] {
+    color: #4a90e2;
+    background-color: transparent;
+}
+
+/* Dashboard SDN - Tarjetas de Métricas */
+QFrame[objectName="MetricCard"] {
+    background-color: #3c3c3c;
+    border: 1px solid #555555;
+    border-radius: 8px;
+    color: #ffffff;
+    margin: 2px;
+}
+
+QLabel[objectName="MetricTitle"] {
+    color: #ffffff;
+    background-color: transparent;
+    font-weight: bold;
+}
+
+QLabel[objectName="MetricValue"] {
+    color: #4a90e2;
+    background-color: transparent;
+    font-size: 16px;
+    font-weight: bold;
+}
+
+QLabel[objectName="MetricDescription"] {
+    color: #cccccc;
+    background-color: transparent;
+    font-size: 8px;
+}
+
+/* Dashboard SDN - Tabla de ONUs */
+QTableWidget[objectName="ONUMetricsTable"] {
+    background-color: #1e1e1e;
+    color: #ffffff;
+    border: 1px solid #555555;
+    gridline-color: #404040;
+    selection-background-color: #4a90e2;
+    selection-color: #ffffff;
+    alternate-background-color: #333333;
+    font-size: 10px;
+}
+
+QTableWidget[objectName="ONUMetricsTable"]::item {
+    padding: 8px;
+    border-bottom: 1px solid #404040;
+    color: #ffffff;
+    background-color: transparent;
+}
+
+QTableWidget[objectName="ONUMetricsTable"]::item:selected {
+    background-color: #4a90e2;
+    color: #ffffff;
+}
+
+QTableWidget[objectName="ONUMetricsTable"]::item:hover {
+    background-color: #4a4a4a;
+}
+
+QTableWidget[objectName="ONUMetricsTable"]::item:alternate {
+    background-color: #2a2a2a;
+}
+
+/* Dashboard SDN - Headers de Tabla */
+QTableWidget[objectName="ONUMetricsTable"] QHeaderView::section {
+    background-color: #404040;
+    color: #ffffff;
+    padding: 8px;
+    border: 1px solid #555555;
+    border-bottom: 2px solid #4a90e2;
+    font-weight: bold;
+    font-size: 10px;
+}
+
+QTableWidget[objectName="ONUMetricsTable"] QHeaderView::section:hover {
+    background-color: #4a4a4a;
+}
+
+QTableWidget[objectName="ONUMetricsTable"] QHeaderView::section:pressed {
+    background-color: #357abd;
+}
+
+/* Dashboard SDN - Scroll Area */
+QScrollArea[objectName="DashboardScrollArea"] {
+    background-color: #2b2b2b;
+    border: none;
+}
+
+QScrollArea[objectName="DashboardScrollArea"] > QWidget > QWidget {
+    background-color: #2b2b2b;
+}
+
+/* Dashboard SDN - Progress Bars */
+QWidget[objectName="PONSDNDashboard"] QProgressBar {
+    background-color: #404040;
+    border: 1px solid #555555;
+    border-radius: 4px;
+    text-align: center;
+    color: #ffffff;
+    height: 20px;
+}
+
+QWidget[objectName="PONSDNDashboard"] QProgressBar::chunk {
+    background-color: #4a90e2;
+    border-radius: 3px;
+}
