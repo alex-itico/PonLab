@@ -102,7 +102,7 @@ class OptimizedHybridPONSimulator:
             # Reducir lambda rate para evitar explosión de eventos
             lambda_rate = min(lambda_rate, 50.0)  # Máximo 50 paquetes/segundo
 
-            print(f"  ONU {onu_id}: λ={lambda_rate:.1f} pkt/s (SLA={sla:.0f} Mbps)")
+            print(f"  ONU {onu_id}: lambda={lambda_rate:.1f} pkt/s (SLA={sla:.0f} Mbps)")
 
             self.onus[onu_id] = HybridONU(onu_id, lambda_rate, scenario_config)
     
@@ -487,6 +487,105 @@ class OptimizedHybridPONSimulator:
 
         return throughput_series
 
+    def _extract_onu_buffer_histories_from_olt(self) -> Dict[str, List[Dict[str, Any]]]:
+        """
+        Extraer historiales de buffer individuales por ONU desde los snapshots del OLT
+        Convierte el formato agregado del OLT a historiales separados por ONU
+
+        Returns:
+            Dict de {onu_id: [list of samples]}
+        """
+        # Obtener snapshots del OLT
+        olt_stats = self.olt.get_olt_statistics()
+        buffer_snapshots = olt_stats.get('buffer_snapshots', [])
+
+        print(f"[BUFFER-COLLECT-POLLING] Extrayendo historiales desde {len(buffer_snapshots)} snapshots del OLT")
+
+        # Reorganizar por ONU
+        onu_histories = {}
+
+        for snapshot in buffer_snapshots:
+            time = snapshot['time']
+            buffers = snapshot['buffers']
+
+            for onu_id, onu_data in buffers.items():
+                if onu_id not in onu_histories:
+                    onu_histories[onu_id] = []
+
+                # Crear entrada para esta ONU en este timestamp
+                entry = {
+                    'time': time,
+                    'buffer_state': onu_data.get('tconts', {}),
+                    'total_used_mb': onu_data.get('total_used_mb', 0),
+                    'total_capacity_mb': onu_data.get('total_capacity_mb', 0),
+                    'total_utilization_percent': onu_data.get('total_utilization_percent', 0)
+                }
+
+                onu_histories[onu_id].append(entry)
+
+        # Log resultado
+        for onu_id, history in onu_histories.items():
+            print(f"[BUFFER-COLLECT-POLLING] ONU {onu_id}: {len(history)} samples desde polling")
+
+        total_samples = sum(len(h) for h in onu_histories.values())
+        print(f"[BUFFER-COLLECT-POLLING] Total: {total_samples} samples de {len(onu_histories)} ONUs")
+
+        return onu_histories
+
+    def _convert_onu_histories_to_buffer_levels_history(self, onu_histories: Dict[str, List[Dict[str, Any]]]) -> List[Dict[str, Any]]:
+        """
+        Convertir historiales organizados por ONU a formato de buffer_levels_history organizado por timestamp
+        Esto permite que los graficos existentes usen los datos de polling
+
+        Args:
+            onu_histories: Dict de {onu_id: [list of samples with time]}
+
+        Returns:
+            Lista de snapshots con formato {'time': t, 'buffers': {onu_id: data}}
+        """
+        if not onu_histories:
+            return []
+
+        print(f"[BUFFER-CONVERT] Convirtiendo historiales de ONU a buffer_levels_history")
+
+        # Recolectar todos los timestamps únicos
+        all_timestamps = set()
+        for onu_id, history in onu_histories.items():
+            for entry in history:
+                all_timestamps.add(entry['time'])
+
+        # Ordenar timestamps
+        sorted_timestamps = sorted(all_timestamps)
+
+        print(f"[BUFFER-CONVERT] Encontrados {len(sorted_timestamps)} timestamps únicos")
+
+        # Construir estructura organizada por timestamp
+        buffer_levels_history = []
+
+        for timestamp in sorted_timestamps:
+            snapshot = {
+                'time': timestamp,
+                'buffers': {}
+            }
+
+            # Recolectar datos de cada ONU para este timestamp
+            for onu_id, history in onu_histories.items():
+                # Buscar la entrada con este timestamp
+                for entry in history:
+                    if entry['time'] == timestamp:
+                        snapshot['buffers'][onu_id] = {
+                            'used_mb': entry['total_used_mb'],
+                            'capacity_mb': entry['total_capacity_mb'],
+                            'utilization_percent': entry['total_utilization_percent']
+                        }
+                        break
+
+            buffer_levels_history.append(snapshot)
+
+        print(f"[BUFFER-CONVERT] Creados {len(buffer_levels_history)} snapshots para graficos")
+
+        return buffer_levels_history
+
     def _calculate_final_results(self) -> Dict[str, Any]:
         """Calcular resultados finales en formato compatible"""
 
@@ -535,6 +634,12 @@ class OptimizedHybridPONSimulator:
         total_requests = self.metrics.get('total_requests', 0)
         successful = self.metrics.get('successful_transmissions', 0)
 
+        # Extraer buffer histories individuales desde los snapshots del OLT
+        onu_buffer_histories = self._extract_onu_buffer_histories_from_olt()
+
+        # Convertir a formato buffer_levels_history para compatibilidad con graficos
+        buffer_levels_history = self._convert_onu_histories_to_buffer_levels_history(onu_buffer_histories)
+
         return {
             'simulation_summary': {
                 'simulation_stats': {
@@ -558,7 +663,7 @@ class OptimizedHybridPONSimulator:
                     'delays': self.metrics.get('delays', []),
                     'throughputs': self.metrics.get('throughputs', []),  # Throughput por transmisión (ruidoso)
                     'throughput_time_series': throughput_time_series,  # Throughput suavizado en ventanas
-                    'buffer_levels_history': (lambda bh: (print(f"[BUFFER-LOG] Exportando buffer_levels_history: {len(bh)} entries"), print(f"[BUFFER-LOG] Primera: {bh[0] if len(bh)>0 else 'VACÍO'}"), bh)[-1])(self.metrics.get('buffer_levels_history', [])),
+                    'buffer_levels_history': buffer_levels_history,  # Datos desde polling convertidos a formato para graficos
                     'event_queue_history': self.metrics.get('event_queue_history', []),
                     'total_transmitted': self.metrics.get('total_transmitted', 0.0),
                     'total_requests': total_requests
@@ -566,6 +671,7 @@ class OptimizedHybridPONSimulator:
             },
             'olt_stats': olt_stats,
             'onu_stats': onu_stats,
+            'onu_buffer_histories': onu_buffer_histories,  # Formato detallado por ONU
             'optimization_stats': self.optimization_stats,
             'event_queue_stats': {
                 'final_time': self.simulation_time,

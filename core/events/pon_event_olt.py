@@ -65,6 +65,9 @@ class HybridOLT:
             'channel_utilization_samples': []
         }
 
+        # Historial de buffers capturado durante polling
+        self.buffer_snapshots = []  # Lista de {'time': float, 'buffers': {onu_id: {...}}}
+
         print(f"  OLT: Polling automático cada {self.cycle_duration*1e6:.0f}us (sin eventos en cola)")
     
     def check_and_execute_polling(self, event_queue: EventQueue, current_time: float):
@@ -105,6 +108,9 @@ class HybridOLT:
         # FASE 1: Recolectar reports (0-40us del ciclo)
         reports = self._collect_reports()
 
+        # Capturar estado de buffers durante el polling (después de reports)
+        self._capture_buffer_state(cycle_time)
+
         # FASE 2: Ejecutar DBA (40-50us del ciclo)
         grants = self._execute_dba_algorithm(reports, cycle_time)
 
@@ -138,7 +144,53 @@ class HybridOLT:
         
         self.last_reports = reports.copy()
         return reports
-    
+
+    def _capture_buffer_state(self, current_time: float):
+        """
+        Capturar el estado actual de los buffers de todas las ONUs
+        Este método se llama durante cada polling (cada 125µs)
+
+        Args:
+            current_time: Tiempo actual del polling
+        """
+        buffers = {}
+
+        for onu_id, onu in self.onus.items():
+            # Obtener estado de todas las colas
+            queue_status = onu.get_queue_status()
+
+            # Calcular totales
+            total_bytes = sum(queue_status.values())
+            total_capacity = sum(q.max_bytes for q in onu.queues.values())
+
+            # Guardar datos por T-CONT
+            tcont_data = {}
+            for tcont_id, bytes_used in queue_status.items():
+                queue = onu.queues[tcont_id]
+                tcont_data[tcont_id] = {
+                    'used_bytes': bytes_used,
+                    'used_mb': bytes_used / (1024 * 1024),
+                    'capacity_bytes': queue.max_bytes,
+                    'capacity_mb': queue.max_bytes / (1024 * 1024),
+                    'utilization_percent': (bytes_used / queue.max_bytes * 100) if queue.max_bytes > 0 else 0,
+                    'packets_count': len(queue.packets)
+                }
+
+            buffers[onu_id] = {
+                'tconts': tcont_data,
+                'total_used_mb': total_bytes / (1024 * 1024),
+                'total_capacity_mb': total_capacity / (1024 * 1024),
+                'total_utilization_percent': (total_bytes / total_capacity * 100) if total_capacity > 0 else 0
+            }
+
+        # Agregar snapshot con timestamp
+        snapshot = {
+            'time': current_time,
+            'buffers': buffers
+        }
+
+        self.buffer_snapshots.append(snapshot)
+
     def _execute_dba_algorithm(self, reports: Dict[str, Dict[str, int]], 
                               current_time: float) -> Dict[str, Dict[str, int]]:
         """
@@ -418,7 +470,7 @@ class HybridOLT:
         avg_utilization = 0
         if self.stats['channel_utilization_samples']:
             avg_utilization = sum(self.stats['channel_utilization_samples']) / len(self.stats['channel_utilization_samples'])
-        
+
         return {
             'olt_stats': self.stats.copy(),
             'current_cycle': self.current_cycle,
@@ -426,7 +478,9 @@ class HybridOLT:
             'channel_capacity': self.channel_capacity,
             'average_utilization': avg_utilization,
             'cycle_stats': self.cycle_manager.get_cycle_statistics(),
-            'transmission_log': self.slot_manager.get_transmission_log()
+            'transmission_log': self.slot_manager.get_transmission_log(),
+            'buffer_snapshots': self.buffer_snapshots,  # Historial de buffers capturado en polling
+            'buffer_snapshots_count': len(self.buffer_snapshots)
         }
     
     def reset_statistics(self):
@@ -440,7 +494,8 @@ class HybridOLT:
             'failed_transmissions': 0,
             'channel_utilization_samples': []
         }
-        
+
+        self.buffer_snapshots.clear()  # Limpiar historial de buffers
         self.current_cycle = 0
         self.slot_manager.reset()
         self.last_reports.clear()

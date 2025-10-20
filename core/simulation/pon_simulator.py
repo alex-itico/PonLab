@@ -666,13 +666,115 @@ class PONSimulator:
     def _clean_metrics(self):
         """Limpiar métricas para liberar memoria"""
         keep_count = self.MAX_METRICS_STORED // 2
-        
+
         dropped = len(self.metrics['delays']) - keep_count
         self.metrics['delays'] = self.metrics['delays'][-keep_count:]
         self.metrics['throughputs'] = self.metrics['throughputs'][-keep_count:]
-        
+
         self.optimization_stats['metrics_dropped'] += dropped
-    
+
+    def _extract_onu_buffer_histories_from_olt(self) -> Dict[str, List[Dict[str, Any]]]:
+        """
+        Extraer historiales de buffer individuales por ONU desde los snapshots del OLT
+        Convierte el formato agregado del OLT a historiales separados por ONU
+
+        Returns:
+            Dict de {onu_id: [list of samples]}
+        """
+        if not self.olt:
+            return {}
+
+        # Obtener snapshots del OLT
+        olt_stats = self.olt.get_olt_statistics()
+        buffer_snapshots = olt_stats.get('buffer_snapshots', [])
+
+        print(f"[BUFFER-COLLECT-POLLING] Extrayendo historiales desde {len(buffer_snapshots)} snapshots del OLT")
+
+        # Reorganizar por ONU
+        onu_histories = {}
+
+        for snapshot in buffer_snapshots:
+            time = snapshot['time']
+            buffers = snapshot['buffers']
+
+            for onu_id, onu_data in buffers.items():
+                if onu_id not in onu_histories:
+                    onu_histories[onu_id] = []
+
+                # Crear entrada para esta ONU en este timestamp
+                entry = {
+                    'time': time,
+                    'buffer_state': onu_data.get('tconts', {}),
+                    'total_used_mb': onu_data.get('total_used_mb', 0),
+                    'total_capacity_mb': onu_data.get('total_capacity_mb', 0),
+                    'total_utilization_percent': onu_data.get('total_utilization_percent', 0)
+                }
+
+                onu_histories[onu_id].append(entry)
+
+        # Log resultado
+        for onu_id, history in onu_histories.items():
+            print(f"[BUFFER-COLLECT-POLLING] ONU {onu_id}: {len(history)} samples desde polling")
+
+        total_samples = sum(len(h) for h in onu_histories.values())
+        print(f"[BUFFER-COLLECT-POLLING] Total: {total_samples} samples de {len(onu_histories)} ONUs")
+
+        return onu_histories
+
+    def _convert_onu_histories_to_buffer_levels_history(self, onu_histories: Dict[str, List[Dict[str, Any]]]) -> List[Dict[str, Any]]:
+        """
+        Convertir historiales organizados por ONU a formato de buffer_levels_history organizado por timestamp
+        Esto permite que los graficos existentes usen los datos de polling
+
+        Args:
+            onu_histories: Dict de {onu_id: [list of samples with time]}
+
+        Returns:
+            Lista de snapshots con formato {'time': t, 'buffers': {onu_id: data}}
+        """
+        if not onu_histories:
+            return []
+
+        print(f"[BUFFER-CONVERT] Convirtiendo historiales de ONU a buffer_levels_history")
+
+        # Recolectar todos los timestamps únicos
+        all_timestamps = set()
+        for onu_id, history in onu_histories.items():
+            for entry in history:
+                all_timestamps.add(entry['time'])
+
+        # Ordenar timestamps
+        sorted_timestamps = sorted(all_timestamps)
+
+        print(f"[BUFFER-CONVERT] Encontrados {len(sorted_timestamps)} timestamps unicos")
+
+        # Construir estructura organizada por timestamp
+        buffer_levels_history = []
+
+        for timestamp in sorted_timestamps:
+            snapshot = {
+                'time': timestamp,
+                'buffers': {}
+            }
+
+            # Recolectar datos de cada ONU para este timestamp
+            for onu_id, history in onu_histories.items():
+                # Buscar la entrada con este timestamp
+                for entry in history:
+                    if entry['time'] == timestamp:
+                        snapshot['buffers'][onu_id] = {
+                            'used_mb': entry['total_used_mb'],
+                            'capacity_mb': entry['total_capacity_mb'],
+                            'utilization_percent': entry['total_utilization_percent']
+                        }
+                        break
+
+            buffer_levels_history.append(snapshot)
+
+        print(f"[BUFFER-CONVERT] Creados {len(buffer_levels_history)} snapshots para graficos")
+
+        return buffer_levels_history
+
     def _generate_event_summary(self) -> Dict[str, Any]:
         """Generar resumen final de simulación por eventos"""
         mean_delay = np.mean([d['delay'] for d in self.metrics['delays']]) if self.metrics['delays'] else 0
@@ -684,6 +786,12 @@ class PONSimulator:
         # Generar historiales agregados para gráficos en tiempo real
         delay_history = self._generate_time_series_history(self.metrics['delays'], 'delay')
         throughput_history = self._generate_throughput_history(self.metrics['throughputs'])
+
+        # Extraer buffer histories desde los snapshots del OLT (capturados durante polling)
+        onu_buffer_histories = self._extract_onu_buffer_histories_from_olt()
+
+        # Convertir a formato buffer_levels_history para compatibilidad con graficos
+        buffer_levels_history = self._convert_onu_histories_to_buffer_levels_history(onu_buffer_histories)
 
         return {
             'simulation_summary': {
@@ -707,12 +815,13 @@ class PONSimulator:
                     'throughputs': self.metrics['throughputs'],
                     'delay_history': delay_history,  # Nuevo: historial agregado
                     'throughput_history': throughput_history,  # Nuevo: historial agregado
-                    'buffer_levels_history': self.metrics['buffer_levels_history'],
+                    'buffer_levels_history': buffer_levels_history,  # Datos desde polling convertidos a formato para graficos
                     'total_transmitted': self.metrics['total_transmitted'],
                     'total_requests': self.metrics['total_requests']
                 }
             },
             'olt_stats': olt_stats,
+            'onu_buffer_histories': onu_buffer_histories,  # Formato detallado por ONU
             'optimization_stats': self.optimization_stats
         }
 
