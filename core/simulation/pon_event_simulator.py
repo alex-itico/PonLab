@@ -3,6 +3,10 @@ Simulador PON Híbrido Optimizado con control de recursos
 Versión mejorada que previene consumo excesivo de memoria y CPU
 """
 
+# FORZAR RECARGA - Import version check
+from ._version_buffer_fix import VERSION, BUFFER_TIMESTAMPS_ENABLED
+print(f"[BUFFER-LOG] ===== PON EVENT SIMULATOR LOADING - VERSION: {VERSION} =====")
+
 from typing import Dict, List, Optional, Any, Callable
 import numpy as np
 from ..events.event_queue import EventQueue, EventType
@@ -36,7 +40,6 @@ class OptimizedHybridPONSimulator:
         self.MAX_EVENTS_IN_QUEUE = 1000000   # 1M eventos pendientes (muy alto)
         self.MAX_METRICS_STORED = 100000     # 100K métricas almacenadas
         self.MAX_BUFFER_HISTORY = 50000      # 50K historial de buffer
-        self.MIN_CYCLE_INTERVAL = 125e-6  # 125us mínimo entre ciclos
         
         # Componentes principales
         self.event_queue = EventQueue()
@@ -52,7 +55,7 @@ class OptimizedHybridPONSimulator:
         # Métricas optimizadas (con límites)
         self.metrics = {
             'delays': [],
-            'throughputs': [], 
+            'throughputs': [],
             'buffer_levels_history': [],
             'total_transmitted': 0.0,
             'total_requests': 0,
@@ -60,6 +63,7 @@ class OptimizedHybridPONSimulator:
             'failed_transmissions': 0,
             'utilization_history': [],
             'per_onu_bytes': {},
+            'event_queue_history': [],  # Nuevo: historial de eventos pendientes
         }
         
         # Estadísticas de optimización
@@ -68,7 +72,14 @@ class OptimizedHybridPONSimulator:
             'metrics_dropped': 0,
             'buffer_samples_dropped': 0
         }
-        
+
+        # Contadores de diagnóstico
+        self.event_type_counts = {
+            'PACKET_GENERATED': 0,
+            'GRANT_START': 0,
+            'TRANSMISSION_COMPLETE': 0
+        }
+
         # Callback para eventos
         self.event_callback = None
         
@@ -87,23 +98,26 @@ class OptimizedHybridPONSimulator:
             # SLA diferenciado por ONU pero más moderado
             sla = 50.0 + i * 25.0  # 50, 75, 100, 125 Mbps (reducido)
             lambda_rate = calculate_realistic_lambda(sla, scenario_config)
-            
+
             # Reducir lambda rate para evitar explosión de eventos
             lambda_rate = min(lambda_rate, 50.0)  # Máximo 50 paquetes/segundo
-            
+
+            print(f"  ONU {onu_id}: λ={lambda_rate:.1f} pkt/s (SLA={sla:.0f} Mbps)")
+
             self.onus[onu_id] = HybridONU(onu_id, lambda_rate, scenario_config)
     
     def _initialize_olt(self, dba_algorithm: Optional[DBAAlgorithmInterface]):
-        """Inicializar OLT con ciclo optimizado"""
+        """Inicializar OLT con polling automático cada 125µs"""
         if dba_algorithm is None:
             dba_algorithm = FCFSDBAAlgorithm()
-        
-        # Usar ciclos menos frecuentes para reducir carga computacional
-        from ..events.event_queue import CycleTimeManager, TimeSlotManager
-        
-        self.olt = HybridOLT(self.onus, dba_algorithm, self.channel_capacity)
-        # Reemplazar el cycle manager con intervalo más largo
-        self.olt.cycle_manager = CycleTimeManager(self.MIN_CYCLE_INTERVAL)  # 125us
+
+        # El OLT ahora ejecuta polling automáticamente cada 125µs
+        # sin necesidad de crear eventos en la cola
+        self.olt = HybridOLT(
+            self.onus,
+            dba_algorithm,
+            self.channel_capacity
+        )
     
     def run_simulation(self, duration_seconds: float, 
                       callback: Optional[Callable] = None) -> Dict[str, Any]:
@@ -128,7 +142,6 @@ class OptimizedHybridPONSimulator:
         print(f"  ONUs: {self.num_onus}")
         print(f"  Escenario: {self.traffic_scenario}")
         print(f"  Canal: {self.channel_capacity:.0f} Mbps")
-        print(f"  Ciclo DBA: {self.MIN_CYCLE_INTERVAL*1000000:.0f}us")
         
         # Inicializar eventos
         self._initialize_events()
@@ -137,35 +150,60 @@ class OptimizedHybridPONSimulator:
         self.events_processed = 0
         last_progress_time = 0
         last_cleanup_time = 0
-        
-        while (self.event_queue.has_events() and 
+        last_queue_sample_time = 0
+
+        while (self.event_queue.has_events() and
                self.event_queue.peek_next_time() <= duration_seconds and
                self.is_running):
-            
+
             # Control de recursos cada 1000 eventos
             if self.events_processed % 1000 == 0:
                 if not self._check_resource_limits():
                     print(f"⚠️ Límites de recursos alcanzados en evento {self.events_processed}")
                     break
-            
+
             # Procesar siguiente evento
             event = self.event_queue.get_next_event()
             self.simulation_time = event.timestamp
-            
+
+            # ANTES de procesar el evento, verificar si debemos ejecutar polling(s)
+            # Esto ejecuta todos los ciclos de 125µs que deberían haber ocurrido
+            # entre el último evento y este
+            pollings_executed = self.olt.check_and_execute_polling(self.event_queue, self.simulation_time)
+
+            # Ahora sí procesar el evento
             self._process_event(event)
             self.events_processed += 1
-            
+
+            # Muestrear métricas cada 0.1 segundos simulados
+            if self.simulation_time - last_queue_sample_time >= 0.1:
+                pending_events = self.event_queue.get_pending_events_count()
+                self.metrics['event_queue_history'].append({
+                    'time': self.simulation_time,
+                    'pending_events': pending_events,
+                    'events_processed': self.events_processed
+                })
+
+                # También actualizar métricas de buffer
+                if len(self.metrics['buffer_levels_history']) < self.MAX_BUFFER_HISTORY:
+                    self._update_buffer_metrics()
+
+                last_queue_sample_time = self.simulation_time
+
             # Progreso cada segundo simulado
             if self.simulation_time - last_progress_time >= 1.0:
                 progress = (self.simulation_time / duration_seconds) * 100
-                print(f"  Progreso: {progress:.1f}% (t={self.simulation_time:.3f}s, eventos={self.events_processed})")
+                pending_events = self.event_queue.get_pending_events_count()
+                total_packets = sum(onu.total_packets_generated for onu in self.onus.values())
+                grants = self.event_type_counts.get('GRANT_START', 0)
+                print(f"  Progreso: {progress:.1f}% (t={self.simulation_time:.3f}s, eventos={self.events_processed}, paquetes={total_packets}, grants={grants})")
                 last_progress_time = self.simulation_time
-            
+
             # Limpieza periódica cada 5 segundos simulados
             if self.simulation_time - last_cleanup_time >= 5.0:
                 self._periodic_cleanup()
                 last_cleanup_time = self.simulation_time
-            
+
             # Callback externo
             if self.event_callback:
                 self.event_callback(event, self.simulation_time)
@@ -196,28 +234,30 @@ class OptimizedHybridPONSimulator:
     
     def _check_resource_limits(self) -> bool:
         """Verificar límites de recursos y aplicar limpieza si es necesario"""
-        # Verificar cola de eventos - solo limpiar, no cortar simulación
+        # Verificar cola de eventos - SOLO advertir, NO detener la simulación
+        # Las métricas deben ser independientes del tamaño de la cola
         pending_events = self.event_queue.get_pending_events_count()
-        if pending_events > self.MAX_EVENTS_IN_QUEUE:
-            print(f"⚠️ Cola de eventos llena ({pending_events}), aplicando limpieza")
-            self._clean_event_queue()
-        
-        # Verificar métricas acumuladas
+        if pending_events > self.MAX_EVENTS_IN_QUEUE * 2:  # Advertir a 2x el límite
+            if pending_events % 500000 == 0:  # Advertir cada 500k eventos
+                print(f"⚠️ Alto uso de memoria: {pending_events} eventos pendientes (tiempo: {self.simulation_time:.3f}s)")
+
+        # Verificar métricas acumuladas y limpiar si es necesario
+        # Esto es solo para gestión de memoria, NO afecta el comportamiento de la simulación
         if len(self.metrics['delays']) > self.MAX_METRICS_STORED:
             self._clean_metrics()
-        
+
         if len(self.metrics['buffer_levels_history']) > self.MAX_BUFFER_HISTORY:
             self._clean_buffer_history()
-        
+
         return True
     
     def _clean_event_queue(self):
-        """Limpiar eventos excesivos manteniendo los más importantes"""
-        # Esta es una medida extrema - indica un problema de diseño
-        # Por ahora, detener la simulación
-        print("⚠️ Deteniendo simulación por exceso de eventos")
-        self.is_running = False
-        self.optimization_stats['events_dropped'] += self.event_queue.get_pending_events_count()
+        """
+        DEPRECADO: Esta función ya no se usa
+        La simulación ahora es determinista y NO detiene la generación de eventos
+        independientemente del tamaño de la cola
+        """
+        pass
     
     def _clean_metrics(self):
         """Limpiar métricas manteniendo solo las más recientes"""
@@ -247,85 +287,56 @@ class OptimizedHybridPONSimulator:
     def _initialize_events(self):
         """Inicializar eventos iniciales"""
         start_time = 0.0
-        
+
         # Programar primer paquete para cada ONU con spread temporal
         for i, onu in enumerate(self.onus.values()):
             # Spread inicial para evitar picos
             spread_time = start_time + (i * 0.001)  # 1ms entre ONUs
             onu.schedule_first_packet(self.event_queue, spread_time)
-        
-        # Programar primer ciclo de polling
-        self.olt.schedule_first_polling(self.event_queue, start_time)
+
+        # NO programar eventos de polling - ahora son automáticos
+        # El polling se ejecutará automáticamente cada 125µs
     
     def _process_event(self, event):
         """Procesar un evento específico con control de recursos"""
         try:
+            # Contar tipos de eventos para diagnóstico
+            if event.event_type.value in self.event_type_counts:
+                self.event_type_counts[event.event_type.value] += 1
+
             if event.event_type == EventType.PACKET_GENERATED:
                 self._handle_packet_generation_optimized(event)
-                
-            elif event.event_type == EventType.POLLING_CYCLE:
-                self._handle_polling_cycle(event)
-                
-            elif event.event_type == EventType.GRANT_START:
-                self._handle_transmission_start(event)
-                
+
             elif event.event_type == EventType.TRANSMISSION_COMPLETE:
                 self._handle_transmission_complete(event)
-                
+
+            # Ya NO hay eventos POLLING_CYCLE - el polling es automático
+            # Ya NO hay eventos GRANT_START - OPCIÓN 1 fusiona GRANT_START + TRANSMISSION_COMPLETE
+
         except Exception as e:
             print(f"Error procesando evento {event}: {e}")
     
     def _handle_packet_generation_optimized(self, event):
-        """Manejar generación de paquete con control de tasa"""
+        """Manejar generación de paquete - continúa generando independientemente del tamaño de la cola"""
         onu = self.onus[event.onu_id]
-        
-        # Verificar si debemos seguir generando paquetes
-        if (self.event_queue.get_pending_events_count() < self.MAX_EVENTS_IN_QUEUE and
-            event.timestamp < self.simulation_duration - 0.01):  # Parar 10ms antes del final
-            
+
+        # Generar paquete si aún estamos dentro del tiempo de simulación
+        # NO verificamos el tamaño de la cola para mantener comportamiento determinista
+        if event.timestamp < self.simulation_duration:
             onu.generate_packet(self.event_queue, event.timestamp)
-        else:
-            # No generar más paquetes para evitar explosión de eventos
-            pass
+
+            # Advertencia periódica si la cola crece mucho (pero NO detenemos la simulación)
+            pending = self.event_queue.get_pending_events_count()
+            if pending > self.MAX_EVENTS_IN_QUEUE and pending % 100000 == 0:
+                print(f"⚠️ Advertencia: {pending} eventos pendientes en cola (tiempo simulado: {event.timestamp:.3f}s)")
     
-    def _handle_polling_cycle(self, event):
-        """Manejar ciclo de polling del OLT"""
-        self.olt.execute_polling_cycle(self.event_queue, event.timestamp)
-        
-        # Actualizar métricas de buffer (muestreo reducido)
-        if len(self.metrics['buffer_levels_history']) < self.MAX_BUFFER_HISTORY:
-            self._update_buffer_metrics()
-    
-    def _handle_transmission_start(self, event):
-        """Manejar inicio de transmisión"""
-        onu_id = event.onu_id
-        tcont_id = event.data['tcont_id']
-        grant_bytes = event.data['grant_bytes']
-        slot_duration = event.data['slot_duration']
-        slot_end = event.data['slot_end']
-        
-        # Transmitir paquetes
-        onu = self.onus[onu_id]
-        packets, transmitted_bytes = onu.transmit_from_queue(tcont_id, grant_bytes)
-        
-        # Programar completación
-        self.event_queue.schedule_event(
-            slot_end,
-            EventType.TRANSMISSION_COMPLETE,
-            onu_id,
-            {
-                'tcont_id': tcont_id,
-                'packets': packets,
-                'transmitted_bytes': transmitted_bytes,
-                'grant_bytes': grant_bytes,
-                'slot_start': event.timestamp,
-                'slot_end': slot_end,
-                'slot_duration': slot_duration,
-                'line_rate_bps': event.data.get('line_rate_bps'),
-                'guard_time_s': event.data.get('guard_time_s'),
-            }
-        )
-    
+    # Método eliminado: _handle_polling_cycle
+    # El polling ahora es automático y se ejecuta antes de cada evento
+
+    # Método eliminado: _handle_transmission_start
+    # OPCIÓN 1: Los eventos GRANT_START fueron eliminados
+    # Ahora se extrae paquetes y se programa TRANSMISSION_COMPLETE directamente en el polling
+
     def _handle_transmission_complete(self, event):
         """Manejar completación de transmisión con muestreo de métricas"""
         onu_id = event.onu_id
@@ -334,20 +345,21 @@ class OptimizedHybridPONSimulator:
         packets = data.get('packets', [])
         transmitted_bytes = int(data.get('transmitted_bytes', 0))
 
-        # --- 1) Muestreo de delays y throughputs por paquete (capado por MAX_METRICS_STORED) ---
+        # Tiempo de transmisión (slot duration) y tiempo desde última transmisión
+        slot_duration = data.get('slot_duration', 0.0)
+        slot_start = data.get('slot_start', event.timestamp)
+        slot_end = data.get('slot_end', event.timestamp)
+
+        # --- 1) Muestreo de delays por paquete y throughput agregado por transmisión ---
         # Asegura que exista el contador de dropped
         if 'metrics_dropped' not in self.optimization_stats:
             self.optimization_stats['metrics_dropped'] = 0
 
-        # Evita llenar de más la lista de delays si ya alcanzaste el tope
+        # Registrar delays por paquete (si hay espacio)
         if len(self.metrics['delays']) < self.MAX_METRICS_STORED:
             for packet in packets:
-                # Retardo: desde que el paquete ingresó a cola hasta ahora (fin de transmisión)
-                # OJO: aquí tú ya usabas arrival_time como timestamp de ingreso
+                # Delay: desde que el paquete llegó hasta que termina la transmisión
                 delay = float(event.timestamp - packet.arrival_time)
-
-                # Throughput instantáneo para ese paquete (MB / s)
-                throughput_mbps = ((packet.size_bytes / (1024 * 1024)) / delay) if delay > 0 else 0.0
 
                 self.metrics['delays'].append({
                     'delay': delay,
@@ -355,16 +367,24 @@ class OptimizedHybridPONSimulator:
                     'tcont_id': packet.tcont_type,
                     'timestamp': event.timestamp
                 })
-
-                self.metrics['throughputs'].append({
-                    'throughput': throughput_mbps,
-                    'onu_id': onu_id,
-                    'tcont_id': packet.tcont_type,
-                    'timestamp': event.timestamp
-                })
         else:
-            # Solo contar, no almacenar detalles
+            # Solo contar delays no almacenados
             self.optimization_stats['metrics_dropped'] += len(packets)
+
+        # Guardar información de transmisión para calcular throughput agregado después
+        # NO calculamos throughput por slot individual porque slot_duration = bytes/line_rate
+        # lo que siempre daría line_rate (constante inútil)
+        if transmitted_bytes > 0:
+            # Guardar datos de esta transmisión para agregación posterior
+            if len(self.metrics['throughputs']) < self.MAX_METRICS_STORED:
+                self.metrics['throughputs'].append({
+                    'timestamp': event.timestamp,
+                    'transmitted_bytes': transmitted_bytes,
+                    'onu_id': onu_id,
+                    'tcont_id': data.get('tcont_id', 'unknown'),
+                    'slot_duration': slot_duration,
+                    'packets_count': len(packets)
+                })
 
         # --- 2) Contadores globales y fairness por ONU ---
         if transmitted_bytes > 0:
@@ -389,26 +409,84 @@ class OptimizedHybridPONSimulator:
 
     
     def _update_buffer_metrics(self):
-        """Actualizar métricas de buffer en MB reales"""
+        """Actualizar métricas de buffer en MB reales con timestamp"""
+        print(f"[BUFFER-LOG] _update_buffer_metrics() llamado en t={self.simulation_time:.3f}s")
+
         buffer_levels = {}
-        
+
         for onu_id, onu in self.onus.items():
             # Calcular nivel total de buffer en MB reales
             total_bytes = sum(queue.total_bytes for queue in onu.queues.values())
             max_capacity = sum(queue.max_bytes for queue in onu.queues.values())
-            
+
             # Convertir bytes a MB para métricas
             buffer_level_mb = total_bytes / (1024 * 1024)  # Bytes a MB
             max_capacity_mb = max_capacity / (1024 * 1024)  # Bytes a MB
-            
+
             buffer_levels[onu_id] = {
                 'used_mb': buffer_level_mb,
                 'capacity_mb': max_capacity_mb,
                 'utilization_percent': (total_bytes / max_capacity) * 100 if max_capacity > 0 else 0
             }
-        
-        self.metrics['buffer_levels_history'].append(buffer_levels)
+
+        # Agregar entrada con timestamp para graficación temporal
+        buffer_entry = {
+            'time': self.simulation_time,
+            'buffers': buffer_levels
+        }
+
+        self.metrics['buffer_levels_history'].append(buffer_entry)
+        print(f"[BUFFER-LOG] Buffer entry agregado. Total entries: {len(self.metrics['buffer_levels_history'])}")
     
+    def _calculate_throughput_time_series(self, window_size: float = 0.1) -> List[Dict]:
+        """
+        Calcular throughput agregado en ventanas de tiempo para visualización
+
+        IMPORTANTE: Throughput = Bytes transmitidos en ventana / Duración de ventana
+        Esto mide cuántos datos útiles se transmitieron por unidad de tiempo.
+
+        Args:
+            window_size: Tamaño de ventana en segundos (default: 0.1s = 100ms)
+
+        Returns:
+            Lista de {timestamp, throughput (MB/s), bytes_transmitted, transmissions_count}
+        """
+        if self.simulation_time == 0:
+            return []
+
+        # Crear ventanas de tiempo fijas
+        num_windows = int(np.ceil(self.simulation_time / window_size))
+        throughput_series = []
+
+        for i in range(num_windows):
+            window_start = i * window_size
+            window_end = (i + 1) * window_size
+            window_center = (window_start + window_end) / 2
+
+            # Acumular TODOS los bytes transmitidos en esta ventana temporal
+            bytes_in_window = 0
+            transmissions_in_window = 0
+
+            for transmission in self.metrics.get('throughputs', []):
+                if window_start <= transmission['timestamp'] < window_end:
+                    bytes_in_window += transmission['transmitted_bytes']
+                    transmissions_in_window += 1
+
+            # Throughput efectivo = bytes_totales_en_ventana / duración_ventana (en MB/s)
+            # Esto captura el rendimiento real de la red en este período
+            throughput_mbps = (bytes_in_window / (1024 * 1024)) / window_size
+
+            throughput_series.append({
+                'timestamp': window_center,
+                'throughput': throughput_mbps,  # MB/s
+                'bytes_transmitted': bytes_in_window,
+                'transmissions_count': transmissions_in_window,
+                'window_start': window_start,
+                'window_end': window_end
+            })
+
+        return throughput_series
+
     def _calculate_final_results(self) -> Dict[str, Any]:
         """Calcular resultados finales en formato compatible"""
 
@@ -433,6 +511,9 @@ class OptimizedHybridPONSimulator:
 
         # Throughput medio (MB/s) ya acumulado
         mean_throughput = (self.metrics.get('total_transmitted', 0.0) / self.simulation_time) if self.simulation_time > 0 else 0.0
+
+        # Throughput en serie de tiempo (para visualización)
+        throughput_time_series = self._calculate_throughput_time_series(window_size=0.1)
 
         # Utilización de red (si no viene, usa 0)
         olt_stats = self.olt.get_olt_statistics()
@@ -475,8 +556,10 @@ class OptimizedHybridPONSimulator:
                 },
                 'episode_metrics': {
                     'delays': self.metrics.get('delays', []),
-                    'throughputs': self.metrics.get('throughputs', []),
-                    'buffer_levels_history': self.metrics.get('buffer_levels_history', []),
+                    'throughputs': self.metrics.get('throughputs', []),  # Throughput por transmisión (ruidoso)
+                    'throughput_time_series': throughput_time_series,  # Throughput suavizado en ventanas
+                    'buffer_levels_history': (lambda bh: (print(f"[BUFFER-LOG] Exportando buffer_levels_history: {len(bh)} entries"), print(f"[BUFFER-LOG] Primera: {bh[0] if len(bh)>0 else 'VACÍO'}"), bh)[-1])(self.metrics.get('buffer_levels_history', [])),
+                    'event_queue_history': self.metrics.get('event_queue_history', []),
                     'total_transmitted': self.metrics.get('total_transmitted', 0.0),
                     'total_requests': total_requests
                 }
@@ -502,7 +585,7 @@ class OptimizedHybridPONSimulator:
         # Reiniciar métricas
         self.metrics = {
             'delays': [],
-            'throughputs': [], 
+            'throughputs': [],
             'buffer_levels_history': [],
             'total_transmitted': 0.0,
             'total_requests': 0,
@@ -510,6 +593,7 @@ class OptimizedHybridPONSimulator:
             'failed_transmissions': 0,
             'utilization_history': [],
             'per_onu_bytes': {},
+            'event_queue_history': [],
         }
         
         # Reiniciar estadísticas de optimización
