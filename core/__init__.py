@@ -35,10 +35,10 @@ try:
             'RLDBAAlgorithm': RLDBAAlgorithm
         }
     
-    print("✅ Core module loaded successfully")
-    
+    print("OK Core module loaded successfully")
+
 except ImportError as e:
-    print(f"❌ Error en core imports: {e}")
+    print(f"ERROR en core imports: {e}")
     raise
 
 # Función helper para imports diferidos
