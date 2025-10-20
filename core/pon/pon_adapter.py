@@ -11,7 +11,8 @@ try:
     from ..algorithms.pon_dba import (
         FCFSDBAAlgorithm,
         PriorityDBAAlgorithm,
-        RLDBAAlgorithm
+        RLDBAAlgorithm,
+        StrictPriorityMinShareDBA,
     )
     from ..smart_rl_dba import SmartRLDBAAlgorithm
     from ..simulation.pon_simulator import PONSimulator, EventEvaluator
@@ -50,11 +51,25 @@ class PONAdapter:
         
         # Configuration
         self.config = {
+            'num_onus': 4,
             'traffic_scenario': 'residential_medium',
+            'episode_duration': 10.0,
+            'simulation_timestep': 0.1,
             'channel_capacity_mbps': 1024.0,
             'simulation_mode': 'hybrid'
         }
-        self.detailed_logging = False  # Inicialización del logging detallado
+        
+        # Logging and mode
+        self.detailed_logging = False
+        self.simulation_mode = "events"  # "cycles" o "events"
+        self.log_callback = None
+
+        # Smart RL DBA management
+        self.smart_rl_algorithm = None
+        self.loaded_model_path = None
+        
+        # Results storage
+        self.last_simulation_results = None
         
     def get_olt(self):
         """Obtener el OLT actual de la simulación"""
@@ -115,26 +130,6 @@ class PONAdapter:
     def set_detailed_logging(self, enabled: bool):
         """Activar o desactivar el logging detallado"""
         self.detailed_logging = enabled
-        self.simulation_mode = "events"  # "cycles" o "events"
-        self.detailed_logging = True
-        self.log_callback = None
-
-        # Smart RL DBA management
-        self.smart_rl_algorithm = None
-        self.loaded_model_path = None
-        
-        # Results storage
-        self.last_simulation_results = None
-        
-        
-        # Default configuration
-        self.config = {
-            'num_onus': 4,
-            'traffic_scenario': 'residential_medium',
-            'episode_duration': 10.0,
-            'simulation_timestep': 0.1,
-            'channel_capacity_mbps': 1024.0
-        }
         
     # ===== CORE METHODS =====
     
@@ -212,7 +207,8 @@ class PONAdapter:
                     num_onus=num_onus,
                     traffic_scenario=self.config['traffic_scenario'],
                     dba_algorithm=dba_algorithm,
-                    channel_capacity_mbps=self.config['channel_capacity_mbps']
+                    channel_capacity_mbps=self.config['channel_capacity_mbps'],
+                    use_sdn=self.use_sdn
                 )
             elif self.simulation_mode == "cycles":
                 # Configurar simulación por ciclos (requiere orquestador)
@@ -270,7 +266,8 @@ class PONAdapter:
                     num_onus=num_onus,
                     traffic_scenario=self.config['traffic_scenario'],
                     dba_algorithm=dba_algorithm,
-                    channel_capacity_mbps=self.config['channel_capacity_mbps']
+                    channel_capacity_mbps=self.config['channel_capacity_mbps'],
+                    use_sdn=self.use_sdn
                 )
             elif self.simulation_mode == "cycles":
                 # Configurar simulación por ciclos (requiere orquestador)
@@ -470,9 +467,15 @@ class PONAdapter:
         if not PON_CORE_AVAILABLE:
             raise ValueError("PON Core no está disponible")
             
-        # Manejar Smart RL DBA
-        if algorithm_name == "Smart-RL":
+        # Manejar Smart RL DBA (incluye variante SDN)
+        if algorithm_name in ["Smart-RL", "Smart-RL-SDN"]:
             if self.smart_rl_algorithm:
+                # Configurar SDN para Smart-RL-SDN
+                if algorithm_name == "Smart-RL-SDN":
+                    self.use_sdn = True
+                    self._log_event("DEBUG", "Smart-RL ejecutándose con controlador SDN")
+                else:
+                    self.use_sdn = False
                 return self.smart_rl_algorithm
             else:
                 raise ValueError("No hay modelo RL cargado. Use 'load_rl_model()' primero.")
@@ -481,31 +484,48 @@ class PONAdapter:
             "FCFS": FCFSDBAAlgorithm,
             "Priority": PriorityDBAAlgorithm,
             "RL-DBA": RLDBAAlgorithm,
-            "SDN": FCFSDBAAlgorithm  # Usar FCFS como base para SDN
+            "SDN": FCFSDBAAlgorithm,  # Usar FCFS como base para SDN
+            "SP-MINSHARE": StrictPriorityMinShareDBA,
         }
 
         if algorithm_name not in algorithms:
             raise ValueError(f"Algoritmo desconocido: {algorithm_name}")
             
-        algorithm = algorithms[algorithm_name]()
+        # Obtener clase del algoritmo
+        algorithm_class = algorithms[algorithm_name]
+        if algorithm_class is None:
+            raise ValueError(f"Algoritmo {algorithm_name} no está disponible")
+
+        # Crear instancia del algoritmo
+        algorithm = algorithm_class()
         
+        # Configurar estado SDN si es necesario
         if algorithm_name == "SDN":
             self._log_event("DEBUG", "Usando algoritmo SDN con base FCFS")
             self.use_sdn = True
-        else:
+        elif algorithm_name not in ["Smart-RL-SDN"]:
+            # No desactivar SDN si es Smart-RL-SDN (ya se configuró arriba)
             self.use_sdn = False
             
         return algorithm
     
     def get_available_algorithms(self):
         """Obtener lista de algoritmos DBA disponibles"""
-        algorithms = ["FCFS", "Priority", "RL-DBA"]
+        algorithms = ["FCFS", "Priority", "RL-DBA", "SDN", "SP-MINSHARE"]
 
         # Agregar Smart RL DBA si hay modelo cargado
         if self.smart_rl_algorithm:
-            algorithms.append("Smart-RL")
+            algorithms.extend(["Smart-RL", "Smart-RL-SDN"])
 
         return algorithms
+    
+    def is_predictive_algorithm(self, name: str = None) -> bool:
+        """
+        Indica si el algoritmo es de tipo predictivo (p.ej., RL-DBA).
+        True solo para RL-DBA por ahora.
+        """
+        algo = (name or getattr(self, "current_algorithm", "") or "").strip().upper()
+        return algo == "RL-DBA"
     
     # ===== TRAFFIC SCENARIOS =====
     
