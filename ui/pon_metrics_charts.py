@@ -69,43 +69,54 @@ class PONMetricsChart(FigureCanvas):
         """Graficar evolución de delays durante la simulación"""
         if not MATPLOTLIB_AVAILABLE:
             return
-            
+
         self.fig.clear()
-        
+
         # Obtener datos de delay
         simulation_summary = simulation_data.get('simulation_summary', {})
         if not simulation_summary:
             self._plot_no_data("Sin datos de simulación")
             return
-            
-        # Simular evolución de delays (en implementación real vendría del historial)
-        steps = simulation_summary.get('simulation_stats', {}).get('total_steps', 0)
-        if steps == 0:
-            self._plot_no_data("Simulación no ejecutada")
+
+        simulation_stats = simulation_summary.get('simulation_stats', {})
+        episode_metrics = simulation_summary.get('episode_metrics', {})
+        performance_metrics = simulation_summary.get('performance_metrics', {})
+
+        # Obtener duración real y delay history
+        simulation_duration = simulation_stats.get('simulation_duration', simulation_stats.get('simulation_time', 10))
+        delay_history = episode_metrics.get('delay_history', [])
+        mean_delay = performance_metrics.get('mean_delay', 0)
+
+        if not delay_history and mean_delay == 0:
+            self._plot_no_data("Sin datos de delay disponibles")
             return
-            
-        # Generar datos simulados basados en las métricas finales
-        mean_delay = simulation_summary.get('performance_metrics', {}).get('mean_delay', 0)
-        
-        # Simular evolución temporal
-        time_points = np.linspace(0, steps, min(steps, 100))
-        delays = self._simulate_delay_evolution(mean_delay, len(time_points))
-        
+
+        # Usar datos reales si están disponibles
+        if delay_history:
+            time_points = np.array([d['time'] for d in delay_history])
+            delays = np.array([d['value'] / 1000 for d in delay_history])  # Convertir ms a segundos
+        else:
+            # Fallback: generar evolución simulada con duración correcta
+            print(f"[ADVERTENCIA] No hay delay_history, usando datos sintéticos")
+            time_points = np.linspace(0, simulation_duration, 100)
+            delays = self._simulate_delay_evolution(mean_delay, len(time_points))
+
         ax = self.fig.add_subplot(111)
         ax.plot(time_points, delays, 'b-', linewidth=2, label='Delay promedio')
         ax.fill_between(time_points, delays, alpha=0.3, color='blue')
-        
-        ax.set_xlabel('Pasos de simulación')
+
+        ax.set_xlabel('Tiempo (s)')
         ax.set_ylabel('Delay (segundos)')
-        ax.set_title('Evolución del Delay Durante la Simulación')
+        ax.set_title(f'Evolución del Delay Durante la Simulación ({simulation_duration:.1f}s)')
         ax.grid(True, alpha=0.3)
         ax.legend()
-        
+
         # Agregar estadísticas
-        ax.text(0.02, 0.98, f'Delay final: {mean_delay:.6f}s', 
+        final_delay = delays[-1] if len(delays) > 0 else mean_delay
+        ax.text(0.02, 0.98, f'Delay final: {final_delay:.6f}s',
                 transform=ax.transAxes, verticalalignment='top',
                 bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.8))
-        
+
         self.fig.tight_layout()
         self.draw()
     
@@ -113,113 +124,230 @@ class PONMetricsChart(FigureCanvas):
         """Graficar evolución de throughput durante la simulación"""
         if not MATPLOTLIB_AVAILABLE:
             return
-            
+
         self.fig.clear()
-        
+
         simulation_summary = simulation_data.get('simulation_summary', {})
         if not simulation_summary:
             self._plot_no_data("Sin datos de simulación")
             return
-            
-        steps = simulation_summary.get('simulation_stats', {}).get('total_steps', 0)
-        if steps == 0:
-            self._plot_no_data("Simulación no ejecutada")
+
+        simulation_stats = simulation_summary.get('simulation_stats', {})
+        episode_metrics = simulation_summary.get('episode_metrics', {})
+        performance_metrics = simulation_summary.get('performance_metrics', {})
+
+        # Obtener duración real y throughput history
+        simulation_duration = simulation_stats.get('simulation_duration', simulation_stats.get('simulation_time', 10))
+        throughput_history = episode_metrics.get('throughput_history', [])
+        mean_throughput = performance_metrics.get('mean_throughput', 0)
+
+        if not throughput_history and mean_throughput == 0:
+            self._plot_no_data("Sin datos de throughput disponibles")
             return
-            
-        mean_throughput = simulation_summary.get('performance_metrics', {}).get('mean_throughput', 0)
-        
-        # Simular evolución temporal
-        time_points = np.linspace(0, steps, min(steps, 100))
-        throughputs = self._simulate_throughput_evolution(mean_throughput, len(time_points))
-        
+
+        # Usar datos reales si están disponibles
+        if throughput_history:
+            time_points = np.array([d['time'] for d in throughput_history])
+            throughputs = np.array([d['value'] for d in throughput_history])
+        else:
+            # Fallback: generar evolución simulada con duración correcta
+            print(f"[ADVERTENCIA] No hay throughput_history, usando datos sintéticos")
+            time_points = np.linspace(0, simulation_duration, 100)
+            throughputs = self._simulate_throughput_evolution(mean_throughput, len(time_points))
+
         ax = self.fig.add_subplot(111)
         ax.plot(time_points, throughputs, 'g-', linewidth=2, label='Throughput promedio')
         ax.fill_between(time_points, throughputs, alpha=0.3, color='green')
-        
-        ax.set_xlabel('Pasos de simulación')
+
+        ax.set_xlabel('Tiempo (s)')
         ax.set_ylabel('Throughput (MB/s)')
-        ax.set_title('Evolución del Throughput Durante la Simulación')
+        ax.set_title(f'Evolución del Throughput Durante la Simulación ({simulation_duration:.1f}s)')
         ax.grid(True, alpha=0.3)
         ax.legend()
-        
+
         # Agregar estadísticas
-        ax.text(0.02, 0.98, f'Throughput final: {mean_throughput:.3f} MB/s', 
+        final_throughput = throughputs[-1] if len(throughputs) > 0 else mean_throughput
+        ax.text(0.02, 0.98, f'Throughput final: {final_throughput:.3f} MB/s',
                 transform=ax.transAxes, verticalalignment='top',
                 bbox=dict(boxstyle='round', facecolor='lightgreen', alpha=0.8))
-        
+
         self.fig.tight_layout()
         self.draw()
     
-    def plot_onu_buffer_levels(self, simulation_data: Dict[str, Any]):
-        """Graficar evolución temporal de los niveles de buffer por ONU"""
+    def plot_event_queue_evolution(self, simulation_data: Dict[str, Any]):
+        """Graficar evolución de eventos pendientes en la cola vs tiempo"""
         if not MATPLOTLIB_AVAILABLE:
             return
-            
+
         self.fig.clear()
-        
+        ax = self.fig.add_subplot(111)
+
+        # Obtener datos
+        simulation_summary = simulation_data.get('simulation_summary', {})
+        episode_metrics = simulation_summary.get('episode_metrics', {})
+        simulation_stats = simulation_summary.get('simulation_stats', {})
+
+        event_queue_history = episode_metrics.get('event_queue_history', [])
+
+        if not event_queue_history:
+            self._plot_no_data("Sin historial de cola de eventos disponible")
+            return
+
+        # Extraer datos
+        times = [entry['time'] for entry in event_queue_history]
+        pending_events = [entry['pending_events'] for entry in event_queue_history]
+
+        # Graficar eventos pendientes
+        ax.plot(times, pending_events, 'b-', linewidth=2, label='Eventos Pendientes')
+        ax.fill_between(times, pending_events, alpha=0.3, color='blue')
+
+        # Línea de referencia del límite (1M)
+        max_limit = 1000000
+        ax.axhline(y=max_limit, color='r', linestyle='--', linewidth=2,
+                   label=f'Límite Máximo ({max_limit:,})', alpha=0.7)
+
+        ax.set_xlabel('Tiempo Simulado (s)')
+        ax.set_ylabel('Eventos Pendientes')
+        ax.set_title('Evolución de la Cola de Eventos Durante la Simulación')
+        ax.grid(True, alpha=0.3)
+        ax.legend()
+
+        # Formatear eje Y con separadores de miles
+        ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, p: f'{int(x):,}'))
+
+        # Estadísticas
+        max_pending = max(pending_events) if pending_events else 0
+        avg_pending = np.mean(pending_events) if pending_events else 0
+        final_pending = pending_events[-1] if pending_events else 0
+
+        # Detectar crecimiento exponencial
+        growth_type = "DESCONOCIDO"
+        if len(pending_events) > 10:
+            # Comparar primera mitad vs segunda mitad
+            mid = len(pending_events) // 2
+            first_half_avg = np.mean(pending_events[:mid])
+            second_half_avg = np.mean(pending_events[mid:])
+
+            if second_half_avg > first_half_avg * 2:
+                growth_type = "⚠️ EXPONENCIAL"
+                color = 'red'
+            elif second_half_avg > first_half_avg * 1.2:
+                growth_type = "⚠️ LINEAL CRECIENTE"
+                color = 'orange'
+            else:
+                growth_type = "✓ ESTABLE/CONSTANTE"
+                color = 'green'
+        else:
+            color = 'black'
+
+        stats_text = (f'Tipo: {growth_type}\n'
+                     f'Máximo: {max_pending:,}\n'
+                     f'Promedio: {avg_pending:,.0f}\n'
+                     f'Final: {final_pending:,}')
+
+        ax.text(0.02, 0.98, stats_text,
+                transform=ax.transAxes, verticalalignment='top',
+                bbox=dict(boxstyle='round', facecolor='white', edgecolor=color, linewidth=2, alpha=0.9),
+                fontsize=10, fontweight='bold')
+
+        self.fig.tight_layout()
+        self.draw()
+
+    def plot_onu_buffer_levels(self, simulation_data: Dict[str, Any]):
+        """Graficar evolución temporal de los niveles de buffer por ONU"""
+        print(f"[BUFFER-LOG-GUI] plot_onu_buffer_levels() llamado")
+
+        if not MATPLOTLIB_AVAILABLE:
+            return
+
+        self.fig.clear()
+
         # Obtener datos históricos de buffer
         # Primero intentar desde simulation_summary.episode_metrics (estructura más común)
         simulation_summary = simulation_data.get('simulation_summary', {})
         episode_metrics = simulation_summary.get('episode_metrics', {})
         buffer_history = episode_metrics.get('buffer_levels_history', [])
-        
+        print(f"[BUFFER-LOG-GUI] buffer_history desde episode_metrics: {len(buffer_history)} entries")
+
         # Si no hay datos, intentar desde la raíz (estructura alternativa)
         if not buffer_history:
             episode_metrics_root = simulation_data.get('episode_metrics', {})
             buffer_history = episode_metrics_root.get('buffer_levels_history', [])
-        
+            print(f"[BUFFER-LOG-GUI] buffer_history desde raíz: {len(buffer_history)} entries")
+
         if not buffer_history:
+            print(f"[BUFFER-LOG-GUI] ⚠️ ERROR: Sin historial de buffer disponible!")
             self._plot_no_data("Sin historial de buffer")
             return
-        
+        else:
+            print(f"[BUFFER-LOG-GUI] ✅ buffer_history tiene {len(buffer_history)} entries")
+            print(f"[BUFFER-LOG-GUI] Primera entrada: {buffer_history[0]}")
+
         ax = self.fig.add_subplot(111)
-        
+
         # Verificar estructura de datos
         if not buffer_history or len(buffer_history) == 0:
             self._plot_no_data("Historial de buffer vacío")
             return
-        
+
         # Obtener número de ONUs desde la primera entrada
         first_entry = buffer_history[0]
         if not isinstance(first_entry, dict):
             self._plot_no_data("Formato de datos de buffer inválido")
             return
-        
-        onu_ids = list(first_entry.keys())
-        num_steps = len(buffer_history)
-        
-        # Crear eje temporal (pasos de simulación)
-        time_steps = np.arange(num_steps)
+
+        # Detectar formato: nuevo (con 'time' y 'buffers') vs antiguo (solo buffers)
+        has_timestamps = 'time' in first_entry and 'buffers' in first_entry
+
+        if has_timestamps:
+            # Formato nuevo: {'time': t, 'buffers': {onu_id: data}}
+            time_steps = np.array([entry['time'] for entry in buffer_history])
+            onu_ids = list(buffer_history[0]['buffers'].keys())
+        else:
+            # Formato antiguo: {onu_id: data} sin timestamps
+            time_steps = np.arange(len(buffer_history))
+            onu_ids = list(first_entry.keys())
         
         # Colores distintivos para cada ONU
         colors = ['blue', 'red', 'green', 'orange', 'purple', 'brown', 'pink', 'gray', 'olive', 'cyan']
-        
+
         # Graficar una línea por cada ONU
         for i, onu_id in enumerate(onu_ids):
             # Extraer niveles de buffer para esta ONU a lo largo del tiempo
             buffer_levels_percent = []
             for step_data in buffer_history:
-                onu_buffer_data = step_data.get(onu_id, {})
-                
-                # Manejar formato nuevo (dict con utilization_percent) y formato antiguo (número)
+                # Obtener datos de buffer según el formato
+                if has_timestamps:
+                    # Formato nuevo: step_data = {'time': t, 'buffers': {onu_id: data}}
+                    onu_buffer_data = step_data.get('buffers', {}).get(onu_id, {})
+                else:
+                    # Formato antiguo: step_data = {onu_id: data}
+                    onu_buffer_data = step_data.get(onu_id, {})
+
+                # Manejar formato de datos de buffer (dict con utilization_percent o número)
                 if isinstance(onu_buffer_data, dict):
                     # Usar directamente el porcentaje de utilización
                     buffer_percent = onu_buffer_data.get('utilization_percent', 0)
                 else:
                     # Formato antiguo (ya es porcentaje o fracción)
                     buffer_percent = onu_buffer_data * 100 if onu_buffer_data <= 1 else onu_buffer_data
-                
+
                 buffer_levels_percent.append(buffer_percent)
-            
+
             # Usar color cíclico si hay más ONUs que colores
             color = colors[i % len(colors)]
-            
+
             # Graficar línea para esta ONU
-            ax.plot(time_steps, buffer_levels_percent, 
+            ax.plot(time_steps, buffer_levels_percent,
                    color=color, linewidth=2, marker='o', markersize=3,
                    label=f'ONU {onu_id}', alpha=0.8)
-        
-        ax.set_xlabel('Pasos de Simulación')
+
+        # Etiquetar ejes según el formato de datos
+        if has_timestamps:
+            ax.set_xlabel('Tiempo de Simulación (s)')
+        else:
+            ax.set_xlabel('Pasos de Simulación')
+
         ax.set_ylabel('Ocupación del Buffer (%)')
         ax.set_title('Evolución Temporal de los Niveles de Buffer por ONU')
         ax.set_ylim(0, 100)  # Porcentaje de 0 a 100%
@@ -448,47 +576,51 @@ class PONMetricsChart(FigureCanvas):
         """Graficar evolución del Mean Delay vs Tiempo"""
         if not MATPLOTLIB_AVAILABLE:
             return
-            
+
         self.fig.clear()
         ax = self.fig.add_subplot(111)
-        
+
         # Obtener datos de métricas
+        simulation_stats = simulation_data.get('simulation_summary', {}).get('simulation_stats', {})
         performance_metrics = simulation_data.get('simulation_summary', {}).get('performance_metrics', {})
         episode_metrics = simulation_data.get('simulation_summary', {}).get('episode_metrics', {})
-        
-        # Intentar obtener datos de delay de múltiples fuentes
+
+        # Obtener duración real de la simulación
+        simulation_duration = simulation_stats.get('simulation_duration', simulation_stats.get('simulation_time', 10))
         mean_delay = performance_metrics.get('mean_delay', 0)
         delay_history = episode_metrics.get('delay_history', [])
-        
-        if not delay_history and mean_delay > 0:
-            # Generar evolución simulada basada en el valor final
-            time_points = np.linspace(0, 10, 100)
-            delay_values = self._simulate_metric_evolution(mean_delay, len(time_points), 'delay')
-        elif delay_history:
-            # Usar datos reales si están disponibles
-            time_points = np.arange(len(delay_history))
-            delay_values = delay_history
+
+        # Usar datos reales si están disponibles
+        if delay_history:
+            # Extraer timestamps y valores reales
+            time_points = np.array([d['time'] for d in delay_history])
+            delay_values = np.array([d['value'] for d in delay_history])
+        elif mean_delay > 0:
+            # Fallback: generar evolución simulada SOLO si no hay datos reales
+            print(f"[ADVERTENCIA] No hay delay_history disponible, usando datos sintéticos")
+            time_points = np.linspace(0, simulation_duration, 100)
+            delay_values = self._simulate_metric_evolution(mean_delay * 1000, len(time_points), 'delay')
         else:
             # Sin datos disponibles
-            time_points = np.linspace(0, 10, 10)
+            time_points = np.linspace(0, simulation_duration, 10)
             delay_values = np.zeros(10)
-        
+
         # Graficar
         ax.plot(time_points, delay_values, 'b-', linewidth=2, label='Mean Delay', marker='o', markersize=3)
         ax.set_xlabel('Tiempo (s)')
         ax.set_ylabel('Delay (ms)')
-        ax.set_title('Evolución del Mean Delay vs Tiempo')
+        ax.set_title(f'Evolución del Mean Delay vs Tiempo ({simulation_duration:.1f}s)')
         ax.grid(True, alpha=0.3)
         ax.legend()
-        
+
         # Estadísticas en el gráfico
         if len(delay_values) > 0:
             avg_delay = np.mean(delay_values)
             max_delay = np.max(delay_values)
-            ax.text(0.02, 0.98, f'Promedio: {avg_delay:.3f}ms\nMáximo: {max_delay:.3f}ms', 
+            ax.text(0.02, 0.98, f'Promedio: {avg_delay:.3f}ms\nMáximo: {max_delay:.3f}ms',
                     transform=ax.transAxes, verticalalignment='top',
                     bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
-        
+
         self.fig.tight_layout()
         self.draw()
 
@@ -496,51 +628,66 @@ class PONMetricsChart(FigureCanvas):
         """Graficar evolución del P95 Delay vs Tiempo"""
         if not MATPLOTLIB_AVAILABLE:
             return
-            
+
         self.fig.clear()
         ax = self.fig.add_subplot(111)
-        
+
         # Obtener datos de métricas
+        simulation_stats = simulation_data.get('simulation_summary', {}).get('simulation_stats', {})
         performance_metrics = simulation_data.get('simulation_summary', {}).get('performance_metrics', {})
         episode_metrics = simulation_data.get('simulation_summary', {}).get('episode_metrics', {})
-        
+
+        # Obtener duración real de la simulación
+        simulation_duration = simulation_stats.get('simulation_duration', simulation_stats.get('simulation_time', 10))
+
         # Obtener P95 delay
         p95_delay = performance_metrics.get('p95_delay', 0)
         delay_percentiles = episode_metrics.get('delay_percentiles', {})
         p95_history = delay_percentiles.get('p95', [])
-        
-        if not p95_history and p95_delay > 0:
-            # Generar evolución simulada
-            time_points = np.linspace(0, 10, 100)
-            p95_values = self._simulate_metric_evolution(p95_delay, len(time_points), 'percentile')
-        elif p95_history:
-            # Usar datos reales
-            time_points = np.arange(len(p95_history))
-            p95_values = p95_history
+
+        # Calcular P95 desde delay_history si está disponible
+        delay_history = episode_metrics.get('delay_history', [])
+        if delay_history and not p95_history:
+            # Calcular P95 desde datos reales
+            p95_history = self._calculate_p95_from_history(delay_history)
+
+        if p95_history:
+            # Usar datos reales con timestamps
+            if isinstance(p95_history[0], dict):
+                time_points = np.array([d['time'] for d in p95_history])
+                p95_values = np.array([d['value'] for d in p95_history])
+            else:
+                time_points = np.linspace(0, simulation_duration, len(p95_history))
+                p95_values = np.array(p95_history)
+        elif p95_delay > 0:
+            # Fallback: generar evolución simulada
+            print(f"[ADVERTENCIA] No hay p95_history disponible, usando datos sintéticos")
+            time_points = np.linspace(0, simulation_duration, 100)
+            p95_values = self._simulate_metric_evolution(p95_delay * 1000, len(time_points), 'percentile')
         else:
             # Sin datos, usar mean_delay como aproximación
             mean_delay = performance_metrics.get('mean_delay', 0)
-            time_points = np.linspace(0, 10, 100)
+            time_points = np.linspace(0, simulation_duration, 100)
             # P95 típicamente es ~1.5x el mean delay
-            p95_approx = mean_delay * 1.5 if mean_delay > 0 else 0
+            p95_approx = mean_delay * 1.5 * 1000 if mean_delay > 0 else 0
             p95_values = self._simulate_metric_evolution(p95_approx, len(time_points), 'percentile')
-        
+
         # Graficar
         ax.plot(time_points, p95_values, 'r-', linewidth=2, label='P95 Delay', marker='s', markersize=3)
         ax.set_xlabel('Tiempo (s)')
         ax.set_ylabel('Delay (ms)')
-        ax.set_title('Evolución del P95 Delay vs Tiempo')
+        ax.set_title(f'Evolución del P95 Delay vs Tiempo ({simulation_duration:.1f}s)')
         ax.grid(True, alpha=0.3)
         ax.legend()
-        
+
         # Estadísticas en el gráfico
         if len(p95_values) > 0:
             avg_p95 = np.mean(p95_values)
             max_p95 = np.max(p95_values)
-            ax.text(0.02, 0.98, f'Promedio P95: {avg_p95:.3f}ms\nMáximo P95: {max_p95:.3f}ms', 
+            ax.text(0.02, 0.98, f'Promedio P95: {avg_p95:.3f}ms\nMáximo P95: {max_p95:.3f}ms',
                     transform=ax.transAxes, verticalalignment='top',
                     bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
-        
+
         self.fig.tight_layout()
         self.draw()
 
@@ -548,57 +695,71 @@ class PONMetricsChart(FigureCanvas):
         """Graficar evolución del Jitter IPDV Mean vs Tiempo"""
         if not MATPLOTLIB_AVAILABLE:
             return
-            
+
         self.fig.clear()
         ax = self.fig.add_subplot(111)
-        
+
         # Obtener datos de métricas
+        simulation_stats = simulation_data.get('simulation_summary', {}).get('simulation_stats', {})
         performance_metrics = simulation_data.get('simulation_summary', {}).get('performance_metrics', {})
         episode_metrics = simulation_data.get('simulation_summary', {}).get('episode_metrics', {})
-        
+
+        # Obtener duración real de la simulación
+        simulation_duration = simulation_stats.get('simulation_duration', simulation_stats.get('simulation_time', 10))
+
         # Buscar datos de jitter en diferentes ubicaciones
         jitter_mean = performance_metrics.get('jitter_ipdv_mean', 0)
         if not jitter_mean:
             jitter_mean = performance_metrics.get('jitter_mean', 0)
         if not jitter_mean:
             jitter_mean = performance_metrics.get('jitter', 0)
-            
+
         jitter_history = episode_metrics.get('jitter_history', [])
         if not jitter_history:
             jitter_history = episode_metrics.get('jitter_ipdv', [])
-        
-        if not jitter_history and jitter_mean > 0:
-            # Generar evolución simulada
-            time_points = np.linspace(0, 10, 100)
-            jitter_values = self._simulate_metric_evolution(jitter_mean, len(time_points), 'jitter')
-        elif jitter_history:
-            # Usar datos reales
-            time_points = np.arange(len(jitter_history))
-            jitter_values = jitter_history
+
+        # Calcular jitter desde delay_history si está disponible
+        delay_history = episode_metrics.get('delay_history', [])
+        if delay_history and not jitter_history:
+            jitter_history = self._calculate_jitter_from_delays(delay_history)
+
+        if jitter_history:
+            # Usar datos reales con timestamps
+            if isinstance(jitter_history[0], dict):
+                time_points = np.array([d['time'] for d in jitter_history])
+                jitter_values = np.array([d['value'] for d in jitter_history])
+            else:
+                time_points = np.linspace(0, simulation_duration, len(jitter_history))
+                jitter_values = np.array(jitter_history)
+        elif jitter_mean > 0:
+            # Fallback: generar evolución simulada
+            print(f"[ADVERTENCIA] No hay jitter_history disponible, usando datos sintéticos")
+            time_points = np.linspace(0, simulation_duration, 100)
+            jitter_values = self._simulate_metric_evolution(jitter_mean * 1000, len(time_points), 'jitter')
         else:
             # Estimar jitter basado en delay si no hay datos específicos
             mean_delay = performance_metrics.get('mean_delay', 0)
-            time_points = np.linspace(0, 10, 100)
+            time_points = np.linspace(0, simulation_duration, 100)
             # Jitter típicamente es ~10-20% del mean delay
-            jitter_approx = mean_delay * 0.15 if mean_delay > 0 else 0
+            jitter_approx = mean_delay * 0.15 * 1000 if mean_delay > 0 else 0
             jitter_values = self._simulate_metric_evolution(jitter_approx, len(time_points), 'jitter')
-        
+
         # Graficar
         ax.plot(time_points, jitter_values, 'g-', linewidth=2, label='Jitter IPDV Mean', marker='^', markersize=3)
         ax.set_xlabel('Tiempo (s)')
         ax.set_ylabel('Jitter (ms)')
-        ax.set_title('Evolución del Jitter IPDV Mean vs Tiempo')
+        ax.set_title(f'Evolución del Jitter IPDV Mean vs Tiempo ({simulation_duration:.1f}s)')
         ax.grid(True, alpha=0.3)
         ax.legend()
-        
+
         # Estadísticas en el gráfico
         if len(jitter_values) > 0:
             avg_jitter = np.mean(jitter_values)
             max_jitter = np.max(jitter_values)
-            ax.text(0.02, 0.98, f'Promedio: {avg_jitter:.3f}ms\nMáximo: {max_jitter:.3f}ms', 
+            ax.text(0.02, 0.98, f'Promedio: {avg_jitter:.3f}ms\nMáximo: {max_jitter:.3f}ms',
                     transform=ax.transAxes, verticalalignment='top',
                     bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
-        
+
         self.fig.tight_layout()
         self.draw()
     
@@ -748,6 +909,68 @@ class PONMetricsChart(FigureCanvas):
         
         return throughputs
     
+    def _calculate_p95_from_history(self, delay_history: List[Dict]) -> List[Dict[str, float]]:
+        """
+        Calcular P95 delay desde historial de delays usando ventanas deslizantes
+
+        Args:
+            delay_history: Lista de diccionarios con 'time' y 'value'
+
+        Returns:
+            Lista de diccionarios con 'time' y 'value' (P95)
+        """
+        if not delay_history or len(delay_history) < 10:
+            return []
+
+        # Usar ventanas de ~20 puntos para calcular P95
+        window_size = max(10, len(delay_history) // 10)
+        p95_history = []
+
+        for i in range(0, len(delay_history), window_size // 2):
+            window = delay_history[i:i + window_size]
+            if len(window) >= 5:  # Mínimo 5 puntos para calcular P95
+                values = [d['value'] for d in window]
+                p95_value = np.percentile(values, 95)
+                avg_time = np.mean([d['time'] for d in window])
+
+                p95_history.append({
+                    'time': avg_time,
+                    'value': p95_value
+                })
+
+        return p95_history
+
+    def _calculate_jitter_from_delays(self, delay_history: List[Dict]) -> List[Dict[str, float]]:
+        """
+        Calcular jitter (IPDV) desde historial de delays
+
+        Args:
+            delay_history: Lista de diccionarios con 'time' y 'value'
+
+        Returns:
+            Lista de diccionarios con 'time' y 'value' (jitter)
+        """
+        if not delay_history or len(delay_history) < 2:
+            return []
+
+        jitter_history = []
+        window_size = max(5, len(delay_history) // 20)
+
+        for i in range(window_size, len(delay_history), window_size // 2):
+            window = delay_history[i - window_size:i]
+            if len(window) >= 2:
+                delays = [d['value'] for d in window]
+                # Jitter como desviación estándar de los delays en la ventana
+                jitter_value = np.std(delays)
+                avg_time = np.mean([d['time'] for d in window])
+
+                jitter_history.append({
+                    'time': avg_time,
+                    'value': jitter_value
+                })
+
+        return jitter_history
+
     def _simulate_metric_evolution(self, final_value: float, num_points: int, metric_type: str) -> np.ndarray:
         """Simular evolución realista de métricas según el tipo"""
         if num_points <= 1:
@@ -957,27 +1180,27 @@ class PONMetricsChartsPanel(QWidget):
         """Configurar tab de estados de red"""
         tab = QWidget()
         layout = QGridLayout(tab)
-        
+
         # Gráfico de niveles de buffer
         buffer_group = QGroupBox("Niveles de Buffer por ONU")
         buffer_group.setObjectName("pon_charts_group")
         buffer_layout = QVBoxLayout(buffer_group)
-        
+
         self.charts['buffer'] = PONMetricsChart(width=8, height=5)
         buffer_layout.addWidget(self.charts['buffer'])
-        
+
         layout.addWidget(buffer_group, 0, 0)
-        
+
         # Gráfico de utilización
         utilization_group = QGroupBox("Utilización de la Red")
         utilization_group.setObjectName("pon_charts_group")
         utilization_layout = QVBoxLayout(utilization_group)
-        
+
         self.charts['utilization'] = PONMetricsChart(width=8, height=5)
         utilization_layout.addWidget(self.charts['utilization'])
-        
+
         layout.addWidget(utilization_group, 0, 1)
-        
+
         self.tabs.addTab(tab, "🌐 Estados de Red")
     
     def setup_comparative_charts_tab(self):
@@ -1072,7 +1295,7 @@ class PONMetricsChartsPanel(QWidget):
         if 'buffer' in self.charts:
             self.charts['buffer'].plot_onu_buffer_levels(normalized_data)
             self.chart_updated.emit('buffer')
-        
+
         if 'utilization' in self.charts:
             self.charts['utilization'].plot_network_utilization(normalized_data)
             self.chart_updated.emit('utilization')
@@ -1156,35 +1379,49 @@ class PONMetricsChartsPanel(QWidget):
         
         episode_metrics = hybrid_data.get('simulation_summary', {}).get('episode_metrics', {})
         
-        # Convertir buffer levels: mantener formato nuevo con MB
+        # Convertir buffer levels: mantener formato nuevo con MB y timestamps
         buffer_history = episode_metrics.get('buffer_levels_history', [])
+        print(f"[BUFFER-LOG-GUI] Normalizando datos. buffer_history tiene {len(buffer_history)} entries")
         if buffer_history:
             converted_buffer_history = []
             for step_data in buffer_history:
-                converted_step = {}
-                for onu_id, level_data in step_data.items():
-                    # Manejar formato nuevo (dict) y antiguo (número)
-                    if isinstance(level_data, dict):
-                        # Ya está en formato nuevo con MB - mantener
-                        converted_step[onu_id] = level_data
-                    else:
-                        # Formato antiguo (fracción/porcentaje) - convertir a formato MB
-                        # Estimar 3.5MB total por ONU (512KB + 512KB + 1MB + 1MB + 256KB)
-                        used_mb = level_data * 3.5 if level_data <= 1 else level_data * 3.5 / 100
-                        converted_step[onu_id] = {
-                            'used_mb': used_mb,
-                            'capacity_mb': 3.5,
-                            'utilization_percent': level_data * 100 if level_data <= 1 else level_data
-                        }
-                converted_buffer_history.append(converted_step)
+                # Detectar formato: nuevo (con 'time' y 'buffers') vs antiguo (solo buffers)
+                if isinstance(step_data, dict) and 'time' in step_data and 'buffers' in step_data:
+                    # Formato nuevo con timestamps - mantener tal cual
+                    converted_buffer_history.append(step_data)
+                    if len(converted_buffer_history) == 1:
+                        print(f"[BUFFER-LOG-GUI] Formato NUEVO detectado con timestamps")
+                else:
+                    if len(converted_buffer_history) == 0:
+                        print(f"[BUFFER-LOG-GUI] Formato ANTIGUO sin timestamps")
+                    # Formato antiguo sin timestamps - convertir
+                    converted_step = {}
+                    for onu_id, level_data in step_data.items():
+                        # Manejar formato nuevo (dict) y antiguo (número)
+                        if isinstance(level_data, dict):
+                            # Ya está en formato nuevo con MB - mantener
+                            converted_step[onu_id] = level_data
+                        else:
+                            # Formato antiguo (fracción/porcentaje) - convertir a formato MB
+                            # Estimar 3.5MB total por ONU (512KB + 512KB + 1MB + 1MB + 256KB)
+                            used_mb = level_data * 3.5 if level_data <= 1 else level_data * 3.5 / 100
+                            converted_step[onu_id] = {
+                                'used_mb': used_mb,
+                                'capacity_mb': 3.5,
+                                'utilization_percent': level_data * 100 if level_data <= 1 else level_data
+                            }
+                    converted_buffer_history.append(converted_step)
             
             # Actualizar en la estructura convertida
             if 'simulation_summary' not in converted_data:
                 converted_data['simulation_summary'] = {}
             if 'episode_metrics' not in converted_data['simulation_summary']:
                 converted_data['simulation_summary']['episode_metrics'] = {}
-            
+
             converted_data['simulation_summary']['episode_metrics']['buffer_levels_history'] = converted_buffer_history
+            print(f"[BUFFER-LOG-GUI] Después de normalización: {len(converted_buffer_history)} entries")
+        else:
+            print(f"[BUFFER-LOG-GUI] ⚠️ buffer_history estaba VACÍO en entrada!")
         
         # Los delays y throughputs híbridos ya tienen formato compatible
         # (incluso mejor con timestamp, onu_id, tcont_id)

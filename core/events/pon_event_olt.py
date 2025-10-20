@@ -17,7 +17,7 @@ class HybridOLT:
     Polling determinístico cada 125us + asignación secuencial de grants
     """
     
-    def __init__(self, onus: Dict[str, HybridONU], 
+    def __init__(self, onus: Dict[str, HybridONU],
                  dba_algorithm: Optional['DBAAlgorithmInterface'] = None,
                  channel_capacity_mbps: float = 1024.0,
                  guard_time_s: float = 2e-6):
@@ -26,6 +26,7 @@ class HybridOLT:
             onus: Diccionario de ONUs {onu_id: HybridONU}
             dba_algorithm: Algoritmo DBA a usar
             channel_capacity_mbps: Capacidad del canal en Mbps
+            guard_time_s: Tiempo de guarda entre transmisiones
         """
         self.onus = onus
         if dba_algorithm is None:
@@ -36,16 +37,23 @@ class HybridOLT:
             self.dba_algorithm = dba_algorithm
         self.channel_capacity = channel_capacity_mbps
         self.guard_time_s = guard_time_s
-        
+
+        # Configuración de polling automático
+        self.cycle_duration = 125e-6  # 125us por ciclo
+
         # Gestores de tiempo
-        self.cycle_manager = CycleTimeManager(125e-6)  # 125 microsegundos
+        self.cycle_manager = CycleTimeManager(self.cycle_duration)
         self.slot_manager = TimeSlotManager(channel_capacity_mbps)
-        
+
         # Estado del OLT
         self.current_cycle = 0
         self.last_reports = {}
         self.pending_grants = {}
-        
+
+        # Control de polling sin eventos
+        self.last_polling_time = 0.0  # Último momento en que se ejecutó polling
+        self.next_polling_time = self.cycle_duration  # Próximo polling esperado
+
         # Estadísticas
         self.stats = {
             'cycles_executed': 0,
@@ -56,55 +64,59 @@ class HybridOLT:
             'failed_transmissions': 0,
             'channel_utilization_samples': []
         }
+
+        print(f"  OLT: Polling automático cada {self.cycle_duration*1e6:.0f}us (sin eventos en cola)")
     
-    def schedule_first_polling(self, event_queue: EventQueue, start_time: float):
+    def check_and_execute_polling(self, event_queue: EventQueue, current_time: float):
         """
-        Programar el primer ciclo de polling
-        
+        Verificar si es necesario ejecutar polling y ejecutarlo automáticamente
+        Este método se llama ANTES de procesar cada evento
+
         Args:
             event_queue: Cola de eventos del simulador
-            start_time: Tiempo de inicio de la simulación
+            current_time: Tiempo actual de la simulación (timestamp del próximo evento)
+
+        Returns:
+            Número de ciclos de polling ejecutados
         """
-        first_cycle_time = self.cycle_manager.get_next_cycle_start(start_time)
-        
-        event_queue.schedule_event(
-            first_cycle_time,
-            EventType.POLLING_CYCLE,
-            'OLT',
-            {'cycle_number': 0}
-        )
+        cycles_executed = 0
+
+        # Verificar si han pasado 125µs o más desde el último polling
+        while current_time >= self.next_polling_time:
+            # Ejecutar un ciclo de polling SIN crear evento
+            self._execute_single_polling_cycle(event_queue, self.next_polling_time)
+
+            # Actualizar tiempos
+            self.last_polling_time = self.next_polling_time
+            self.next_polling_time += self.cycle_duration
+            cycles_executed += 1
+
+        return cycles_executed
     
-    def execute_polling_cycle(self, event_queue: EventQueue, current_time: float):
+    def _execute_single_polling_cycle(self, event_queue: EventQueue, cycle_time: float):
         """
-        Ejecutar un ciclo completo de DBA
-        
+        Ejecutar un único ciclo de DBA sin crear eventos en la cola
+        Este método es llamado automáticamente cuando pasan 125µs
+
         Args:
             event_queue: Cola de eventos del simulador
-            current_time: Tiempo actual de la simulación
+            cycle_time: Tiempo exacto del ciclo (múltiplo de 125µs)
         """
-        cycle_start = current_time
-        phases = self.cycle_manager.get_cycle_phases(cycle_start)
-        
         # FASE 1: Recolectar reports (0-40us del ciclo)
         reports = self._collect_reports()
-        
+
         # FASE 2: Ejecutar DBA (40-50us del ciclo)
-        grants = self._execute_dba_algorithm(reports, current_time)
-        
+        grants = self._execute_dba_algorithm(reports, cycle_time)
+
         # FASE 3: Programar transmisiones (50-125us del ciclo)
-        transmission_start = phases['transmission_phase'][0]
-        self._schedule_sequential_transmissions(event_queue, grants, transmission_start)
-        
-        # FASE 4: Programar siguiente ciclo
-        next_cycle_time = self.cycle_manager.get_next_cycle_start(current_time)
-        event_queue.schedule_event(
-            next_cycle_time,
-            EventType.POLLING_CYCLE,
-            'OLT',
-            {'cycle_number': self.current_cycle + 1}
-        )
-        
-        # Actualizar estadísticas
+        # Solo programar transmisiones si hay grants
+        if grants:
+            phases = self.cycle_manager.get_cycle_phases(cycle_time)
+            transmission_start = phases['transmission_phase'][0]
+            # OPCIÓN 1: Usar método fusionado que extrae paquetes y programa TRANSMISSION_COMPLETE directamente
+            self._schedule_transmissions_directly(event_queue, grants, transmission_start)
+
+        # Actualizar estadísticas del ciclo
         self.current_cycle += 1
         self.stats['cycles_executed'] += 1
         self.stats['reports_collected'] += len(reports)
@@ -279,29 +291,89 @@ class HybridOLT:
     def _prioritize_grants(self, grants: Dict[str, Dict[str, int]]) -> List[Tuple[str, str, int]]:
         """
         Ordenar grants por prioridad global
-        
+
         Args:
             grants: Grants por ONU y T-CONT
-            
+
         Returns:
             Lista de (onu_id, tcont_id, grant_bytes) ordenada por prioridad
         """
         priority_map = {'highest': 1, 'high': 2, 'medium': 3, 'low': 4, 'lowest': 5}
         scheduled_grants = []
-        
+
         for onu_id, onu_grants in grants.items():
             for tcont_id, grant_bytes in onu_grants.items():
                 if grant_bytes > 0:
                     priority = priority_map.get(tcont_id, 6)
                     scheduled_grants.append((priority, onu_id, tcont_id, grant_bytes))
-        
+
         # Ordenar por prioridad (1=highest, 5=lowest)
         scheduled_grants.sort(key=lambda x: x[0])
-        
+
         # Retornar sin prioridad
-        return [(onu_id, tcont_id, grant_bytes) 
+        return [(onu_id, tcont_id, grant_bytes)
                 for _, onu_id, tcont_id, grant_bytes in scheduled_grants]
-    
+
+    def _schedule_transmissions_directly(self, event_queue: EventQueue,
+                                        grants: Dict[str, Dict[str, int]],
+                                        transmission_start: float):
+        """
+        Programar transmisiones directamente como TRANSMISSION_COMPLETE
+        OPCIÓN 1: Fusiona GRANT_START + TRANSMISSION_COMPLETE en un solo evento
+
+        Este método:
+        1. Extrae paquetes de las colas de las ONUs
+        2. Calcula time-slots sin colisiones
+        3. Programa eventos TRANSMISSION_COMPLETE directamente (sin GRANT_START)
+
+        Args:
+            event_queue: Cola de eventos del simulador
+            grants: Grants asignados
+            transmission_start: Tiempo de inicio de transmisiones
+        """
+        current_slot_start = transmission_start
+
+        # Procesar grants en orden de prioridad global
+        scheduled_grants = self._prioritize_grants(grants)
+
+        for onu_id, tcont_id, grant_bytes in scheduled_grants:
+            if grant_bytes <= 0:
+                continue
+
+            # Calcular time-slot sin colisiones
+            grant_mb = grant_bytes / (1024 * 1024)
+            slot_start, slot_end = self.slot_manager.allocate_time_slot(
+                onu_id, tcont_id, grant_mb, current_slot_start
+            )
+
+            gt = getattr(self, 'guard_time_s', 0.0)
+            slot_end_with_guard = slot_end + gt
+            slot_duration_with_guard = slot_end_with_guard - slot_start
+
+            # NUEVO: Extraer paquetes inmediatamente (lo que antes hacía GRANT_START)
+            onu = self.onus[onu_id]
+            packets, transmitted_bytes = onu.transmit_from_queue(tcont_id, grant_bytes)
+
+            # Programar TRANSMISSION_COMPLETE directamente (saltando GRANT_START)
+            event_queue.schedule_event(
+                slot_end_with_guard,
+                EventType.TRANSMISSION_COMPLETE,
+                onu_id,
+                {
+                    'tcont_id': tcont_id,
+                    'packets': packets,
+                    'transmitted_bytes': transmitted_bytes,
+                    'grant_bytes': grant_bytes,
+                    'slot_start': slot_start,
+                    'slot_end': slot_end_with_guard,
+                    'slot_duration': slot_duration_with_guard,
+                    'line_rate_bps': self.channel_capacity * 1e6,
+                    'guard_time_s': gt
+                }
+            )
+
+            current_slot_start = slot_end_with_guard  # Próximo slot después de este
+
     def handle_transmission_complete(self, event_data: Dict[str, Any], 
                                    completion_time: float):
         """
