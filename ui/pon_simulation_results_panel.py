@@ -85,6 +85,14 @@ class PONResultsPanel(QWidget):
         self.refresh_btn.clicked.connect(self.refresh_results)
         controls_layout.addWidget(self.refresh_btn)
         
+        # Botón para actualizar Dashboard SDN desde datos guardados
+        self.update_sdn_dashboard_btn = QPushButton("📊 Dashboard SDN")
+        self.update_sdn_dashboard_btn.setObjectName("pon_results_button")
+        self.update_sdn_dashboard_btn.setToolTip("Calcular y mostrar métricas SDN desde archivo de simulación")
+        self.update_sdn_dashboard_btn.clicked.connect(self.update_sdn_dashboard_from_data)
+        # Ahora siempre visible - el método validará si hay datos disponibles
+        controls_layout.addWidget(self.update_sdn_dashboard_btn)
+        
         self.export_btn = QPushButton("📁 Exportar")
         self.export_btn.setObjectName("pon_results_button")  # Identificador para QSS
         self.export_btn.clicked.connect(self.export_results)
@@ -463,7 +471,106 @@ class PONResultsPanel(QWidget):
                 
         except Exception as e:
             self.add_log_message(f"❌ Error exportando resultados: {e}")
+    
+    def update_sdn_dashboard_from_data(self):
+        """Actualizar Dashboard SDN calculando métricas desde datos de simulación guardados"""
+        try:
+            from PyQt5.QtWidgets import QFileDialog, QMessageBox
+            from core.pon.sdn_metrics_processor import SDNMetricsProcessor
+            from pathlib import Path
+            import os
             
+            # Verificar que existe la carpeta simulation_results
+            default_path = Path.cwd() / "simulation_results"
+            if not default_path.exists():
+                default_path = Path.cwd()
+            
+            self.add_log_message("📊 Abriendo selector de archivo...")
+            self.add_log_message("💡 Busca el archivo 'datos_simulacion.json' en la carpeta simulation_results")
+            
+            # Abrir diálogo para seleccionar archivo
+            filename, _ = QFileDialog.getOpenFileName(
+                self,
+                "Seleccionar datos_simulacion.json",
+                str(default_path),
+                "JSON files (*.json);;All files (*.*)"
+            )
+            
+            if not filename:
+                self.add_log_message("⚠️ Selección cancelada")
+                return
+            
+            self.add_log_message(f"📂 Archivo seleccionado: {os.path.basename(filename)}")
+            self.add_log_message(f"📍 Ruta completa: {filename}")
+            
+            # Crear procesador de métricas SDN
+            processor = SDNMetricsProcessor()
+            
+            # Cargar datos de simulación
+            self.add_log_message("⏳ Cargando datos de simulación...")
+            if not processor.load_simulation_data(filename):
+                self.add_log_message("❌ Error: El archivo no contiene datos de simulación válidos")
+                QMessageBox.warning(
+                    self,
+                    "Error",
+                    "El archivo seleccionado no contiene datos de simulación válidos.\n"
+                    "Asegúrate de seleccionar un archivo 'datos_simulacion.json' generado por una simulación."
+                )
+                return
+            
+            self.add_log_message("⚙️ Calculando métricas SDN avanzadas...")
+            self.add_log_message("   - Métricas globales (Fairness, Eficiencia Espectral)")
+            self.add_log_message("   - Métricas por ONU (Latencia, Jitter, Throughput)")
+            self.add_log_message("   - Métricas del Controlador SDN")
+            self.add_log_message("   - Distribución de Ancho de Banda por Servicio")
+            self.add_log_message("   - Cumplimiento SLA por T-CONT")
+            
+            # Calcular métricas SDN
+            sdn_metrics = processor.calculate_sdn_metrics()
+            
+            if not sdn_metrics:
+                self.add_log_message("❌ Error calculando métricas SDN")
+                QMessageBox.warning(
+                    self,
+                    "Error",
+                    "No se pudieron calcular las métricas SDN.\n"
+                    "Verifica que el archivo contenga datos de transmisión válidos."
+                )
+                return
+            
+            self.add_log_message("✅ Métricas SDN calculadas exitosamente")
+            
+            # Mostrar resumen de métricas calculadas
+            global_metrics = sdn_metrics.get('global_metrics', {})
+            self.add_log_message(f"   📈 Fairness Index: {global_metrics.get('fairness_index', 0):.3f}")
+            self.add_log_message(f"   📊 ONUs analizadas: {len(sdn_metrics.get('onu_metrics', {}))}")
+            
+            # Emitir señal con las métricas calculadas
+            main_window = self.window()
+            if hasattr(main_window, 'update_sdn_dashboard_final'):
+                main_window.update_sdn_dashboard_final(sdn_metrics)
+                self.add_log_message("📊 Dashboard SDN actualizado con métricas calculadas")
+                self.add_log_message("💡 El Dashboard SDN se mostrará automáticamente")
+                self.add_log_message("💡 También puedes usar Ctrl+D para mostrar/ocultar el dashboard")
+            else:
+                self.add_log_message("⚠️ No se pudo acceder al dashboard SDN")
+            
+            # Guardar métricas en el mismo directorio
+            metrics_path = str(Path(filename).parent / "metricas_sdn.json")
+            if processor.save_metrics(metrics_path):
+                self.add_log_message(f"💾 Métricas guardadas en: {os.path.basename(metrics_path)}")
+                self.add_log_message(f"📍 Ruta: {metrics_path}")
+            
+        except Exception as e:
+            self.add_log_message(f"❌ Error actualizando Dashboard SDN: {e}")
+            import traceback
+            traceback.print_exc()
+            QMessageBox.critical(
+                self,
+                "Error",
+                f"Error al procesar el archivo:\n{str(e)}\n\nRevisa la consola para más detalles."
+            )
+    
     def on_chart_updated(self, chart_type):
         """Callback cuando se actualiza un gráfico"""
         self.add_log_message(f"📊 Gráfico actualizado: {chart_type}")

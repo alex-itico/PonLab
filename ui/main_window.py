@@ -19,6 +19,7 @@ from utils.config_manager import config_manager
 from .canvas import Canvas
 from .sidebar_panel import SidebarPanel
 from .pon_sdn_dashboard import PONSDNDashboard
+from .sdn_dashboard_connector import SDNDashboardConnector
 from .pon_simulation_results_panel import PONResultsPanel
 from .netponpy_sidebar import NetPONPySidebar
 from .log_panel import LogPanel
@@ -45,6 +46,7 @@ class MainWindow(QMainWindow, MainWindowSDNMixin):
         self.canvas = None
         self.sdn_dashboard = None
         self.sdn_dock = None
+        self.sdn_dashboard_connector = SDNDashboardConnector()  # Conector SDN
         
         # Inicializar ventana principal
         self.setup_ui()
@@ -389,6 +391,26 @@ class MainWindow(QMainWindow, MainWindowSDNMixin):
             print(f"Actualizando dashboard SDN con métricas: {sdn_metrics}")
             self.sdn_dashboard.update_metrics(sdn_metrics)
     
+    def update_sdn_dashboard_final(self, sdn_metrics):
+        """
+        Actualizar Dashboard SDN con métricas calculadas desde datos guardados
+        Este método fuerza la actualización y muestra el dashboard
+        """
+        if not self.sdn_dashboard:
+            self.setup_sdn_dashboard()
+        
+        print("[MainWindow] Actualizando Dashboard SDN con métricas calculadas")
+        print(f"[MainWindow] Métricas recibidas: {list(sdn_metrics.keys())}")
+        
+        # Actualizar el dashboard
+        self.sdn_dashboard.update_metrics(sdn_metrics)
+        
+        # Mostrar el dashboard automáticamente
+        if not self.sdn_dashboard_visible:
+            self.toggle_sdn_dashboard()
+        
+        print("[MainWindow] Dashboard SDN actualizado y visible")
+    
     def on_device_dropped(self, device_name, device_type, x, y):
         """Manejar drop de dispositivo en el canvas"""
         self.statusBar().showMessage(f'Dispositivo {device_type} agregado en ({x:.1f}, {y:.1f})', 4000)
@@ -399,7 +421,7 @@ class MainWindow(QMainWindow, MainWindowSDNMixin):
         print(f"📊 Total de dispositivos en canvas: {device_count}")
     
     def setup_sdn_dashboard(self):
-        """Configurar el dashboard SDN"""
+        """Configurar el dashboard SDN y su conector"""
         if not self.sdn_dashboard:
             print("Inicializando Dashboard SDN...")
             self.sdn_dashboard = PONSDNDashboard()
@@ -408,9 +430,31 @@ class MainWindow(QMainWindow, MainWindowSDNMixin):
             self.sdn_dock.setAllowedAreas(Qt.RightDockWidgetArea | Qt.LeftDockWidgetArea)
             self.addDockWidget(Qt.RightDockWidgetArea, self.sdn_dock)
             
+            # Configurar el conector con el dashboard
+            self.sdn_dashboard_connector.set_dashboard(self.sdn_dashboard)
+            
             # Ajustar visibilidad según configuración
             self.sdn_dock.setVisible(self.sdn_dashboard_visible)
             print(f"Dashboard SDN creado y {'visible' if self.sdn_dashboard_visible else 'oculto'}")
+            print(f"Conector SDN configurado: {self.sdn_dashboard_connector.get_status()}")
+    
+    def connect_olt_sdn_to_dashboard(self, olt_sdn):
+        """
+        Conectar una instancia de OLT_SDN al dashboard
+        
+        Args:
+            olt_sdn: Instancia de OLT_SDN para monitorear
+        """
+        if olt_sdn and self.sdn_dashboard:
+            print(f"[MainWindow] Conectando OLT_SDN al dashboard: {olt_sdn.id}")
+            self.sdn_dashboard_connector.set_olt_sdn(olt_sdn)
+            # Actualizar inmediatamente
+            self.sdn_dashboard_connector.update_now()
+            # Mostrar el dashboard automáticamente
+            if not self.sdn_dashboard_visible:
+                self.toggle_sdn_dashboard()
+        else:
+            print("[MainWindow] ERROR: No se puede conectar - OLT_SDN o Dashboard no disponibles")
             
     def on_topology_changed(self):
         """Manejar cambios en la topología del canvas"""
