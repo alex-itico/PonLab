@@ -126,6 +126,26 @@ class PONAdapter:
             'global_metrics': global_metrics,
             'onu_metrics': onu_metrics
         }
+    
+    def get_olt_sdn_instance(self):
+        """
+        Obtener la instancia de OLT_SDN si existe
+        
+        Returns:
+            OLT_SDN instance si se está usando OLT_SDN, None en caso contrario
+        """
+        olt = self.get_olt()
+        if not olt:
+            return None
+        
+        # Verificar si es una instancia de OLT_SDN
+        from core.pon.pon_sdn import OLT_SDN
+        if isinstance(olt, OLT_SDN):
+            self._log_event("DEBUG", f"get_olt_sdn_instance: OLT_SDN encontrado: {olt.id}")
+            return olt
+        else:
+            self._log_event("DEBUG", f"get_olt_sdn_instance: OLT no es OLT_SDN, es {type(olt)}")
+            return None
         
     def set_detailed_logging(self, enabled: bool):
         """Activar o desactivar el logging detallado"""

@@ -971,7 +971,23 @@ class IntegratedPONTestPanel(QWidget):
         # Actualizar resultados finales
         self.results_panel.refresh_results()
         
-        # Múltiples intentos de actualizar el dashboard SDN
+        # NUEVO: Detectar y conectar OLT_SDN al dashboard si existe
+        olt_sdn_instance = self.adapter.get_olt_sdn_instance()
+        if olt_sdn_instance:
+            self.results_panel.add_log_message("🔌 OLT_SDN detectado - Conectando al dashboard...")
+            main_window = self.parent()
+            if hasattr(main_window, 'connect_olt_sdn_to_dashboard'):
+                main_window.connect_olt_sdn_to_dashboard(olt_sdn_instance)
+                self.results_panel.add_log_message("✅ Dashboard SDN conectado y actualizado")
+            else:
+                self.results_panel.add_log_message("⚠️ Ventana principal no tiene método connect_olt_sdn_to_dashboard")
+            
+            # Habilitar botón de actualización de Dashboard SDN
+            if hasattr(self.results_panel, 'enable_sdn_dashboard_button'):
+                self.results_panel.enable_sdn_dashboard_button(True)
+                self.results_panel.add_log_message("📊 Botón 'Actualizar Dashboard SDN' habilitado")
+        
+        # Múltiples intentos de actualizar el dashboard SDN (método antiguo como respaldo)
         max_attempts = 3
         for attempt in range(max_attempts):
             self.results_panel.add_log_message(f"📊 Intento {attempt + 1} de {max_attempts} de obtener métricas SDN...")
