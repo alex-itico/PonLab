@@ -51,38 +51,6 @@ class OLT_SDN:
         self.clock: float = 0.0
         self.fragmented_time = 0.0
         
-        # Métricas SDN y estadísticas avanzadas
-        self.sdn_metrics = {
-            onu_id: {
-                'latency': [],
-                'losses': 0,
-                'throughput': [],
-                'grants_used': 0,
-                'grants_allocated': 0,
-                'last_adjustment_time': 0.0,
-                'cumulative_waiting_time': 0.0,
-            } for onu_id in self._onu_ids
-        }
-        
-        # Métricas globales del controlador SDN
-        self.sdn_controller_metrics = {
-            'reconfigurations': 0,
-            'fairness_history': [],
-            'total_grants': 0,
-            'utilized_grants': 0,
-            'adjustment_intervals': [],
-            'qos_violations': 0,
-        }
-        
-        # Parámetros ajustables del controlador SDN
-        self.sdn_parameters = {
-            'min_grant_size': 64,
-            'max_grant_size': 1500,
-            'target_latency': 0.001,
-            'adjustment_threshold': 0.1,
-            'fairness_target': 0.9,
-        }
-        
         # Algoritmo DBA modular
         self.dba_algorithm = dba_algorithm or FCFSDBAAlgorithm()
         
@@ -91,7 +59,7 @@ class OLT_SDN:
         self._algorithm_state = {}
         self._last_processed_request = None
         
-        # Métricas SDN y estadísticas avanzadas
+        # Métricas SDN y estadísticas avanzadas por ONU
         self.sdn_metrics = {
             onu_id: {
                 'latency': [],  # Lista de latencias
@@ -101,6 +69,23 @@ class OLT_SDN:
                 'grants_allocated': 0,  # Grants totales asignados
                 'last_adjustment_time': 0.0,  # Último ajuste de parámetros
                 'cumulative_waiting_time': 0.0,  # Tiempo acumulado de espera
+                # Métricas avanzadas SDN
+                'bandwidth_by_service': {  # Uso de ancho de banda por clase de servicio
+                    'highest': [],
+                    'high': [],
+                    'medium': [],
+                    'low': [],
+                    'lowest': []
+                },
+                'congestion_level': 0.0,  # Nivel de congestión (0-1)
+                'sla_compliance': {  # Cumplimiento de SLA por T-CONT
+                    'T1': {'met': 0, 'violated': 0},  # Fixed bandwidth
+                    'T2': {'met': 0, 'violated': 0},  # Assured bandwidth
+                    'T3': {'met': 0, 'violated': 0},  # Non-assured bandwidth
+                    'T4': {'met': 0, 'violated': 0},  # Best effort
+                },
+                'jitter': [],  # Variación de latencia (desviación estándar de latencias)
+                'response_times': [],  # Tiempos de respuesta del controlador
             } for onu_id in self._onu_ids
         }
         
@@ -112,6 +97,20 @@ class OLT_SDN:
             'utilized_grants': 0,    # Grants efectivamente utilizados
             'adjustment_intervals': [],  # Intervalos entre ajustes
             'qos_violations': 0,     # Violaciones de QoS detectadas
+            # Métricas avanzadas del controlador
+            'spectral_efficiency': [],  # Eficiencia espectral (bits/Hz)
+            'controller_response_time': [],  # Tiempo de respuesta del controlador
+            'reassignment_rate': 0,  # Tasa de reasignación de recursos
+            'decision_latency': [],  # Latencia de decisión del controlador
+            'total_decisions': 0,  # Total de decisiones tomadas
+            'bandwidth_utilization_history': [],  # Histórico de utilización de BW
+            'service_class_distribution': {  # Distribución por clase de servicio
+                'highest': 0,
+                'high': 0,
+                'medium': 0,
+                'low': 0,
+                'lowest': 0
+            },
         }
         
         # Parámetros ajustables del controlador SDN
@@ -313,6 +312,13 @@ class OLT_SDN:
                 # El evento no se pudo transmitir completamente
                 self.failed_transmissions += 1
             
+            # Actualizar métricas SDN
+            self.update_sdn_metrics(request, was_transmitted)
+            
+            # Actualizar métricas avanzadas cada 100 transmisiones
+            if (self.successful_transmissions + self.failed_transmissions) % 100 == 0:
+                self.update_advanced_metrics()
+            
             # Registrar último request procesado para callbacks RL
             self._last_processed_request = request
             
@@ -454,9 +460,87 @@ class OLT_SDN:
                 self.sdn_controller_metrics['adjustment_intervals'].append(adjustment_interval)
             
             metrics['last_adjustment_time'] = current_time
+    
+    def update_advanced_metrics(self):
+        """
+        Actualizar métricas avanzadas del controlador SDN
+        Este método debe ser llamado periódicamente durante la simulación
+        """
+        # Actualizar eficiencia espectral
+        if self.sdn_controller_metrics['total_grants'] > 0:
+            # Eficiencia espectral = bits transmitidos / Hz
+            total_bits = self.sdn_controller_metrics['utilized_grants'] * 1500 * 8  # Estimación
+            spectrum_used = self.transmission_rate * 1e6  # MHz a Hz
+            spectral_eff = total_bits / spectrum_used if spectrum_used > 0 else 0
+            self.sdn_controller_metrics['spectral_efficiency'].append(spectral_eff)
+        
+        # Actualizar utilización de ancho de banda
+        total_throughput = 0
+        for onu_id, metrics in self.sdn_metrics.items():
+            if metrics['throughput']:
+                total_throughput += sum(metrics['throughput']) / len(metrics['throughput'])
+        
+        bw_utilization = (total_throughput / (self.transmission_rate * 1e6)) * 100 if self.transmission_rate > 0 else 0
+        self.sdn_controller_metrics['bandwidth_utilization_history'].append(bw_utilization)
+        
+        # Actualizar distribución por clase de servicio
+        for onu_id, metrics in self.sdn_metrics.items():
+            for service_class, bw_list in metrics.get('bandwidth_by_service', {}).items():
+                if bw_list:
+                    avg_bw = sum(bw_list) / len(bw_list)
+                    self.sdn_controller_metrics['service_class_distribution'][service_class] += avg_bw
+        
+        # Actualizar nivel de congestión por ONU
+        for onu_id, metrics in self.sdn_metrics.items():
+            # Calcular nivel de congestión basado en latencia y pérdidas
+            avg_latency = sum(metrics['latency']) / len(metrics['latency']) if metrics['latency'] else 0
+            loss_rate = metrics['losses'] / max(1, metrics['grants_allocated'])
+            
+            # Nivel de congestión combinado (0-1)
+            latency_factor = min(avg_latency / (self.sdn_parameters['target_latency'] * 10), 1.0)
+            loss_factor = min(loss_rate * 10, 1.0)
+            metrics['congestion_level'] = (latency_factor + loss_factor) / 2
+        
+        # Simular tiempo de respuesta del controlador (basado en complejidad)
+        num_onus = len(self.onus)
+        controller_response = 0.001 * (1 + num_onus * 0.1)  # ms, aumenta con más ONUs
+        self.sdn_controller_metrics['controller_response_time'].append(controller_response)
+        
+        # Simular latencia de decisión
+        decision_latency = controller_response * 0.8  # Ligeramente menor que el tiempo de respuesta
+        self.sdn_controller_metrics['decision_latency'].append(decision_latency)
             
     def get_sdn_dashboard(self) -> dict:
-        """Generar dashboard con métricas del controlador SDN"""
+        """Generar dashboard con métricas avanzadas del controlador SDN"""
+        
+        # Cálculo de eficiencia espectral promedio
+        spectral_eff = (
+            sum(self.sdn_controller_metrics['spectral_efficiency']) / 
+            len(self.sdn_controller_metrics['spectral_efficiency'])
+            if self.sdn_controller_metrics['spectral_efficiency'] else 0
+        )
+        
+        # Cálculo de tiempo de respuesta promedio del controlador
+        avg_controller_response = (
+            sum(self.sdn_controller_metrics['controller_response_time']) / 
+            len(self.sdn_controller_metrics['controller_response_time'])
+            if self.sdn_controller_metrics['controller_response_time'] else 0
+        )
+        
+        # Cálculo de latencia de decisión promedio
+        avg_decision_latency = (
+            sum(self.sdn_controller_metrics['decision_latency']) / 
+            len(self.sdn_controller_metrics['decision_latency'])
+            if self.sdn_controller_metrics['decision_latency'] else 0
+        )
+        
+        # Cálculo de utilización de ancho de banda promedio
+        avg_bw_util = (
+            sum(self.sdn_controller_metrics['bandwidth_utilization_history']) / 
+            len(self.sdn_controller_metrics['bandwidth_utilization_history'])
+            if self.sdn_controller_metrics['bandwidth_utilization_history'] else 0
+        )
+        
         dashboard = {
             'global_metrics': {
                 'total_reconfigurations': self.sdn_controller_metrics['reconfigurations'],
@@ -475,14 +559,38 @@ class OLT_SDN:
                     len(self.sdn_controller_metrics['adjustment_intervals'])
                     if self.sdn_controller_metrics['adjustment_intervals'] else 0
                 ),
+                'spectral_efficiency': spectral_eff,
             },
-            'onu_metrics': {}
+            'controller_metrics': {
+                'total_decisions': self.sdn_controller_metrics['total_decisions'],
+                'avg_controller_response_time': avg_controller_response,
+                'avg_decision_latency': avg_decision_latency,
+                'reassignment_rate': self.sdn_controller_metrics['reassignment_rate'],
+                'avg_bandwidth_utilization': avg_bw_util,
+            },
+            'service_distribution': self.sdn_controller_metrics['service_class_distribution'].copy(),
+            'onu_metrics': {},
+            'sla_compliance': {}
         }
         
         # Agregar métricas por ONU
         for onu_id, metrics in self.sdn_metrics.items():
+            # Calcular jitter (desviación estándar de latencias)
+            avg_jitter = 0
+            if len(metrics['latency']) > 1:
+                mean_latency = sum(metrics['latency']) / len(metrics['latency'])
+                variance = sum((lat - mean_latency) ** 2 for lat in metrics['latency']) / len(metrics['latency'])
+                avg_jitter = variance ** 0.5
+            
+            # Calcular tiempo de respuesta promedio
+            avg_response_time = (
+                sum(metrics['response_times']) / len(metrics['response_times'])
+                if metrics['response_times'] else 0
+            )
+            
             dashboard['onu_metrics'][onu_id] = {
                 'avg_latency': sum(metrics['latency']) / len(metrics['latency']) if metrics['latency'] else 0,
+                'avg_jitter': avg_jitter,
                 'packet_loss_rate': (
                     metrics['losses'] / metrics['grants_allocated'] * 100 
                     if metrics['grants_allocated'] > 0 else 0
@@ -494,8 +602,13 @@ class OLT_SDN:
                 'grant_efficiency': (
                     metrics['grants_used'] / metrics['grants_allocated'] * 100
                     if metrics['grants_allocated'] > 0 else 0
-                )
+                ),
+                'congestion_level': metrics['congestion_level'],
+                'avg_response_time': avg_response_time,
             }
+            
+            # Agregar cumplimiento de SLA por ONU
+            dashboard['sla_compliance'][onu_id] = metrics['sla_compliance'].copy()
         
         return dashboard
 
