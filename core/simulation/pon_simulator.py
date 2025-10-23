@@ -726,6 +726,8 @@ class PONSimulator:
         Convertir historiales organizados por ONU a formato de buffer_levels_history organizado por timestamp
         Esto permite que los graficos existentes usen los datos de polling
 
+        OPTIMIZADO: O(n) en lugar de O(n²) usando acceso directo por índice
+
         Args:
             onu_histories: Dict de {onu_id: [list of samples with time]}
 
@@ -735,43 +737,38 @@ class PONSimulator:
         if not onu_histories:
             return []
 
-        print(f"[BUFFER-CONVERT] Convirtiendo historiales de ONU a buffer_levels_history")
+        print(f"[BUFFER-CONVERT] Convirtiendo historiales de ONU a buffer_levels_history (optimizado)")
 
-        # Recolectar todos los timestamps únicos
-        all_timestamps = set()
-        for onu_id, history in onu_histories.items():
-            for entry in history:
-                all_timestamps.add(entry['time'])
+        # OPTIMIZACIÓN: Asumir que todas las ONUs tienen los mismos timestamps
+        # Esto es cierto porque se capturan en el mismo polling
+        first_onu_id = next(iter(onu_histories))
+        first_history = onu_histories[first_onu_id]
+        num_samples = len(first_history)
 
-        # Ordenar timestamps
-        sorted_timestamps = sorted(all_timestamps)
+        print(f"[BUFFER-CONVERT] Procesando {num_samples} timestamps")
 
-        print(f"[BUFFER-CONVERT] Encontrados {len(sorted_timestamps)} timestamps unicos")
-
-        # Construir estructura organizada por timestamp
+        # Construir snapshots usando acceso directo por índice O(1)
         buffer_levels_history = []
 
-        for timestamp in sorted_timestamps:
+        for i in range(num_samples):
+            timestamp = first_history[i]['time']
             snapshot = {
                 'time': timestamp,
                 'buffers': {}
             }
 
-            # Recolectar datos de cada ONU para este timestamp
+            # Acceso directo por índice para cada ONU
             for onu_id, history in onu_histories.items():
-                # Buscar la entrada con este timestamp
-                for entry in history:
-                    if entry['time'] == timestamp:
-                        snapshot['buffers'][onu_id] = {
-                            'used_mb': entry['total_used_mb'],
-                            'capacity_mb': entry['total_capacity_mb'],
-                            'utilization_percent': entry['total_utilization_percent']
-                        }
-                        break
+                entry = history[i]  # Acceso O(1) - todas las ONUs están sincronizadas
+                snapshot['buffers'][onu_id] = {
+                    'used_mb': entry['total_used_mb'],
+                    'capacity_mb': entry['total_capacity_mb'],
+                    'utilization_percent': entry['total_utilization_percent']
+                }
 
             buffer_levels_history.append(snapshot)
 
-        print(f"[BUFFER-CONVERT] Creados {len(buffer_levels_history)} snapshots para graficos")
+        print(f"[BUFFER-CONVERT] Creados {num_samples} snapshots (O(n) optimizado)")
 
         return buffer_levels_history
 
