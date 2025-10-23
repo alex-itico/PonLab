@@ -774,6 +774,8 @@ class PONSimulator:
 
     def _generate_event_summary(self) -> Dict[str, Any]:
         """Generar resumen final de simulación por eventos"""
+        import time
+
         mean_delay = np.mean([d['delay'] for d in self.metrics['delays']]) if self.metrics['delays'] else 0
         mean_throughput = self.metrics['total_transmitted'] / self.simulation_time if self.simulation_time > 0 else 0
 
@@ -781,14 +783,41 @@ class PONSimulator:
         network_utilization = olt_stats.get('average_utilization', 0)
 
         # Generar historiales agregados para gráficos en tiempo real
+        t0 = time.time()
         delay_history = self._generate_time_series_history(self.metrics['delays'], 'delay')
+        print(f"[PERF] delay_history: {(time.time()-t0)*1000:.1f}ms")
+
+        t0 = time.time()
         throughput_history = self._generate_throughput_history(self.metrics['throughputs'])
+        print(f"[PERF] throughput_history: {(time.time()-t0)*1000:.1f}ms")
 
         # Extraer buffer histories desde los snapshots del OLT (capturados durante polling)
+        t0 = time.time()
         onu_buffer_histories = self._extract_onu_buffer_histories_from_olt()
+        print(f"[PERF] extract_onu_buffer_histories: {(time.time()-t0)*1000:.1f}ms")
+
+        # Diezmar datos si hay demasiados snapshots (>1000) para acelerar procesamiento
+        t0 = time.time()
+        if onu_buffer_histories:
+            first_onu = next(iter(onu_buffer_histories))
+            num_snapshots = len(onu_buffer_histories[first_onu])
+
+            if num_snapshots > 1000:
+                # Reducir a máximo 1000 snapshots tomando cada N-ésimo
+                decimation_factor = num_snapshots // 1000 + 1
+                print(f"[PERF] Diezmando {num_snapshots} snapshots por factor {decimation_factor}")
+
+                for onu_id in onu_buffer_histories:
+                    onu_buffer_histories[onu_id] = onu_buffer_histories[onu_id][::decimation_factor]
+
+                print(f"[PERF] Snapshots después de decimación: {len(onu_buffer_histories[first_onu])}")
+
+        print(f"[PERF] decimation: {(time.time()-t0)*1000:.1f}ms")
 
         # Convertir a formato buffer_levels_history para compatibilidad con graficos
+        t0 = time.time()
         buffer_levels_history = self._convert_onu_histories_to_buffer_levels_history(onu_buffer_histories)
+        print(f"[PERF] convert_to_buffer_levels: {(time.time()-t0)*1000:.1f}ms")
 
         return {
             'simulation_summary': {
