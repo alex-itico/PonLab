@@ -684,17 +684,20 @@ class PONSimulator:
         if not self.olt:
             return {}
 
+        import time
+        t_start = time.time()
+
         # Obtener snapshots del OLT
         olt_stats = self.olt.get_olt_statistics()
         buffer_snapshots = olt_stats.get('buffer_snapshots', [])
 
-        print(f"[BUFFER-COLLECT-POLLING] Extrayendo historiales desde {len(buffer_snapshots)} snapshots del OLT")
+        print(f"[BUFFER-COLLECT-POLLING] Extrayendo desde {len(buffer_snapshots)} snapshots del OLT")
 
         # Reorganizar por ONU
         onu_histories = {}
 
         for snapshot in buffer_snapshots:
-            time = snapshot['time']
+            time_val = snapshot['time']
             buffers = snapshot['buffers']
 
             for onu_id, onu_data in buffers.items():
@@ -703,7 +706,7 @@ class PONSimulator:
 
                 # Crear entrada para esta ONU en este timestamp
                 entry = {
-                    'time': time,
+                    'time': time_val,
                     'buffer_state': onu_data.get('tconts', {}),
                     'total_used_mb': onu_data.get('total_used_mb', 0),
                     'total_capacity_mb': onu_data.get('total_capacity_mb', 0),
@@ -712,12 +715,13 @@ class PONSimulator:
 
                 onu_histories[onu_id].append(entry)
 
-        # Log resultado
-        for onu_id, history in onu_histories.items():
-            print(f"[BUFFER-COLLECT-POLLING] ONU {onu_id}: {len(history)} samples desde polling")
+        elapsed_ms = (time.time() - t_start) * 1000
 
-        total_samples = sum(len(h) for h in onu_histories.values())
-        print(f"[BUFFER-COLLECT-POLLING] Total: {total_samples} samples de {len(onu_histories)} ONUs")
+        # Log resultado
+        if onu_histories:
+            first_onu = next(iter(onu_histories))
+            samples_per_onu = len(onu_histories[first_onu])
+            print(f"[BUFFER-COLLECT-POLLING] {len(onu_histories)} ONUs × {samples_per_onu} samples = {len(onu_histories) * samples_per_onu} total en {elapsed_ms:.1f}ms")
 
         return onu_histories
 
@@ -725,6 +729,9 @@ class PONSimulator:
         """
         Convertir historiales organizados por ONU a formato de buffer_levels_history organizado por timestamp
         Esto permite que los graficos existentes usen los datos de polling
+
+        OPTIMIZADO: Usa diccionarios para acceso O(1) en lugar de búsqueda lineal O(n)
+        Reduciendo complejidad de O(T × N × M) a O(T × N + N × M)
 
         Args:
             onu_histories: Dict de {onu_id: [list of samples with time]}
@@ -735,20 +742,29 @@ class PONSimulator:
         if not onu_histories:
             return []
 
-        print(f"[BUFFER-CONVERT] Convirtiendo historiales de ONU a buffer_levels_history")
+        import time
+        t_start = time.time()
 
-        # Recolectar todos los timestamps únicos
+        print(f"[BUFFER-CONVERT] Convirtiendo historiales de ONU a buffer_levels_history (optimizado)")
+
+        # Paso 1: Crear diccionarios {timestamp -> entry} por cada ONU para acceso O(1)
+        onu_time_maps = {}
         all_timestamps = set()
-        for onu_id, history in onu_histories.items():
-            for entry in history:
-                all_timestamps.add(entry['time'])
 
-        # Ordenar timestamps
+        for onu_id, history in onu_histories.items():
+            time_map = {}
+            for entry in history:
+                timestamp = entry['time']
+                time_map[timestamp] = entry
+                all_timestamps.add(timestamp)
+            onu_time_maps[onu_id] = time_map
+
+        # Paso 2: Ordenar timestamps únicos
         sorted_timestamps = sorted(all_timestamps)
 
-        print(f"[BUFFER-CONVERT] Encontrados {len(sorted_timestamps)} timestamps unicos")
+        print(f"[BUFFER-CONVERT] Procesando {len(sorted_timestamps)} timestamps para {len(onu_histories)} ONUs")
 
-        # Construir estructura organizada por timestamp
+        # Paso 3: Construir snapshots usando acceso directo O(1) por diccionario
         buffer_levels_history = []
 
         for timestamp in sorted_timestamps:
@@ -757,21 +773,20 @@ class PONSimulator:
                 'buffers': {}
             }
 
-            # Recolectar datos de cada ONU para este timestamp
-            for onu_id, history in onu_histories.items():
-                # Buscar la entrada con este timestamp
-                for entry in history:
-                    if entry['time'] == timestamp:
-                        snapshot['buffers'][onu_id] = {
-                            'used_mb': entry['total_used_mb'],
-                            'capacity_mb': entry['total_capacity_mb'],
-                            'utilization_percent': entry['total_utilization_percent']
-                        }
-                        break
+            # Acceso O(1) al entry de cada ONU usando el diccionario
+            for onu_id, time_map in onu_time_maps.items():
+                if timestamp in time_map:  # O(1) lookup
+                    entry = time_map[timestamp]
+                    snapshot['buffers'][onu_id] = {
+                        'used_mb': entry['total_used_mb'],
+                        'capacity_mb': entry['total_capacity_mb'],
+                        'utilization_percent': entry['total_utilization_percent']
+                    }
 
             buffer_levels_history.append(snapshot)
 
-        print(f"[BUFFER-CONVERT] Creados {len(buffer_levels_history)} snapshots para graficos")
+        elapsed_ms = (time.time() - t_start) * 1000
+        print(f"[BUFFER-CONVERT] Creados {len(buffer_levels_history)} snapshots en {elapsed_ms:.1f}ms (optimizado)")
 
         return buffer_levels_history
 
