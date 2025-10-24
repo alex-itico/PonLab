@@ -142,7 +142,13 @@ class MainWindow(QMainWindow, MainWindowSDNMixin):
             hasattr(self.netponpy_sidebar, 'netponpy_panel') and 
             self.netponpy_sidebar.netponpy_panel):
             self.netponpy_sidebar.netponpy_panel.set_log_panel(self.log_panel)
-            print("Panel de log conectado con NetPONPy")
+            self._log_system_message("Panel de log conectado con NetPONPy")
+    
+    def _log_system_message(self, message):
+        """Enviar mensaje del sistema tanto al terminal como al log panel"""
+        print(message)
+        if hasattr(self, 'log_panel') and self.log_panel:
+            self.log_panel.add_log_entry(f"[SISTEMA] {message}")
     
     def setup_menubar(self):
         """Configurar la barra de menú"""
@@ -231,6 +237,15 @@ class MainWindow(QMainWindow, MainWindowSDNMixin):
         self.info_panel_action.setStatusTip('Mostrar u ocultar panel de información (Ctrl+I)')
         self.info_panel_action.triggered.connect(self.toggle_info_panel_from_menu)
         view_menu.addAction(self.info_panel_action)
+        
+        # Mostrar/Ocultar Panel Log
+        self.log_panel_action = QAction('Mostrar/Ocultar Panel &Log', self)
+        self.log_panel_action.setCheckable(True)
+        self.log_panel_action.setChecked(self.log_panel_visible)
+        self.log_panel_action.setShortcut('Ctrl+L')
+        self.log_panel_action.setStatusTip('Mostrar u ocultar panel de log del simulador (Ctrl+L)')
+        self.log_panel_action.triggered.connect(self.toggle_log_panel)
+        view_menu.addAction(self.log_panel_action)
         
         view_menu.addSeparator()
         
@@ -378,7 +393,7 @@ class MainWindow(QMainWindow, MainWindowSDNMixin):
         # Actualizar estado del menú
         self.components_action.setChecked(self.components_visible)
         
-        print(f"Componentes {'mostrados' if self.components_visible else 'ocultos'}")
+        self._log_system_message(f"Panel de componentes {'mostrado' if self.components_visible else 'oculto'}")
     
     def on_device_selected(self, device_name, device_type):
         """Manejar selección de dispositivo del sidebar"""
@@ -423,7 +438,7 @@ class MainWindow(QMainWindow, MainWindowSDNMixin):
     def setup_sdn_dashboard(self):
         """Configurar el dashboard SDN y su conector"""
         if not self.sdn_dashboard:
-            print("Inicializando Dashboard SDN...")
+            self._log_system_message("Inicializando Dashboard SDN...")
             self.sdn_dashboard = PONSDNDashboard()
             self.sdn_dock = QDockWidget("Dashboard SDN", self)
             self.sdn_dock.setWidget(self.sdn_dashboard)
@@ -435,8 +450,8 @@ class MainWindow(QMainWindow, MainWindowSDNMixin):
             
             # Ajustar visibilidad según configuración
             self.sdn_dock.setVisible(self.sdn_dashboard_visible)
-            print(f"Dashboard SDN creado y {'visible' if self.sdn_dashboard_visible else 'oculto'}")
-            print(f"Conector SDN configurado: {self.sdn_dashboard_connector.get_status()}")
+            self._log_system_message(f"Dashboard SDN creado y {'visible' if self.sdn_dashboard_visible else 'oculto'}")
+            self._log_system_message(f"Conector SDN configurado: {self.sdn_dashboard_connector.get_status()}")
     
     def connect_olt_sdn_to_dashboard(self, olt_sdn):
         """
@@ -446,7 +461,7 @@ class MainWindow(QMainWindow, MainWindowSDNMixin):
             olt_sdn: Instancia de OLT_SDN para monitorear
         """
         if olt_sdn and self.sdn_dashboard:
-            print(f"[MainWindow] Conectando OLT_SDN al dashboard: {olt_sdn.id}")
+            self._log_system_message(f"Conectando OLT_SDN al dashboard: {olt_sdn.id}")
             self.sdn_dashboard_connector.set_olt_sdn(olt_sdn)
             # Actualizar inmediatamente
             self.sdn_dashboard_connector.update_now()
@@ -454,7 +469,7 @@ class MainWindow(QMainWindow, MainWindowSDNMixin):
             if not self.sdn_dashboard_visible:
                 self.toggle_sdn_dashboard()
         else:
-            print("[MainWindow] ERROR: No se puede conectar - OLT_SDN o Dashboard no disponibles")
+            self._log_system_message("ERROR: No se puede conectar - OLT_SDN o Dashboard no disponibles")
             
     def on_topology_changed(self):
         """Manejar cambios en la topología del canvas"""
@@ -497,7 +512,7 @@ class MainWindow(QMainWindow, MainWindowSDNMixin):
         
         grid_status = "mostrada" if self.grid_visible else "oculta"
         self.statusBar().showMessage(f'Cuadrícula y origen {grid_status}', 2000)
-        print(f"Cuadrícula y origen {grid_status}")
+        self._log_system_message(f"Cuadrícula y origen {grid_status}")
     
     # Método toggle_origin ya no es necesario ya que el origen se controla con la cuadrícula
     
@@ -508,6 +523,7 @@ class MainWindow(QMainWindow, MainWindowSDNMixin):
             # Ocultar vértices al resetear vista
             self.canvas.device_manager.deselect_all()
             self.statusBar().showMessage('Vista reseteada', 2000)
+            self._log_system_message("Vista reseteada al estado original")
     
     def center_view(self):
         """Centrar vista en el origen"""
@@ -516,6 +532,7 @@ class MainWindow(QMainWindow, MainWindowSDNMixin):
             # Ocultar vértices al centrar vista
             self.canvas.device_manager.deselect_all()
             self.statusBar().showMessage('Vista centrada', 2000)
+            self._log_system_message("Vista centrada en el origen")
     
     def toggle_simulation(self):
         """Alternar visibilidad del panel de simulación"""
@@ -543,7 +560,7 @@ class MainWindow(QMainWindow, MainWindowSDNMixin):
         
         # Actualizar estado del menú
         self.sdn_dashboard_action.setChecked(self.sdn_dashboard_visible)
-        print(f"Dashboard SDN {'mostrado' if self.sdn_dashboard_visible else 'oculto'}")
+        self._log_system_message(f"Dashboard SDN {'mostrado' if self.sdn_dashboard_visible else 'oculto'}")
         
         # Guardar configuración
         config_manager.save_setting('sdn_dashboard_visible', self.sdn_dashboard_visible)
@@ -561,7 +578,7 @@ class MainWindow(QMainWindow, MainWindowSDNMixin):
         # Actualizar estado del menú
         self.simulation_action.setChecked(self.netponpy_visible)
         
-        print(f"Panel de simulación {'mostrado' if self.netponpy_visible else 'oculto'}")
+        self._log_system_message(f"Panel de simulación {'mostrado' if self.netponpy_visible else 'oculto'}")
     
     def toggle_log_panel(self):
         """Alternar visibilidad del panel de log"""
@@ -573,17 +590,24 @@ class MainWindow(QMainWindow, MainWindowSDNMixin):
         else:
             self.log_panel.hide()
         
-        # Guardar configuración
-        config_manager.set_setting('log_panel_visible', self.log_panel_visible)
+        # Actualizar estado del checkbox en el menú
+        if hasattr(self, 'log_panel_action'):
+            self.log_panel_action.setChecked(self.log_panel_visible)
         
-        print(f"Panel de log {'mostrado' if self.log_panel_visible else 'oculto'}")
+        # Guardar configuración
+        config_manager.save_setting('log_panel_visible', self.log_panel_visible)
+        
+        self._log_system_message(f"Panel de log {'mostrado' if self.log_panel_visible else 'oculto'}")
     
     def toggle_info_panel_from_menu(self):
         """Alternar visibilidad del panel de información desde el menú"""
         if hasattr(self, 'canvas') and self.canvas:
             self.canvas.toggle_info_panel()
+            # Obtener el estado del panel de información del canvas
+            info_visible = getattr(self.canvas, 'info_panel_visible', False)
+            self._log_system_message(f"Panel de información {'mostrado' if info_visible else 'oculto'}")
         else:
-            print("Error: No se pudo acceder al canvas para toggle del panel de información")
+            self._log_system_message("ERROR: No se pudo acceder al canvas para toggle del panel de información")
     
     def set_theme(self, dark_mode):
         """Establecer tema de la aplicación"""
@@ -993,25 +1017,25 @@ class MainWindow(QMainWindow, MainWindowSDNMixin):
                 if hasattr(panel, 'auto_charts_checkbox'):
                     panel.auto_charts_checkbox.setChecked(False)  # NO mostrar en panel
                 
-                print("OK Sistema de graficos automaticos conectado al main UI")
+                self._log_system_message("Sistema de gráficos automáticos conectado")
                 
         except Exception as e:
-            print(f"WARNING Error conectando sistema de graficos automaticos: {e}")
+            self._log_system_message(f"Error conectando sistema de gráficos: {e}")
     
     def on_simulation_graphics_ready(self):
         """Callback cuando la simulación termina y los gráficos están listos"""
         try:
             self.statusBar().showMessage("Simulacion completada - Graficos generados automaticamente", 5000)
-            print("INFO Simulacion terminada, graficos automaticos procesados")
+            self._log_system_message("Simulación terminada, gráficos procesados")
             
         except Exception as e:
-            print(f"ERROR en callback de simulacion terminada: {e}")
+            self._log_system_message(f"ERROR en callback de simulación terminada: {e}")
     
     def on_graphics_saved(self, session_directory):
         """Callback cuando los gráficos se han guardado automáticamente"""
         try:
             self.statusBar().showMessage(f"Graficos guardados en: {session_directory}", 8000)
-            print(f"OK Graficos guardados automaticamente en: {session_directory}")
+            self._log_system_message(f"Gráficos guardados en: {session_directory}")
             
         except Exception as e:
-            print(f"ERROR en callback de graficos guardados: {e}")
+            self._log_system_message(f"ERROR en callback de gráficos guardados: {e}")
