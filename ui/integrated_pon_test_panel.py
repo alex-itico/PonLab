@@ -218,10 +218,13 @@ class IntegratedPONTestPanel(QWidget):
         self.scenario_combo.currentTextChanged.connect(self.on_scenario_changed)
         config_layout.addWidget(self.scenario_combo, 3, 1)
         
-        # Arquitectura de simulación
-        config_layout.addWidget(QLabel("Arquitectura:"), 4, 0)
+        # Arquitectura de simulación (OCULTA - siempre híbrida event-driven)
+        self.architecture_label = QLabel("Arquitectura:")
+        self.architecture_label.setVisible(False)  # Ocultar etiqueta
+        config_layout.addWidget(self.architecture_label, 4, 0)
         self.hybrid_checkbox = QCheckBox("Híbrida Event-Driven")
-        self.hybrid_checkbox.setChecked(True)  # Por defecto usar híbrida
+        self.hybrid_checkbox.setChecked(True)  # Por defecto usar híbrida (siempre activo)
+        self.hybrid_checkbox.setVisible(False)  # Ocultar checkbox
         self.hybrid_checkbox.setToolTip("Usar arquitectura híbrida con control temporal estricto")
         self.hybrid_checkbox.toggled.connect(self.on_architecture_changed)
         config_layout.addWidget(self.hybrid_checkbox, 4, 1)
@@ -235,12 +238,15 @@ class IntegratedPONTestPanel(QWidget):
         self.duration_spinbox.valueChanged.connect(self.on_duration_changed)
         config_layout.addWidget(self.duration_spinbox, 5, 1)
         
-        # Pasos de simulación (para arquitectura clásica)
-        config_layout.addWidget(QLabel("Pasos:"), 6, 0)
+        # Pasos de simulación (OCULTOS - no se usan en arquitectura híbrida)
+        self.steps_label = QLabel("Pasos:")
+        self.steps_label.setVisible(False)  # Ocultar etiqueta
+        config_layout.addWidget(self.steps_label, 6, 0)
         self.steps_spinbox = QSpinBox()
         self.steps_spinbox.setRange(100, 10000)
         self.steps_spinbox.setValue(1000)
         self.steps_spinbox.setSingleStep(100)
+        self.steps_spinbox.setVisible(False)  # Ocultar control
         self.steps_spinbox.setToolTip("Número de pasos (solo arquitectura clásica)")
         config_layout.addWidget(self.steps_spinbox, 6, 1)
         
