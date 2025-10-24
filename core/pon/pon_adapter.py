@@ -503,7 +503,6 @@ class PONAdapter:
         algorithms = {
             "FCFS": FCFSDBAAlgorithm,
             "Priority": PriorityDBAAlgorithm,
-            "RL-DBA": RLDBAAlgorithm,
             "SDN": FCFSDBAAlgorithm,  # Usar FCFS como base para SDN
             "SP-MINSHARE": StrictPriorityMinShareDBA,
         }
@@ -531,7 +530,7 @@ class PONAdapter:
     
     def get_available_algorithms(self):
         """Obtener lista de algoritmos DBA disponibles"""
-        algorithms = ["FCFS", "Priority", "RL-DBA", "SDN", "SP-MINSHARE"]
+        algorithms = ["FCFS", "Priority", "SDN", "SP-MINSHARE"]
 
         # Agregar Smart RL DBA si hay modelo cargado
         if self.smart_rl_algorithm:
@@ -541,11 +540,10 @@ class PONAdapter:
     
     def is_predictive_algorithm(self, name: str = None) -> bool:
         """
-        Indica si el algoritmo es de tipo predictivo (p.ej., RL-DBA).
-        True solo para RL-DBA por ahora.
+        Indica si el algoritmo es de tipo predictivo.
+        Actualmente ningún algoritmo es considerado predictivo.
         """
-        algo = (name or getattr(self, "current_algorithm", "") or "").strip().upper()
-        return algo == "RL-DBA"
+        return False
     
     # ===== TRAFFIC SCENARIOS =====
     
