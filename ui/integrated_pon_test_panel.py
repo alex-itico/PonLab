@@ -280,14 +280,6 @@ class IntegratedPONTestPanel(QWidget):
         # Opciones adicionales
         options_layout = QVBoxLayout()
         
-        self.auto_charts_checkbox = QCheckBox("Mostrar graficos automaticamente")
-        self.auto_charts_checkbox.setChecked(True)
-        options_layout.addWidget(self.auto_charts_checkbox)
-        
-        self.auto_save_checkbox = QCheckBox("Guardar graficos automaticamente")
-        self.auto_save_checkbox.setChecked(True)
-        options_layout.addWidget(self.auto_save_checkbox)
-        
         self.popup_window_checkbox = QCheckBox("Mostrar ventana emergente")
         self.popup_window_checkbox.setChecked(True)
         options_layout.addWidget(self.popup_window_checkbox)
@@ -301,6 +293,7 @@ class IntegratedPONTestPanel(QWidget):
         self.auto_init_checkbox.setChecked(True)
         self.auto_init_checkbox.setToolTip("Reinicializar automáticamente cuando cambien los parámetros")
         self.auto_init_checkbox.toggled.connect(self.toggle_auto_initialize)
+        self.auto_init_checkbox.setVisible(False)  # Invisible pero siempre activo
         options_layout.addWidget(self.auto_init_checkbox)
         
         sim_layout.addLayout(options_layout)
@@ -1008,9 +1001,8 @@ class IntegratedPONTestPanel(QWidget):
         else:
             self.results_panel.add_log_message("❌ No se pudieron obtener métricas SDN después de múltiples intentos")
         
-        # Mostrar gráficos automáticamente en panel si está habilitado
-        if self.auto_charts_checkbox.isChecked():
-            self.results_panel.show_charts_on_simulation_end()
+        # Mostrar gráficos automáticamente en panel (siempre activo)
+        self.results_panel.show_charts_on_simulation_end()
         
         # NUEVO: Guardar gráficos automáticamente y mostrar ventana emergente
         self.handle_automatic_graphics_processing()
@@ -1027,11 +1019,10 @@ class IntegratedPONTestPanel(QWidget):
     def handle_automatic_graphics_processing(self):
         """Manejar el procesamiento automático de gráficos al finalizar simulación"""
         try:
-            # Verificar si alguna opción automática está habilitada
-            should_save = self.auto_save_checkbox.isChecked()
+            # Verificar si la ventana emergente está habilitada
             should_popup = self.popup_window_checkbox.isChecked()
             
-            if not (should_save or should_popup):
+            if not should_popup:
                 return  # No hacer nada si no hay opciones habilitadas
             
             # Obtener datos completos de la simulación
@@ -1050,26 +1041,10 @@ class IntegratedPONTestPanel(QWidget):
                 'algorithm': self.algorithm_combo.currentText(),
                 'traffic_scenario': self.scenario_combo.currentText(),
                 'steps': self.steps_spinbox.value(),
-                'auto_charts': self.auto_charts_checkbox.isChecked(),
                 'detailed_logging': self.detailed_log_checkbox.isChecked()
             }
             
             session_directory = ""
-            
-            # Guardar gráficos automáticamente si está habilitado
-            if should_save and hasattr(self.results_panel, 'charts_panel'):
-                self.results_panel.add_log_message("Guardando graficos automaticamente...")
-                
-                session_directory = self.graphics_saver.save_simulation_graphics_and_data(
-                    self.results_panel.charts_panel,
-                    simulation_data,
-                    session_info
-                )
-                
-                if session_directory:
-                    self.results_panel.add_log_message(f"✅ Gráficos guardados en: {session_directory}")
-                else:
-                    self.results_panel.add_log_message("❌ Error guardando gráficos")
             
             # Mostrar ventana emergente si está habilitado
             if should_popup:
