@@ -42,7 +42,7 @@ class LogPanel(QWidget):
         header_layout.setContentsMargins(0, 0, 0, 0)
         
         # Título
-        title_label = QLabel("📋 Log de Eventos de Simulación")
+        title_label = QLabel("📋 Log de Eventos Simulador")
         title_font = QFont()
         title_font.setBold(True)
         title_font.setPointSize(10)
