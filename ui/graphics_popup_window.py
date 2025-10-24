@@ -159,10 +159,10 @@ class GraphicsPopupWindow(QDialog):
         self.open_folder_btn.clicked.connect(self.open_session_folder)
         buttons_layout.addWidget(self.open_folder_btn)
         
-        self.open_graphics_btn = QPushButton("🖼️ Ver Gráficos Guardados")
-        self.open_graphics_btn.setObjectName("popup_button")  # Identificador para QSS
-        self.open_graphics_btn.clicked.connect(self.open_graphics_folder)
-        buttons_layout.addWidget(self.open_graphics_btn)
+        # Botón "Ver Gráficos Guardados" ELIMINADO (no hay carpeta graficos automática)
+        # self.open_graphics_btn = QPushButton("🖼️ Ver Gráficos Guardados")
+        # self.open_graphics_btn.clicked.connect(self.open_graphics_folder)
+        # buttons_layout.addWidget(self.open_graphics_btn)
         
         buttons_layout.addStretch()
         files_layout.addLayout(buttons_layout)
@@ -197,8 +197,8 @@ class GraphicsPopupWindow(QDialog):
         """Configurar footer con controles"""
         footer_layout = QHBoxLayout()
         
-        # Botón de exportar adicional
-        self.export_btn = QPushButton("💾 Exportar Gráficos Adicionales")
+        # Botón de exportar gráficos
+        self.export_btn = QPushButton("💾 Exportar Gráficos")
         self.export_btn.setObjectName("popup_button")  # Identificador para QSS
         self.export_btn.clicked.connect(self.export_additional_graphics)
         footer_layout.addWidget(self.export_btn)

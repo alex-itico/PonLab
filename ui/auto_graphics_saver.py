@@ -62,8 +62,9 @@ class AutoGraphicsSaver(QObject):
             session_dir = self.create_session_directory()
             print(f"Guardando resultados en: {session_dir}")
             
-            # 1. Guardar gráficos como imágenes
-            graphics_saved = self._save_graphics_as_images(charts_panel, session_dir)
+            # 1. NO Guardar gráficos PNG automáticamente (usar solo botón "Exportar Gráficos")
+            graphics_saved = {}  # Vacío - no se generan gráficos automáticamente
+            # graphics_saved = self._save_graphics_as_images(charts_panel, session_dir)
             
             # 2. Guardar datos de simulación como JSON
             data_saved = self._save_simulation_data(simulation_data, session_dir)
