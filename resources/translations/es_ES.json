@@ -1,0 +1,212 @@
+{
+  "app": {
+    "name": "PonLab - Simulador PON",
+    "version": "Versión"
+  },
+  "menu": {
+    "file": {
+      "title": "&Archivo",
+      "open": "&Abrir archivo...",
+      "save": "&Guardar archivo...",
+      "close": "&Cerrar",
+      "open_tip": "Abrir un archivo de proyecto",
+      "save_tip": "Guardar el proyecto actual",
+      "close_tip": "Cerrar la aplicación"
+    },
+    "view": {
+      "title": "&Ver",
+      "components": "Mostrar/Ocultar &Componentes",
+      "components_tip": "Mostrar u ocultar panel de componentes (Ctrl+P)",
+      "dashboard": "Mostrar/Ocultar &Dashboard SDN",
+      "dashboard_tip": "Mostrar u ocultar el panel de métricas SDN (Ctrl+D)",
+      "grid": "Mostrar/Ocultar &Cuadrícula",
+      "grid_tip": "Mostrar u ocultar la cuadrícula y el origen del canvas",
+      "simulation": "Mostrar/Ocultar &Simulación",
+      "simulation_tip": "Mostrar u ocultar panel de simulación (Ctrl+N)",
+      "info_panel": "Mostrar/Ocultar Panel &Información",
+      "info_panel_tip": "Mostrar u ocultar panel de información (Ctrl+I)",
+      "log_panel": "Mostrar/Ocultar Panel &Log",
+      "log_panel_tip": "Mostrar u ocultar panel de log del simulador (Ctrl+L)",
+      "center_view": "&Centrar Vista (C)",
+      "center_view_tip": "Centrar la vista en el origen",
+      "reset_view": "&Resetear Vista (R)",
+      "reset_view_tip": "Resetear zoom y centrar en origen"
+    },
+    "options": {
+      "title": "&Opciones",
+      "theme": "&Tema",
+      "theme_light": "Tema &Claro",
+      "theme_light_tip": "Aplicar tema claro",
+      "theme_dark": "Tema &Oscuro",
+      "theme_dark_tip": "Aplicar tema oscuro",
+      "about": "&Acerca de...",
+      "about_tip": "Información acerca de la aplicación"
+    },
+    "language": {
+      "title": "&Idioma",
+      "spanish": "🇪🇸 &Español",
+      "spanish_tip": "Cambiar idioma a Español",
+      "english": "🇺🇸 &English",
+      "english_tip": "Change language to English"
+    }
+  },
+  "sidebar": {
+    "title": "🔧 Dispositivos",
+    "components": "Componentes",
+    "connection_mode": "Modo Conexión",
+    "devices": "Dispositivos",
+    "drag_info": "Arrastra dispositivos al canvas\npara crear la topología",
+    "add_connections": "Añadir Conexiones",
+    "connection": "Conexión",
+    "device_names": {
+      "olt": "Terminal de Línea Óptica",
+      "olt_sdn": "Terminal de Línea Óptica (SDN)",
+      "onu": "Unidad de Red Óptica"
+    },
+    "device_types": {
+      "olt": "OLT",
+      "olt_sdn": "OLT_SDN",
+      "onu": "ONU",
+      "connection": "Conexión"
+    },
+    "properties": {
+      "title": "📱 Propiedades",
+      "no_selection": "Sin selección",
+      "select_device": "Selecciona un dispositivo",
+      "to_view_properties": "para ver sus propiedades",
+      "name": "Nombre:",
+      "id": "ID:",
+      "position": "Posición:",
+      "x_coord": "X:",
+      "y_coord": "Y:",
+      "transmission_rate": "Tasa Transmisión:",
+      "info": "Info:",
+      "save": "💾 Guardar",
+      "edit_full": "✏️ Editar Completo"
+    }
+  },
+  "simulation": {
+    "title": "Simulación PON",
+    "configuration": "Configuración",
+    "topology": "Topología",
+    "algorithm": "Algoritmo DBA",
+    "scenario": "Escenario de Tráfico",
+    "steps": "Pasos",
+    "controls": "Simulación",
+    "init_manual": "⚙️ Inicialización Manual",
+    "init_manual_tip": "Usar solo si la inicialización automática falló",
+    "start": "▶️ Ejecutar",
+    "stop": "⏹️ Detener",
+    "options": "Opciones",
+    "show_popup": "Mostrar ventana emergente",
+    "detailed_log": "Logging detallado",
+    "auto_init": "Inicialización automática",
+    "auto_init_tip": "Reinicializar automáticamente cuando cambien los parámetros"
+  },
+  "log": {
+    "title": "📋 Log de Eventos Simulador",
+    "clear": "Limpiar Log",
+    "export": "Exportar Log",
+    "system": "[SISTEMA]",
+    "error": "[ERROR]",
+    "warning": "[ADVERTENCIA]",
+    "info": "[INFO]"
+  },
+  "messages": {
+    "system": {
+      "dashboard_shown": "Dashboard SDN mostrado",
+      "dashboard_hidden": "Dashboard SDN oculto",
+      "components_shown": "Panel de componentes mostrado",
+      "components_hidden": "Panel de componentes oculto",
+      "simulation_shown": "Panel de simulación mostrado",
+      "simulation_hidden": "Panel de simulación oculto",
+      "log_panel_shown": "Panel de log mostrado",
+      "log_panel_hidden": "Panel de log oculto",
+      "grid_shown": "Cuadrícula mostrada",
+      "grid_hidden": "Cuadrícula oculta",
+      "view_centered": "Vista centrada en origen",
+      "view_reset": "Vista reseteada",
+      "log_panel_connected": "Panel de log conectado con NetPONPy",
+      "language_changed": "Idioma cambiado a: {language}"
+    },
+    "simulation": {
+      "started": "🚀 Simulación iniciada",
+      "finished": "🎯 Simulación finalizada - Resultados y gráficos procesados",
+      "saving_data": "💾 Guardando datos de simulación...",
+      "data_saved": "✅ Datos guardados en: {directory}",
+      "error_saving": "❌ Error guardando datos de simulación",
+      "error_processing": "❌ Error en procesamiento automático: {error}",
+      "initializing": "⚙️ Inicializando simulación...",
+      "initialized": "✅ Simulación inicializada correctamente",
+      "error_init": "❌ Error en inicialización: {error}"
+    },
+    "graphics": {
+      "popup_shown": "Ventana emergente de graficos mostrada",
+      "popup_closed": "Ventana emergente de graficos cerrada",
+      "exported": "Graficos adicionales exportados a: {directory}",
+      "error_showing": "ERROR mostrando ventana emergente: {error}"
+    }
+  },
+  "dialog": {
+    "about": {
+      "title": "Acerca de PonLab",
+      "description": "Simulador de Redes Ópticas Pasivas (PON) con capacidades de Machine Learning",
+      "version": "Versión: {version}",
+      "close": "Cerrar"
+    },
+    "unsaved": {
+      "title": "Trabajo sin guardar",
+      "message": "Hay trabajo sin guardar. ¿Desea continuar?",
+      "yes": "Sí",
+      "no": "No"
+    },
+    "error": {
+      "title": "Error",
+      "loading_file": "Error al cargar el archivo: {error}",
+      "saving_file": "Error al guardar el archivo: {error}"
+    }
+  },
+  "algorithms": {
+    "fcfs": "FCFS - First Come First Served",
+    "fcfs_desc": "Algoritmo básico FIFO",
+    "priority": "Priority - Basado en prioridades",
+    "priority_desc": "Basado en prioridades",
+    "sdn": "SDN - Software Defined Network",
+    "sdn_desc": "Control centralizado con SDN",
+    "smart_rl": "Smart-RL - Smart Reinforcement Learning",
+    "smart_rl_desc": "RL inteligente interno",
+    "smart_rl_sdn": "Smart-RL-SDN - Smart RL + SDN",
+    "smart_rl_sdn_desc": "Híbrido de RL inteligente y SDN"
+  },
+  "tooltips": {
+    "algorithm": "Seleccionar algoritmo de asignación dinámica de ancho de banda",
+    "scenario": "Seleccionar escenario de generación de tráfico",
+    "steps": "Número de pasos de simulación (solo arquitectura clásica)"
+  },
+  "canvas": {
+    "context_menu": {
+      "navigation": "🧭 Navegación:",
+      "center_origin": "🎯 Centrar en Origen (C)",
+      "reset_view": "🔄 Resetear Vista (R)",
+      "grid": "📐 Cuadrícula:",
+      "hide_grid": "🚫 Ocultar Cuadrícula (Ctrl+G)",
+      "show_grid": "👁️ Mostrar Cuadrícula (Ctrl+G)",
+      "hide_info": "🚫 Ocultar Info Panel (Ctrl+I)",
+      "show_info": "👁️ Mostrar Info Panel (Ctrl+I)",
+      "grid_size": "📏 Tamaño Cuadrícula",
+      "zoom": "🔍 Zoom:",
+      "zoom_level": "🔎 Nivel de Zoom",
+      "normal": "Normal",
+      "information": "ℹ️ Información:",
+      "grid_coords": "📍 Cuadrícula: ({x}, {y})",
+      "world_coords": "🌍 Mundo: ({x}, {y})"
+    },
+    "info_panel": {
+      "mouse_grid": "Mouse - Cuadrícula: ({x},{y})",
+      "mouse_world": "Mouse - Mundo: ({x},{y})",
+      "zoom": "Zoom: {zoom}x",
+      "grid_size": "Tamaño de cuadrícula: {size}px",
+      "total_devices": "📦 Total de dispositivos: {count}"
+    }
+  }
+}
