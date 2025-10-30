@@ -13,6 +13,7 @@ from PyQt5.QtGui import QPen, QBrush, QColor, QPainter, QCursor, QFont, QKeySequ
 from utils.constants import DEFAULT_CANVAS_WIDTH, DEFAULT_CANVAS_HEIGHT
 from utils.project_manager import ProjectManager
 from core import DeviceManager, ConnectionManager
+from utils.translation_manager import translation_manager
 
 class Canvas(QGraphicsView):
     """Clase de canvas con cuadrícula infinita centrada"""
@@ -231,12 +232,15 @@ class Canvas(QGraphicsView):
         # Obtener estadísticas de dispositivos
         device_stats = self.device_manager.get_device_stats()
         
-        info_text = f"""Mouse - Cuadrícula: ({grid_x},{grid_y})
-Mouse - Mundo: ({world_x},{world_y})
-Zoom: {self.zoom_factor:.1f}x
-Tamaño de cuadrícula: {self.grid_size}px
+        # Usar traducciones
+        tr = translation_manager.get_text
+        
+        info_text = f"""{tr('canvas.info_panel.mouse_grid', x=grid_x, y=grid_y)}
+{tr('canvas.info_panel.mouse_world', x=world_x, y=world_y)}
+{tr('canvas.info_panel.zoom', zoom=f"{self.zoom_factor:.1f}")}
+{tr('canvas.info_panel.grid_size', size=self.grid_size)}
 
-📦 Total de dispositivos: {device_stats['total_devices']}"""
+{tr('canvas.info_panel.total_devices', count=device_stats['total_devices'])}"""
         
         self.info_label.setText(info_text)
     
@@ -549,39 +553,42 @@ Tamaño de cuadrícula: {self.grid_size}px
         world_x = int(scene_pos.x())
         world_y = int(scene_pos.y())
         
+        # Usar traducciones
+        tr = translation_manager.get_text
+        
         # NAVEGACIÓN
-        nav_label = QAction("🧭 Navegación:", self)
+        nav_label = QAction(tr('canvas.context_menu.navigation'), self)
         nav_label.setEnabled(False)
         context_menu.addAction(nav_label)
         
-        center_action = QAction("🎯 Centrar en Origen (C)", self)
+        center_action = QAction(tr('canvas.context_menu.center_origin'), self)
         center_action.triggered.connect(self.center_view)
         context_menu.addAction(center_action)
         
-        reset_action = QAction("🔄 Resetear Vista (R)", self)
+        reset_action = QAction(tr('canvas.context_menu.reset_view'), self)
         reset_action.triggered.connect(self.reset_view)
         context_menu.addAction(reset_action)
         
         context_menu.addSeparator()
         
         # CUADRÍCULA
-        grid_label = QAction("📐 Cuadrícula:", self)
+        grid_label = QAction(tr('canvas.context_menu.grid'), self)
         grid_label.setEnabled(False)
         context_menu.addAction(grid_label)
         
-        grid_text = f"{'🚫 Ocultar' if self.grid_visible else '👁️ Mostrar'} Cuadrícula (Ctrl+G)"
+        grid_text = tr('canvas.context_menu.hide_grid') if self.grid_visible else tr('canvas.context_menu.show_grid')
         grid_toggle_action = QAction(grid_text, self)
         # Usar el mismo método que el menubar para consistencia total
         grid_toggle_action.triggered.connect(self.toggle_grid)
         context_menu.addAction(grid_toggle_action)
         
-        info_text = f"{'🚫 Ocultar' if self.info_panel_visible else '👁️ Mostrar'} Info Panel (Ctrl+I)"
+        info_text = tr('canvas.context_menu.hide_info') if self.info_panel_visible else tr('canvas.context_menu.show_info')
         info_toggle_action = QAction(info_text, self)
         info_toggle_action.triggered.connect(self.toggle_info_panel)
         context_menu.addAction(info_toggle_action)
         
         # Submenu Tamaño de Cuadrícula
-        grid_size_menu = context_menu.addMenu("📏 Tamaño Cuadrícula")
+        grid_size_menu = context_menu.addMenu(tr('canvas.context_menu.grid_size'))
         grid_sizes = [1, 5, 10, 15, 20, 25, 30, 40, 50, 75, 100]
         
         size_group = QActionGroup(self)
@@ -596,19 +603,19 @@ Tamaño de cuadrícula: {self.grid_size}px
         context_menu.addSeparator()
         
         # ZOOM
-        zoom_label = QAction("🔍 Zoom:", self)
+        zoom_label = QAction(tr('canvas.context_menu.zoom'), self)
         zoom_label.setEnabled(False)
         context_menu.addAction(zoom_label)
         
         # Submenu Nivel de Zoom
-        zoom_menu = context_menu.addMenu("🔎 Nivel de Zoom")
+        zoom_menu = context_menu.addMenu(tr('canvas.context_menu.zoom_level'))
         zoom_levels = [0.25, 0.5, 0.75, 1.0, 1.5, 2.0, 3.0, 5.0, 10.0]
         
         zoom_group = QActionGroup(self)
         for zoom in zoom_levels:
             zoom_text = f"{zoom}x"
             if zoom == 1.0:
-                zoom_text = "1x (Normal)"
+                zoom_text = f"1x ({tr('canvas.context_menu.normal')})"
             zoom_action = QAction(zoom_text, self)
             zoom_action.setCheckable(True)
             zoom_action.setChecked(abs(self.zoom_factor - zoom) < 0.1)
@@ -619,15 +626,15 @@ Tamaño de cuadrícula: {self.grid_size}px
         context_menu.addSeparator()
         
         # INFORMACIÓN
-        info_label = QAction("ℹ️ Información:", self)
+        info_label = QAction(tr('canvas.context_menu.information'), self)
         info_label.setEnabled(False)
         context_menu.addAction(info_label)
         
-        grid_info = QAction(f"📍 Cuadrícula: ({grid_x}, {grid_y})", self)
+        grid_info = QAction(tr('canvas.context_menu.grid_coords', x=grid_x, y=grid_y), self)
         grid_info.setEnabled(False)
         context_menu.addAction(grid_info)
         
-        world_info = QAction(f"🌍 Mundo: ({world_x}, {world_y})", self)
+        world_info = QAction(tr('canvas.context_menu.world_coords', x=world_x, y=world_y), self)
         world_info.setEnabled(False)
         context_menu.addAction(world_info)
         
@@ -655,6 +662,16 @@ Tamaño de cuadrícula: {self.grid_size}px
             print(f"ERROR en toggle_info_panel: {e}")
             import traceback
             traceback.print_exc()
+    
+    def retranslate_ui(self):
+        """Recargar traducciones del canvas"""
+        # Actualizar panel de información con posición actual del mouse
+        if hasattr(self, 'last_mouse_scene_pos'):
+            scene_pos = self.last_mouse_scene_pos
+            self.update_info_panel(scene_pos.x(), scene_pos.y())
+        else:
+            # Si no hay posición guardada, usar coordenadas por defecto
+            self.update_info_panel(0, 0)
     
     def set_grid_size(self, size):
         """Establecer tamaño de cuadrícula"""

@@ -16,6 +16,7 @@ from utils.constants import (
 )
 from utils.resource_manager import resource_manager
 from utils.config_manager import config_manager
+from utils.translation_manager import translation_manager, tr
 from .canvas import Canvas
 from .sidebar_panel import SidebarPanel
 from .pon_sdn_dashboard import PONSDNDashboard
@@ -30,6 +31,10 @@ class MainWindow(QMainWindow, MainWindowSDNMixin):
     
     def __init__(self):
         super().__init__()
+        
+        # Cargar idioma guardado
+        saved_language = config_manager.get_language()
+        translation_manager.load_language(saved_language)
         
         # Cargar configuraciones guardadas
         self.components_visible = config_manager.get_setting('components_visible', True)
@@ -160,141 +165,218 @@ class MainWindow(QMainWindow, MainWindowSDNMixin):
         # Menú Ver
         self.setup_view_menu(menubar)
         
-        # Menú Opciones
+        # Menú Opciones (incluye Tema e Idioma)
         self.setup_options_menu(menubar)
     
     def setup_file_menu(self, menubar):
         """Configurar menú Archivo"""
-        file_menu = menubar.addMenu('&Archivo')
+        file_menu = menubar.addMenu(tr('menu.file.title'))
         
         # Abrir archivo
-        open_action = QAction('&Abrir archivo...', self)
+        open_action = QAction(tr('menu.file.open'), self)
         open_action.setShortcut(QKeySequence.Open)
-        open_action.setStatusTip('Abrir un archivo de proyecto')
+        open_action.setStatusTip(tr('menu.file.open_tip'))
         open_action.triggered.connect(self.open_file)
         file_menu.addAction(open_action)
         
         # Guardar archivo
-        save_action = QAction('&Guardar archivo...', self)
+        save_action = QAction(tr('menu.file.save'), self)
         save_action.setShortcut(QKeySequence.Save)
-        save_action.setStatusTip('Guardar el proyecto actual')
+        save_action.setStatusTip(tr('menu.file.save_tip'))
         save_action.triggered.connect(self.save_file)
         file_menu.addAction(save_action)
         
         file_menu.addSeparator()
         
         # Cerrar
-        close_action = QAction('&Cerrar', self)
+        close_action = QAction(tr('menu.file.close'), self)
         close_action.setShortcut(QKeySequence.Quit)
-        close_action.setStatusTip('Cerrar la aplicación')
+        close_action.setStatusTip(tr('menu.file.close_tip'))
         close_action.triggered.connect(self.close)
         file_menu.addAction(close_action)
     
     def setup_view_menu(self, menubar):
         """Configurar menú Ver"""
-        view_menu = menubar.addMenu('&Ver')
+        view_menu = menubar.addMenu(tr('menu.view.title'))
         
         # Mostrar/Ocultar Componentes
-        self.components_action = QAction('Mostrar/Ocultar &Componentes', self)
+        self.components_action = QAction(tr('menu.view.components'), self)
         self.components_action.setCheckable(True)
         self.components_action.setChecked(self.components_visible)
         self.components_action.setShortcut('Ctrl+P')
-        self.components_action.setStatusTip('Mostrar u ocultar panel de componentes (Ctrl+P)')
+        self.components_action.setStatusTip(tr('menu.view.components_tip'))
         self.components_action.triggered.connect(self.toggle_components)
         view_menu.addAction(self.components_action)
         
         # Mostrar/Ocultar Dashboard SDN
-        self.sdn_dashboard_action = QAction('Mostrar/Ocultar &Dashboard SDN', self)
+        self.sdn_dashboard_action = QAction(tr('menu.view.dashboard'), self)
         self.sdn_dashboard_action.setCheckable(True)
         self.sdn_dashboard_action.setChecked(self.sdn_dashboard_visible)
         self.sdn_dashboard_action.setShortcut('Ctrl+D')
-        self.sdn_dashboard_action.setStatusTip('Mostrar u ocultar el panel de métricas SDN (Ctrl+D)')
+        self.sdn_dashboard_action.setStatusTip(tr('menu.view.dashboard_tip'))
         self.sdn_dashboard_action.triggered.connect(self.toggle_sdn_dashboard)
         view_menu.addAction(self.sdn_dashboard_action)
         
         # Mostrar/Ocultar Cuadrícula (incluye el origen)
-        self.grid_action = QAction('Mostrar/Ocultar &Cuadrícula', self)
+        self.grid_action = QAction(tr('menu.view.grid'), self)
         self.grid_action.setCheckable(True)
         self.grid_action.setChecked(self.grid_visible)
         self.grid_action.setShortcut('Ctrl+G')
-        self.grid_action.setStatusTip('Mostrar u ocultar la cuadrícula y el origen del canvas')
+        self.grid_action.setStatusTip(tr('menu.view.grid_tip'))
         self.grid_action.triggered.connect(self.toggle_grid)
         view_menu.addAction(self.grid_action)
         
         # Mostrar/Ocultar Simulación
-        self.simulation_action = QAction('Mostrar/Ocultar &Simulación', self)
+        self.simulation_action = QAction(tr('menu.view.simulation'), self)
         self.simulation_action.setCheckable(True)
         self.simulation_action.setChecked(self.netponpy_visible)
         self.simulation_action.setShortcut('Ctrl+N')
-        self.simulation_action.setStatusTip('Mostrar u ocultar panel de simulación (Ctrl+N)')
+        self.simulation_action.setStatusTip(tr('menu.view.simulation_tip'))
         self.simulation_action.triggered.connect(self.toggle_netponpy)
         view_menu.addAction(self.simulation_action)
         
         # Mostrar/Ocultar Panel Información
-        self.info_panel_action = QAction('Mostrar/Ocultar Panel &Información\tCtrl+I', self)
+        self.info_panel_action = QAction(tr('menu.view.info_panel') + '\tCtrl+I', self)
         self.info_panel_action.setCheckable(True)
         self.info_panel_action.setChecked(True)  # Por defecto visible
-        self.info_panel_action.setStatusTip('Mostrar u ocultar panel de información (Ctrl+I)')
+        self.info_panel_action.setStatusTip(tr('menu.view.info_panel_tip'))
         self.info_panel_action.triggered.connect(self.toggle_info_panel_from_menu)
         view_menu.addAction(self.info_panel_action)
         
         # Mostrar/Ocultar Panel Log
-        self.log_panel_action = QAction('Mostrar/Ocultar Panel &Log', self)
+        self.log_panel_action = QAction(tr('menu.view.log_panel'), self)
         self.log_panel_action.setCheckable(True)
         self.log_panel_action.setChecked(self.log_panel_visible)
         self.log_panel_action.setShortcut('Ctrl+L')
-        self.log_panel_action.setStatusTip('Mostrar u ocultar panel de log del simulador (Ctrl+L)')
+        self.log_panel_action.setStatusTip(tr('menu.view.log_panel_tip'))
         self.log_panel_action.triggered.connect(self.toggle_log_panel)
         view_menu.addAction(self.log_panel_action)
         
         view_menu.addSeparator()
         
         # Opciones de Vista (con atajos)
-        center_view_action = QAction('&Centrar Vista (C)', self)
-        center_view_action.setStatusTip('Centrar la vista en el origen')
+        center_view_action = QAction(tr('menu.view.center_view'), self)
+        center_view_action.setStatusTip(tr('menu.view.center_view_tip'))
         center_view_action.triggered.connect(self.center_view)
         view_menu.addAction(center_view_action)
         
-        zoom_reset_action = QAction('&Resetear Vista (R)', self)
-        zoom_reset_action.setStatusTip('Resetear zoom y centrar en origen')
+        zoom_reset_action = QAction(tr('menu.view.reset_view'), self)
+        zoom_reset_action.setStatusTip(tr('menu.view.reset_view_tip'))
         zoom_reset_action.triggered.connect(self.reset_view)
         view_menu.addAction(zoom_reset_action)
     
     def setup_options_menu(self, menubar):
         """Configurar menú Opciones"""
-        options_menu = menubar.addMenu('&Opciones')
+        options_menu = menubar.addMenu(tr('menu.options.title'))
         
         # Submenú Tema
-        theme_menu = options_menu.addMenu('&Tema')
+        theme_menu = options_menu.addMenu(tr('menu.options.theme'))
         
         # Grupo de acciones para temas (solo una puede estar seleccionada)
         theme_group = QActionGroup(self)
         
         # Tema Claro
-        light_theme_action = QAction('Tema &Claro', self)
+        light_theme_action = QAction(tr('menu.options.theme_light'), self)
         light_theme_action.setCheckable(True)
         light_theme_action.setChecked(not self.dark_theme)
-        light_theme_action.setStatusTip('Aplicar tema claro')
+        light_theme_action.setStatusTip(tr('menu.options.theme_light_tip'))
         light_theme_action.triggered.connect(lambda: self.set_theme(False))
         theme_group.addAction(light_theme_action)
         theme_menu.addAction(light_theme_action)
         
         # Tema Oscuro
-        dark_theme_action = QAction('Tema &Oscuro', self)
+        dark_theme_action = QAction(tr('menu.options.theme_dark'), self)
         dark_theme_action.setCheckable(True)
         dark_theme_action.setChecked(self.dark_theme)
-        dark_theme_action.setStatusTip('Aplicar tema oscuro')
+        dark_theme_action.setStatusTip(tr('menu.options.theme_dark_tip'))
         dark_theme_action.triggered.connect(lambda: self.set_theme(True))
         theme_group.addAction(dark_theme_action)
         theme_menu.addAction(dark_theme_action)
         
+        # Submenú Idioma
+        language_menu = options_menu.addMenu(tr('menu.language.title'))
+        
+        # Grupo de acciones para idiomas (solo uno puede estar seleccionado)
+        language_group = QActionGroup(self)
+        
+        # Idioma Español
+        spanish_action = QAction(tr('menu.language.spanish'), self)
+        spanish_action.setCheckable(True)
+        spanish_action.setChecked(True)  # Por defecto español
+        spanish_action.setStatusTip(tr('menu.language.spanish_tip'))
+        spanish_action.triggered.connect(lambda: self.change_language('es_ES'))
+        language_group.addAction(spanish_action)
+        language_menu.addAction(spanish_action)
+        
+        # Idioma Inglés
+        english_action = QAction(tr('menu.language.english'), self)
+        english_action.setCheckable(True)
+        english_action.setChecked(False)
+        english_action.setStatusTip(tr('menu.language.english_tip'))
+        english_action.triggered.connect(lambda: self.change_language('en_US'))
+        language_group.addAction(english_action)
+        language_menu.addAction(english_action)
+        
+        # Guardar referencias para poder actualizar después
+        self.language_actions = {
+            'es_ES': spanish_action,
+            'en_US': english_action
+        }
+        
+        # Marcar el idioma actual como seleccionado
+        current_lang = translation_manager.get_current_language()
+        if current_lang in self.language_actions:
+            self.language_actions[current_lang].setChecked(True)
+        
         options_menu.addSeparator()
         
         # Acerca de
-        about_action = QAction('&Acerca de...', self)
-        about_action.setStatusTip('Información acerca de la aplicación')
+        about_action = QAction(tr('menu.options.about'), self)
+        about_action.setStatusTip(tr('menu.options.about_tip'))
         about_action.triggered.connect(self.mostrar_acerca_de)
         options_menu.addAction(about_action)
+    
+    def change_language(self, language_code):
+        """Cambiar el idioma de la aplicación"""
+        # Cargar nuevo idioma
+        if translation_manager.load_language(language_code):
+            # Guardar preferencia de idioma
+            config_manager.save_language(language_code)
+            
+            # Actualizar el estado de los botones
+            for lang, action in self.language_actions.items():
+                action.setChecked(lang == language_code)
+            
+            # Obtener nombre del idioma para el mensaje
+            language_name = translation_manager.get_language_name(language_code)
+            
+            # Log del cambio de idioma
+            print(f"✅ Idioma cambiado a: {language_name}")
+            self._log_system_message(tr('messages.system.language_changed', language=language_name))
+            
+            # Recargar interfaz con nuevas traducciones
+            self.retranslate_ui()
+        else:
+            print(f"❌ Error al cambiar idioma a: {language_code}")
+    
+    def retranslate_ui(self):
+        """Actualizar todos los textos de la interfaz con el idioma actual"""
+        # Recrear la barra de menú completamente
+        self.menuBar().clear()
+        self.setup_menubar()
+        
+        # Actualizar sidebar si existe
+        if hasattr(self, 'sidebar') and self.sidebar:
+            self.sidebar.retranslate_ui()
+        
+        # Actualizar canvas si existe
+        if hasattr(self, 'canvas') and self.canvas:
+            self.canvas.retranslate_ui()
+        
+        # Actualizar título de la ventana si es necesario
+        # self.setWindowTitle(tr('app.name'))
+        
+        print("🔄 Interfaz recargada con nuevo idioma")
     
     # Métodos de manejo de eventos del menú
     def open_file(self):

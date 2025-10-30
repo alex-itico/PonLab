@@ -172,6 +172,14 @@ class ConfigManager:
         """Verificar si las características RL están habilitadas"""
         return self.get_setting('enable_rl_features', True)
     
+    def save_language(self, language_code):
+        """Guardar idioma seleccionado"""
+        self.save_setting('language', language_code)
+    
+    def get_language(self):
+        """Obtener idioma guardado"""
+        return self.get_setting('language', 'es_ES')
+    
     def reset_to_defaults(self):
         """Resetear todas las configuraciones a valores por defecto"""
         self.settings.clear()

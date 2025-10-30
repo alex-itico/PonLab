@@ -10,6 +10,7 @@ from PyQt5.QtCore import Qt, pyqtSignal, QMimeData, QPoint
 from PyQt5.QtGui import QFont, QPixmap, QPainter, QColor, QPen, QBrush, QDrag
 from PyQt5.QtSvg import QSvgRenderer
 from utils.constants import DEFAULT_SIDEBAR_WIDTH
+from utils.translation_manager import tr
 from core import SimulationManager
 import os
 
@@ -52,20 +53,20 @@ class DeviceItem(QFrame):
         info_layout.setSpacing(2)
         
         # Nombre del dispositivo
-        name_label = QLabel(self.device_name)
+        self.name_label = QLabel(self.device_name)
         name_font = QFont()
         name_font.setBold(True)
         name_font.setPointSize(10)
-        name_label.setFont(name_font)
-        info_layout.addWidget(name_label)
+        self.name_label.setFont(name_font)
+        info_layout.addWidget(self.name_label)
         
         # Tipo del dispositivo
-        type_label = QLabel(self.device_type)
+        self.type_label = QLabel(self.device_type)
         type_font = QFont()
         type_font.setPointSize(8)
-        type_label.setFont(type_font)
-        type_label.setStyleSheet("color: #666666;")
-        info_layout.addWidget(type_label)
+        self.type_label.setFont(type_font)
+        self.type_label.setStyleSheet("color: #666666;")
+        info_layout.addWidget(self.type_label)
         
         layout.addLayout(info_layout)
         layout.addStretch()
@@ -339,20 +340,20 @@ class ConnectionItem(QFrame):
         info_layout.setSpacing(2)
         
         # Nombre de la herramienta
-        name_label = QLabel("Añadir Conexiones")
+        self.name_label = QLabel(tr('sidebar.add_connections'))
         name_font = QFont()
         name_font.setBold(True)
         name_font.setPointSize(10)
-        name_label.setFont(name_font)
-        info_layout.addWidget(name_label)
+        self.name_label.setFont(name_font)
+        info_layout.addWidget(self.name_label)
         
         # Descripción de la herramienta
-        desc_label = QLabel("Conexión")
+        self.desc_label = QLabel(tr('sidebar.connection'))
         desc_font = QFont()
         desc_font.setPointSize(8)
-        desc_label.setFont(desc_font)
-        desc_label.setStyleSheet("color: #666666;")
-        info_layout.addWidget(desc_label)
+        self.desc_label.setFont(desc_font)
+        self.desc_label.setStyleSheet("color: #666666;")
+        info_layout.addWidget(self.desc_label)
         
         layout.addLayout(info_layout)
         layout.addStretch()
@@ -542,13 +543,13 @@ class DevicePropertiesPanel(QFrame):
         main_layout.setSpacing(8)  # Mayor espaciado
         
         # Título del panel
-        title_label = QLabel("📱 Propiedades")
+        self.title_label = QLabel(tr('sidebar.properties.title'))
         title_font = QFont()
         title_font.setBold(True)
         title_font.setPointSize(10)
-        title_label.setFont(title_font)
-        title_label.setAlignment(Qt.AlignCenter)
-        main_layout.addWidget(title_label)
+        self.title_label.setFont(title_font)
+        self.title_label.setAlignment(Qt.AlignCenter)
+        main_layout.addWidget(self.title_label)
         
         # Crear contenedor de propiedades
         self.properties_group = QGroupBox("")
@@ -559,7 +560,7 @@ class DevicePropertiesPanel(QFrame):
         
         # Campos editables
         self.device_name_edit = QLineEdit()
-        self.device_name_edit.setPlaceholderText("Nombre del dispositivo")
+        self.device_name_edit.setPlaceholderText(tr('sidebar.properties.name'))
         self.device_name_edit.setMinimumHeight(22)  # Altura mínima para mejor legibilidad
         self.device_name_edit.textChanged.connect(self.on_name_changed)
         
@@ -585,9 +586,11 @@ class DevicePropertiesPanel(QFrame):
         self.y_coord_edit.setMinimumHeight(22)  # Altura consistente
         self.y_coord_edit.textChanged.connect(self.on_coords_changed)
         
-        coords_layout.addWidget(QLabel("X:"))
+        self.x_label = QLabel(tr('sidebar.properties.x_coord'))
+        self.y_label = QLabel(tr('sidebar.properties.y_coord'))
+        coords_layout.addWidget(self.x_label)
         coords_layout.addWidget(self.x_coord_edit)
-        coords_layout.addWidget(QLabel("Y:"))
+        coords_layout.addWidget(self.y_label)
         coords_layout.addWidget(self.y_coord_edit)
         coords_layout.addStretch()
         
@@ -607,12 +610,18 @@ class DevicePropertiesPanel(QFrame):
         self.transmission_rate_edit.valueChanged.connect(self.on_transmission_rate_changed)
         self.transmission_rate_edit.setVisible(False)  # Oculto por defecto
         
-        # Agregar campos al formulario
-        props_layout.addRow("Nombre:", self.device_name_edit)
-        props_layout.addRow("ID:", self.device_id_label)
-        props_layout.addRow("Posición:", coords_widget)
-        props_layout.addRow("Tasa Transmisión:", self.transmission_rate_edit)
-        props_layout.addRow("Info:", self.specific_info_label)
+        # Agregar campos al formulario con labels traducibles
+        self.name_row_label = QLabel(tr('sidebar.properties.name'))
+        self.id_row_label = QLabel(tr('sidebar.properties.id'))
+        self.position_row_label = QLabel(tr('sidebar.properties.position'))
+        self.transmission_row_label = QLabel(tr('sidebar.properties.transmission_rate'))
+        self.info_row_label = QLabel(tr('sidebar.properties.info'))
+        
+        props_layout.addRow(self.name_row_label, self.device_name_edit)
+        props_layout.addRow(self.id_row_label, self.device_id_label)
+        props_layout.addRow(self.position_row_label, coords_widget)
+        props_layout.addRow(self.transmission_row_label, self.transmission_rate_edit)
+        props_layout.addRow(self.info_row_label, self.specific_info_label)
         
         main_layout.addWidget(self.properties_group)
         
@@ -624,7 +633,7 @@ class DevicePropertiesPanel(QFrame):
         buttons_layout.setSpacing(8)
         
         # Botón para guardar cambios
-        self.save_button = QPushButton("💾 Guardar")
+        self.save_button = QPushButton(tr('sidebar.properties.save'))
         self.save_button.setFixedHeight(28)
         self.save_button.setStyleSheet("""
             QPushButton {
@@ -648,7 +657,7 @@ class DevicePropertiesPanel(QFrame):
         self.save_button.setEnabled(False)  # Deshabilitado inicialmente
         
         # Botón para edición completa
-        self.edit_button = QPushButton("✏️ Editar Completo")
+        self.edit_button = QPushButton(tr('sidebar.properties.edit_full'))
         self.edit_button.setFixedHeight(28)  # Misma altura que el botón guardar
         self.edit_button.setStyleSheet("""
             QPushButton {
@@ -668,12 +677,12 @@ class DevicePropertiesPanel(QFrame):
     
     def show_no_selection(self):
         """Mostrar estado sin dispositivo seleccionado"""
-        self.properties_group.setTitle("Sin selección")
+        self.properties_group.setTitle(tr('sidebar.properties.no_selection'))
         self.device_name_edit.setText("")
-        self.device_name_edit.setPlaceholderText("Selecciona un dispositivo")
+        self.device_name_edit.setPlaceholderText(tr('sidebar.properties.select_device'))
         self.device_name_edit.setEnabled(False)
         
-        self.device_id_label.setText("para ver sus propiedades")
+        self.device_id_label.setText(tr('sidebar.properties.to_view_properties'))
         
         self.x_coord_edit.setText("")
         self.x_coord_edit.setEnabled(False)
@@ -942,6 +951,32 @@ class DevicePropertiesPanel(QFrame):
                 
         except Exception as e:
             print(f"❌ Error actualizando sidebar: {e}")
+    
+    def retranslate_ui(self):
+        """Actualizar todos los textos del panel de propiedades con el idioma actual"""
+        # Actualizar título
+        self.title_label.setText(tr('sidebar.properties.title'))
+        
+        # Actualizar labels de campos
+        self.name_row_label.setText(tr('sidebar.properties.name'))
+        self.id_row_label.setText(tr('sidebar.properties.id'))
+        self.position_row_label.setText(tr('sidebar.properties.position'))
+        self.transmission_row_label.setText(tr('sidebar.properties.transmission_rate'))
+        self.info_row_label.setText(tr('sidebar.properties.info'))
+        
+        # Actualizar labels de coordenadas
+        self.x_label.setText(tr('sidebar.properties.x_coord'))
+        self.y_label.setText(tr('sidebar.properties.y_coord'))
+        
+        # Actualizar botones
+        self.save_button.setText(tr('sidebar.properties.save'))
+        self.edit_button.setText(tr('sidebar.properties.edit_full'))
+        
+        # Actualizar placeholder si no hay selección
+        if not self.current_device:
+            self.properties_group.setTitle(tr('sidebar.properties.no_selection'))
+            self.device_name_edit.setPlaceholderText(tr('sidebar.properties.select_device'))
+            self.device_id_label.setText(tr('sidebar.properties.to_view_properties'))
 
 
 class SidebarPanel(QWidget):
@@ -977,14 +1012,14 @@ class SidebarPanel(QWidget):
         main_layout.setSpacing(5)
         
         # Título del panel
-        title_label = QLabel("🔧 Dispositivos")
+        self.title_label = QLabel(tr('sidebar.title'))
         title_font = QFont()
         title_font.setBold(True)
         title_font.setPointSize(12)
-        title_label.setFont(title_font)
-        title_label.setAlignment(Qt.AlignCenter)
-        title_label.setFixedHeight(40)
-        main_layout.addWidget(title_label)
+        self.title_label.setFont(title_font)
+        self.title_label.setAlignment(Qt.AlignCenter)
+        self.title_label.setFixedHeight(40)
+        main_layout.addWidget(self.title_label)
         
         # Área de scroll para dispositivos y herramientas
         scroll_area = QScrollArea()
@@ -1003,14 +1038,14 @@ class SidebarPanel(QWidget):
         main_layout.addWidget(scroll_area)
         
         # Información del panel
-        info_label = QLabel("Arrastra dispositivos al canvas\npara crear la topología")
-        info_label.setAlignment(Qt.AlignCenter)
-        info_label.setWordWrap(True)
+        self.info_label = QLabel(tr('sidebar.drag_info'))
+        self.info_label.setAlignment(Qt.AlignCenter)
+        self.info_label.setWordWrap(True)
         info_font = QFont()
         info_font.setPointSize(8)
-        info_label.setFont(info_font)
-        info_label.setFixedHeight(40)
-        main_layout.addWidget(info_label)
+        self.info_label.setFont(info_font)
+        self.info_label.setFixedHeight(40)
+        main_layout.addWidget(self.info_label)
         
         # Panel de propiedades de dispositivo
         self.properties_panel = DevicePropertiesPanel(self)
@@ -1054,18 +1089,22 @@ class SidebarPanel(QWidget):
     
     def populate_devices(self):
         """Poblar el panel con dispositivos predefinidos y herramientas"""
-        # Lista de dispositivos disponibles
+        # Lista de dispositivos disponibles con sus claves de traducción
         devices = [
-            ("Terminal de Linea Óptica", "OLT"),      # nombre_mostrado, tipo_para_icono
-            ("Terminal de Linea Óptica (SDN)", "OLT_SDN"),  # nombre_mostrado, tipo_para_icono
-            ("Unidad de Red Óptica", "ONU"), # nombre_mostrado, tipo_para_icono
+            ("sidebar.device_names.olt", "OLT"),
+            ("sidebar.device_names.olt_sdn", "OLT_SDN"),
+            ("sidebar.device_names.onu", "ONU"),
         ]
         
         # Crear widgets de dispositivos
-        for device_name, device_type in devices:
+        for device_name_key, device_type in devices:
+            device_name = tr(device_name_key)
             device_item = DeviceItem(device_name, device_type)
             device_item.device_clicked.connect(self.on_device_clicked)
             device_item.set_theme(self.dark_theme)
+            
+            # Guardar la clave de traducción para poder actualizar después
+            device_item.name_translation_key = device_name_key
             
             # Insertar antes del stretch
             self.devices_layout.insertWidget(
@@ -1233,3 +1272,27 @@ class SidebarPanel(QWidget):
     def cleanup(self):
         """Limpiar recursos del sidebar panel"""
         print("🧹 Sidebar panel limpiado")
+    
+    def retranslate_ui(self):
+        """Actualizar todos los textos del sidebar con el idioma actual"""
+        # Actualizar título del panel
+        self.title_label.setText(tr('sidebar.title'))
+        
+        # Actualizar info de arrastrar
+        self.info_label.setText(tr('sidebar.drag_info'))
+        
+        # Actualizar nombres de dispositivos
+        for device_item in self.device_items:
+            if hasattr(device_item, 'name_translation_key'):
+                translated_name = tr(device_item.name_translation_key)
+                device_item.device_name = translated_name
+                device_item.name_label.setText(translated_name)
+        
+        # Actualizar connection item
+        if hasattr(self, 'connection_item'):
+            self.connection_item.name_label.setText(tr('sidebar.add_connections'))
+            self.connection_item.desc_label.setText(tr('sidebar.connection'))
+        
+        # Actualizar panel de propiedades
+        if hasattr(self, 'properties_panel'):
+            self.properties_panel.retranslate_ui()
