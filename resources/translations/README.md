@@ -7,7 +7,7 @@ resources/
   translations/
     es_ES.json    # Español (por defecto)
     en_US.json    # Inglés
-    
+
 utils/
   translation_manager.py  # Gestor de traducciones
   config_manager.py       # Configuración (incluye idioma)
@@ -58,10 +58,10 @@ messages.simulation.started → "🚀 Simulación iniciada" / "🚀 Simulation s
 
 ## 🌍 Idiomas Disponibles
 
-| Código | Idioma | Bandera | Estado |
-|--------|--------|---------|--------|
-| es_ES  | Español | 🇪🇸 | ✅ Completo |
-| en_US  | English | 🇺🇸 | ✅ Completo |
+| Código | Idioma  | Bandera | Estado      |
+| ------ | ------- | ------- | ----------- |
+| es_ES  | Español | 🇪🇸      | ✅ Completo |
+| en_US  | English | 🇺🇸      | ✅ Completo |
 
 ## 🔧 Gestión de Idioma
 
@@ -93,12 +93,12 @@ class MiPanel(QWidget):
     def __init__(self):
         super().__init__()
         self.setup_ui()
-    
+
     def setup_ui(self):
         # Configurar UI con textos traducidos
         self.button = QPushButton(tr('simulation.start'))
         self.label = QLabel(tr('simulation.title'))
-    
+
     def retranslate_ui(self):
         """Actualizar textos cuando cambia el idioma"""
         self.button.setText(tr('simulation.start'))
@@ -120,11 +120,13 @@ class MiPanel(QWidget):
 ## 🔄 Agregar Nuevo Idioma
 
 1. Crear archivo en `resources/translations/`:
+
    - `pt_BR.json` (Portugués)
    - `fr_FR.json` (Francés)
    - etc.
 
 2. Agregar configuración en `translation_manager.py`:
+
 ```python
 self.available_languages = {
     ...
@@ -138,6 +140,7 @@ self.available_languages = {
 ```
 
 3. Agregar opción en menú de `main_window.py`:
+
 ```python
 portuguese_action = QAction('🇧🇷 &Português', self)
 portuguese_action.triggered.connect(lambda: self.change_language('pt_BR'))
@@ -146,23 +149,27 @@ portuguese_action.triggered.connect(lambda: self.change_language('pt_BR'))
 ## 🐛 Debugging
 
 ### Ver traducciones cargadas
+
 ```python
 print(translation_manager.translations)
 ```
 
 ### Verificar clave específica
+
 ```python
 texto = translation_manager.get_text('menu.file.open')
 print(texto)  # "Abrir archivo..." o "Open file..."
 ```
 
 ### Si una clave no se encuentra
+
 - Se devuelve la clave misma: `'menu.file.open'`
 - Se imprime advertencia: `⚠️ Traducción no encontrada: menu.file.open`
 
 ## ⚙️ Configuración Persistente
 
 El idioma seleccionado se guarda automáticamente en `QSettings`:
+
 - Organización: "SimuladorWDM"
 - Aplicación: "Simulador de Redes Opticas"
 - Clave: "language"
