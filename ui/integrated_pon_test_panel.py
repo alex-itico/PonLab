@@ -1019,12 +1019,6 @@ class IntegratedPONTestPanel(QWidget):
     def handle_automatic_graphics_processing(self):
         """Manejar el procesamiento automático de gráficos al finalizar simulación"""
         try:
-            # Verificar si la ventana emergente está habilitada
-            should_popup = self.popup_window_checkbox.isChecked()
-            
-            if not should_popup:
-                return  # No hacer nada si no hay opciones habilitadas
-            
             # Obtener datos completos de la simulación
             # El adapter ya retorna la estructura correcta con 'simulation_summary'
             simulation_data = self.adapter.get_simulation_summary()
@@ -1044,9 +1038,24 @@ class IntegratedPONTestPanel(QWidget):
                 'detailed_logging': self.detailed_log_checkbox.isChecked()
             }
             
+            # SIEMPRE guardar los archivos de simulación (JSON, TXT, metadata)
             session_directory = ""
+            if hasattr(self.results_panel, 'charts_panel'):
+                self.results_panel.add_log_message("💾 Guardando datos de simulación...")
+                
+                session_directory = self.graphics_saver.save_simulation_graphics_and_data(
+                    self.results_panel.charts_panel,
+                    simulation_data,
+                    session_info
+                )
+                
+                if session_directory:
+                    self.results_panel.add_log_message(f"✅ Datos guardados en: {session_directory}")
+                else:
+                    self.results_panel.add_log_message("❌ Error guardando datos de simulación")
             
             # Mostrar ventana emergente si está habilitado
+            should_popup = self.popup_window_checkbox.isChecked()
             if should_popup:
                 self.show_graphics_popup_window(simulation_data, session_directory, session_info)
             
