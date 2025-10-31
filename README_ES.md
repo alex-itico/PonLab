@@ -11,12 +11,26 @@ _Una aplicación de escritorio avanzada para la simulación, diseño y análisis
 [![RL](https://img.shields.io/badge/Reinforcement%20Learning-Smart--RL-ff6b6b.svg)](https://github.com/alex-itico/PonLab)
 [![SDN](https://img.shields.io/badge/SDN-Controller-4ecdc4.svg)](https://github.com/alex-itico/PonLab)
 [![Version](https://img.shields.io/badge/Version-2.1.0-brightgreen.svg)](releases)
+[![Languages](https://img.shields.io/badge/Languages-5-blue.svg)](resources/translations)
 
-**� Idiomas Disponibles:** 🇪🇸 Español | 🇺🇸 English | 🇫🇷 Français | 🇧🇷🇵🇹 Português | 🇩🇪 Deutsch
+**🌍 Idiomas Disponibles:** 🇪🇸 Español | 🇺🇸 English | 🇫🇷 Français | 🇧🇷🇵🇹 Português | 🇩🇪 Deutsch
 
-**�🎯 Desarrollado por:** Alex Aravena Tapia • Jesús Chaffe González • Eduardo Maldonado Zamora • Jorge Barrios Núñez
+**🎯 Desarrollado por:** Alex Aravena Tapia • Jesús Chaffe González • Eduardo Maldonado Zamora • Jorge Barrios Núñez
 
 </div>
+
+---
+
+## 📑 Tabla de Contenidos
+
+- [Descripción](#-descripción)
+- [Características Principales](#-características-principales)
+- [Arquitectura de IA y SDN](#-arquitectura-de-ia-y-sdn)
+- [Instalación](#-instalación-y-configuración)
+- [Guía de Inicio Rápido](#-guía-de-inicio-rápido)
+- [Estructura del Proyecto](#-estructura-del-proyecto)
+- [Casos de Uso](#-casos-de-uso-y-aplicaciones)
+- [Autores](#-autores)
 
 ---
 
@@ -24,534 +38,331 @@ _Una aplicación de escritorio avanzada para la simulación, diseño y análisis
 
 **PonLab** es una aplicación de escritorio profesional desarrollada en Python que permite simular, diseñar y analizar redes ópticas pasivas (PON - Passive Optical Networks). La herramienta proporciona una interfaz gráfica intuitiva y potente para el diseño de infraestructuras de fibra óptica, con funcionalidades avanzadas de **Inteligencia Artificial (RL)**, **controlador SDN integrado**, visualización en tiempo real y análisis de rendimiento de red con algoritmos de optimización inteligentes.
 
-### 🤖 **Innovación en IA y Redes Definidas por Software**
-
-PonLab integra tecnologías de vanguardia para la optimización automática de redes PON:
-
-- **🧠 Reinforcement Learning (Smart-RL)**: Agente RL interno que aprende y optimiza la asignación de ancho de banda
-- **🌐 Controlador SDN**: Sistema de control centralizado para gestión dinámica de la red
-- **🚀 Algoritmo Híbrido Smart-RL-SDN**: Combinación revolucionaria de RL y SDN para máximo rendimiento
-
 ## ✨ Características Principales
 
-### 🎨 **Interfaz y Visualización**
+### 🎨 **Interfaz, Temas y Navegación**
 
-- **Canvas Interactivo Avanzado**: Área de trabajo con zoom infinito, pan suave y navegación intuitiva
+- **Canvas Interactivo Avanzado**: Zoom infinito, pan suave, navegación intuitiva con coordenadas en tiempo real
 - **Sistema de Coordenadas Profesional**: Cuadrícula configurable con origen visible y medidas precisas
-- **Visualización de Mapas**: Integración con mapas geográficos para ubicación real de equipos
-- **Temas Personalizables**: Soporte completo para temas claro y oscuro con estilos profesionales
-- **Pantalla de Carga**: Splash screen con progreso de inicialización
-- **Interfaz Adaptativa**: Paneles redimensionables y configurables
+- **Temas Personalizables**: Soporte completo para temas claro/oscuro con integración QSS y configuración persistente
+- **Integración de Mapas**: Visualización geográfica para ubicación real de equipos (MapBox)
+- **Paneles Adaptativos**: Interfaz redimensionable y configurable con pantalla de carga
 
-### 🔧 **Gestión de Dispositivos**
+### 🔧 **Gestión de Dispositivos y Conexiones**
 
-- **Dispositivos PON Completos**: Soporte para OLT (Optical Line Terminal) y ONU (Optical Network Unit)
-- **Drag & Drop Intuitivo**: Arrastra dispositivos desde el panel lateral al canvas
-- **Gestión Visual**: Iconos SVG profesionales y representación gráfica detallada
-- **Información en Tiempo Real**: Panel de información con coordenadas y datos de dispositivos
-- **Selección y Manipulación**: Selección múltiple, movimiento y configuración de dispositivos
-- **Propiedades Configurables**: Configuración detallada de cada dispositivo
+- **Dispositivos PON Completos**: OLT (Optical Line Terminal) y ONU (Optical Network Unit) con iconos SVG
+- **Drag & Drop Intuitivo**: Colocación fluida de dispositivos desde panel lateral al canvas
+- **Modo de Conexión Avanzado**: Presiona `L` para conectar dispositivos con cálculo automático de distancias
+- **Gestión Visual**: Panel de información en tiempo real con coordenadas, soporte de selección múltiple
+- **Validación Inteligente**: Sistema que previene conexiones y configuraciones inválidas
 
-### 🔗 **Sistema de Conexiones**
+### 🧪 **Sistema de Simulación Inteligente**
 
-- **Modo Conexión Avanzado**: Activación con tecla `L` para conectar dispositivos
-- **Conexiones Visuales**: Líneas de fibra óptica con etiquetas de distancia automáticas
-- **Gestión Inteligente**: Creación, eliminación y modificación de conexiones
-- **Cálculo de Distancias**: Medición automática de distancias entre dispositivos
-- **Validación de Conexiones**: Sistema que previene conexiones inválidas
+- **Simulador PON Integrado**: Motor de simulación avanzado basado en eventos con control de tiempo preciso
+- **🤖 Algoritmos DBA**: FCFS, Priority, RL-DBA, SDN, Smart-RL ⭐, Smart-RL-SDN ⭐⭐
+- **Escenarios Configurables**: Patrones de tráfico predefinidos con tiempo de simulación personalizable (1-120s)
+- **Dashboard en Tiempo Real**: Panel de métricas SDN (Ctrl+D) con monitoreo continuo
+- **Análisis de Equidad**: Cálculo automático del índice de Jain y métricas de equidad
 
-### 🧪 **Sistema de Simulación Avanzado con IA**
+### 📊 **Visualización y Análisis**
 
-- **Simulador PON Integrado**: Motor de simulación avanzado para redes PON
-- **🤖 Algoritmos DBA Inteligentes**:
-  - **FCFS** - First Come First Served (algoritmo básico)
-  - **Priority** - Basado en prioridades
-  - **RL-DBA** - Reinforcement Learning DBA clásico
-  - **SDN** - Software Defined Network con control centralizado
-  - **Smart-RL** - RL inteligente interno (sin dependencias externas) ⭐
-  - **Smart-RL-SDN** - Algoritmo híbrido RL + SDN ⭐⭐
-- **🧠 Agente RL Interno**: Sistema completamente autónomo con políticas de aprendizaje
-- **🌐 Dashboard SDN**: Panel de métricas en tiempo real (Ctrl+D)
-- **⚖️ Análisis de Fairness**: Índice de Jain y métricas de equidad automáticas
-- **Escenarios Predefinidos**: Configuración automática para diferentes escenarios de tráfico
-- **Simulación en Tiempo Real**: Ejecución de simulaciones con tiempo configurable (1-120 segundos)
-- **Arquitectura Híbrida**: Sistema de simulación event-driven con control temporal preciso
+- **Gráficos Interactivos**: Integración completa con matplotlib con métricas RL en tiempo real
+- **Monitoreo de Rendimiento**: Análisis de delay, throughput, ocupación de buffer, utilización de enlaces
+- **Auto-Exportación**: Guardado automático de resultados en formatos PNG, PDF, SVG
+- **Historial de Simulaciones**: Seguimiento y comparación de múltiples ejecuciones
+- **Panel de Log de Eventos**: Sistema de eventos en tiempo real con capacidades de filtrado
 
-### 📊 **Visualización y Análisis con IA**
+### 🌍 **Sistema Multiidioma**
 
-- **Gráficos Interactivos**: Sistema completo de visualización con matplotlib
-- **🤖 Métricas RL en Tiempo Real**: Monitoreo de decisiones del agente RL
-- **🌐 Dashboard SDN Integrado**: Panel de control SDN con métricas avanzadas (Ctrl+D)
-- **⚖️ Análisis de Fairness Automático**: Cálculo automático de índice de Jain
-- **📈 Métricas Inteligentes**: Análisis de delay, throughput, buffer occupancy, utilización
-- **Ventana de Resultados**: Popup automático con gráficos al finalizar simulación
-- **Exportación de Gráficos**: Guardado automático en formatos PNG, PDF, SVG
-- **🧠 Análisis de Performance RL**: Visualización de políticas y decisiones del agente
-- **Historial de Simulaciones**: Seguimiento y comparación de resultados
-- **Panel de Log**: Sistema de eventos en tiempo real con filtros
+- **5 Idiomas Completos**: Español, Inglés, Francés, Portugués, Alemán
+- **660+ Claves de Traducción**: UI completa, diálogos, gráficos matplotlib y mensajes de error
+- **Cambio Dinámico**: Cambiar idioma sin reiniciar (Ayuda → Idioma)
+- **Configuración Persistente**: Preferencia de idioma guardada automáticamente
 
 ### 💾 **Gestión de Proyectos**
 
-- **Formato .pon Nativo**: Sistema de archivos propio para topologías PON
-- **Auto-guardado Inteligente**: Guardado automático en carpeta temporal
-- **Carga y Guardado**: Importación y exportación completa de proyectos
-- **Historial de Cambios**: Seguimiento de modificaciones y estados del proyecto
-- **Detección de Cambios**: Notificación de trabajo sin guardar
-- **Exportación de Resultados**: Guardado de métricas y gráficos de simulación
+- **Formato .pon Nativo**: Sistema de archivos propietario para topologías PON completas
+- **Auto-guardado Inteligente**: Respaldo automático en carpeta temporal con detección de cambios
+- **Importación/Exportación Completa**: Preservación completa del estado del proyecto con seguimiento de modificaciones
 
-### ⌨️ **Controles y Navegación**
+---
 
-- **Atajos de Teclado Completos**: Más de 15 atajos para navegación rápida
-- **Controles de Mouse**: Pan con botón central, zoom con rueda, selección con clic
-- **Navegación Inteligente**: Centrado automático, reseteo de vista y enfoque en dispositivos
-- **Panel Simulación**: Acceso rápido con Ctrl+N al sistema de simulación
-- **🌐 Dashboard SDN**: Acceso directo con Ctrl+D al panel de control SDN
+## 🤖 Arquitectura de IA y SDN
 
-### 🤖 **Inteligencia Artificial y Redes Definidas por Software**
+### **🧠 Sistema Smart-RL (Reinforcement Learning)**
 
-#### **🧠 Sistema Smart-RL (Reinforcement Learning)**
+PonLab cuenta con un **agente RL completamente interno** que no requiere dependencias externas:
 
-- **Agente RL Interno**: Sistema completamente autónomo sin dependencias externas
-- **Políticas Inteligentes**:
-  - `prioritize_low_buffer` - Prioriza ONUs con buffers bajos
-  - `balance_throughput` - Equilibra el throughput entre usuarios
-  - `minimize_delay` - Minimiza la latencia promedio
-  - `fairness_factor` - Garantiza equidad en la asignación
-- **Aprendizaje Adaptativo**: El agente mejora sus decisiones con cada simulación
-- **Tabla Q Interna**: Sistema de aprendizaje por refuerzo con tabla Q
-- **Optimización Dinámica**: Ajuste automático de parámetros según el rendimiento
+**Políticas Inteligentes:**
+- `prioritize_low_buffer` (0.7) - Prioriza ONUs cerca de saturación de buffer
+- `balance_throughput` (0.6) - Balancea distribución de throughput
+- `minimize_delay` (0.8) - Optimiza latencia promedio
+- `fairness_factor` (0.5) - Garantiza asignación equitativa de recursos
 
-#### **🌐 Controlador SDN Integrado**
+**Mecanismo de Aprendizaje:**
+- Tabla-Q interna con espacio de estados discreto
+- Observación dinámica de red (niveles de buffer, solicitudes, throughput)
+- Mejora adaptativa de políticas con cada ciclo de simulación
+- Seguimiento de decisiones en tiempo real y análisis de rendimiento
 
-- **OLT_SDN**: Controlador SDN especializado para redes PON
-- **Control Centralizado**: Gestión unificada de todos los dispositivos de red
-- **Métricas en Tiempo Real**: Monitoreo continuo de:
-  - Latencia por ONU
-  - Throughput agregado
-  - Niveles de buffer
-  - Utilización de enlaces
-  - Índice de Fairness (Jain)
-- **Dashboard Interactivo**: Panel visual accesible con Ctrl+D
-- **Políticas Dinámicas**: Implementación automática de políticas de red
+### **🌐 Controlador SDN (OLT_SDN)**
 
-#### **🚀 Algoritmo Híbrido Smart-RL-SDN**
+**Control Centralizado:**
+- Gestión unificada con visibilidad del estado global de la red
+- Implementación dinámica de políticas y monitoreo continuo
+- Métricas en tiempo real: latencia por ONU, throughput agregado, ocupación de buffer, utilización de enlaces, índice de Jain
 
-- **Integración Revolucionaria**: Combina lo mejor de RL y SDN
-- **Arquitectura de Dos Capas**:
-  - **Capa RL**: Toma decisiones inteligentes de asignación
-  - **Capa SDN**: Implementa y monitorea las decisiones
-- **Retroalimentación Inteligente**: SDN informa al RL sobre el rendimiento
-- **Optimización Continua**: El sistema mejora automáticamente con cada ciclo
-- **Métricas Combinadas**: Análisis completo de ambos sistemas
+**Dashboard Interactivo (Ctrl+D):**
+- Visualización en vivo de todas las métricas de red
+- Cálculos automatizados de equidad
+- Seguimiento histórico de rendimiento
+
+### **🚀 Algoritmo Híbrido Smart-RL-SDN**
+
+**Arquitectura Revolucionaria de Dos Capas:**
+
+1. **Capa de Decisión RL**: Smart-RL analiza el estado global y toma decisiones inteligentes de asignación
+2. **Capa de Implementación SDN**: OLT_SDN ejecuta decisiones y proporciona retroalimentación de rendimiento
+3. **Bucle de Retroalimentación Inteligente**: Optimización continua basada en resultados en tiempo real
+
+**Ventajas:**
+- 🎯 Precisión RL + ⚡ Velocidad SDN
+- 🔄 Adaptabilidad a cambios en patrones de tráfico
+- 📊 Análisis completo de métricas de ambos sistemas
+- 🚀 Rendimiento óptimo combinando flexibilidad y control
+
+**Inicio Rápido:**
+- Seleccionar algoritmo en panel de simulación (Ctrl+N)
+- Configurar políticas en panel RL (Ctrl+T)
+- Monitorear en dashboard SDN (Ctrl+D)
+- Comparar resultados entre algoritmos
+
+---
 
 ## 🛠️ Tecnologías y Arquitectura
 
-### **Stack Tecnológico**
+**Stack Tecnológico:**
+- **Python 3.8+** con PyQt5, PyQtWebEngine, Matplotlib, NumPy
+- **IA/ML**: Stable-Baselines3, PyTorch, Gymnasium, Scikit-learn
+- **Datos**: Pandas para análisis, JSON para configuración
+- **Gráficos**: Iconos SVG vectoriales, temas QSS
 
-- **Python 3.8+**: Lenguaje principal con soporte moderno
-- **PyQt5**: Framework de interfaz gráfica profesional
-- **PyQtWebEngine**: Motor web para mapas interactivos (opcional)
-- **Matplotlib**: Biblioteca para gráficos científicos y visualización
-- **NumPy**: Computación numérica para análisis de datos
-- **🤖 Stable-Baselines3**: Framework de Reinforcement Learning avanzado
-- **🧠 PyTorch**: Motor de deep learning para algoritmos RL
-- **🌐 Gymnasium**: Entornos estándar para RL (OpenAI Gym)
-- **📊 Pandas**: Análisis y manipulación de datos de simulación
-- **🔬 Scikit-learn**: Algoritmos de machine learning complementarios
-- **JSON**: Formato de almacenamiento de configuraciones
-- **SVG**: Gráficos vectoriales para iconos de dispositivos
+**Arquitectura:**
+- Diseño modular con separación de responsabilidades (core, ui, utils)
+- Simulación basada en eventos con temporización precisa
+- Comunicación entre componentes basada en señales
+- Renderizado eficiente para miles de dispositivos
+
+---
 
 ## 📦 Instalación y Configuración
 
-### **Prerrequisitos**
+### **Prerequisitos**
 
 - Python 3.8+ (Recomendado: Python 3.11+)
-- Git para clonar el repositorio
-- pip (gestor de paquetes de Python)
+- Git, gestor de paquetes pip
 
 ### **Instalación Rápida**
 
-1. **Clonar el repositorio:**
+```bash
+# Clonar repositorio
+git clone https://github.com/alex-itico/PonLab.git
+cd PonLab
 
-   ```bash
-   git clone https://github.com/alex-itico/PonLab.git
-   cd PonLab
-   ```
+# Crear entorno virtual (Recomendado)
+python -m venv venv
+venv\Scripts\activate  # Windows
+# source venv/bin/activate  # Linux/MacOS
 
-2. **Crear entorno virtual (Recomendado):**
+# Instalar dependencias y ejecutar
+pip install -r requirements.txt
+python main.py
+```
 
-   ```bash
-   # Windows
-   python -m venv venv
-   venv\Scripts\activate
-
-   # Linux/MacOS
-   python3 -m venv venv
-   source venv/bin/activate
-   ```
-
-3. **Instalar dependencias:**
-
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-4. **Ejecutar la aplicación:**
-   ```bash
-   python main.py
-   ```
-
-### **Instalación con Conda (Alternativa)**
+### **Alternativa con Conda**
 
 ```bash
-# Crear entorno conda
 conda create -n ponlab python=3.11
 conda activate ponlab
-
-# Instalar PyQt5
 conda install -c conda-forge pyqt
-
-# Clonar y ejecutar
 git clone https://github.com/alex-itico/PonLab.git
 cd PonLab
 python main.py
 ```
 
-## 🎮 Manual de Usuario
+---
 
-### **🚀 Inicio Rápido**
+## 🎮 Guía de Inicio Rápido
 
-1. **Ejecuta la aplicación** con `python main.py`
-2. **Arrastra dispositivos** desde el panel lateral al canvas
-3. **Conecta dispositivos** presionando `L` y seleccionando dos dispositivos
-4. **Navega** usando `C` (centrar), `R` (resetear), mouse wheel (zoom)
-5. **Guarda tu proyecto** con `Ctrl+S`
+### **⚡ Inicio Rápido en 5 Pasos**
 
-### **⌨️ Atajos de Teclado Completos**
+1. **Ejecutar**: `python main.py`
+2. **Agregar Dispositivos**: Arrastrar OLT/ONU desde panel lateral
+3. **Conectar**: Presionar `L`, seleccionar dos dispositivos
+4. **Navegar**: `C` (centrar), `R` (resetear), rueda (zoom)
+5. **Guardar**: `Ctrl+S`
 
-| Atajo    | Función               | Descripción                                         |
-| -------- | --------------------- | --------------------------------------------------- |
-| `L`      | **Modo Conexión**     | Activa/desactiva el modo para conectar dispositivos |
-| `C`      | **Centrar Vista**     | Centra la vista en el origen (0, 0)                 |
-| `R`      | **Resetear Vista**    | Restaura zoom y centra la vista                     |
-| `Escape` | **Cancelar**          | Cancela operaciones en curso                        |
-| `Ctrl+P` | **Panel Componentes** | Muestra/oculta el panel de dispositivos             |
-| `Ctrl+G` | **Cuadrícula**        | Muestra/oculta la cuadrícula y origen               |
-| `Ctrl+I` | **Panel Info**        | Muestra/oculta el panel de información              |
-| `Ctrl+N` | **Panel Simulación**  | Muestra/oculta el panel de simulación               |
-| `Ctrl+D` | **🌐 Dashboard SDN**  | Abre el dashboard SDN en tiempo real ⭐             |
-| `Ctrl+T` | **🤖 Panel RL**       | Accede al panel de configuración RL ⭐              |
-| `Ctrl+S` | **Guardar**           | Guarda el proyecto actual                           |
-| `Ctrl+O` | **Abrir**             | Abre un proyecto existiente                         |
-| `Delete` | **Eliminar**          | Elimina dispositivos/conexiones seleccionados       |
+### **⌨️ Atajos Esenciales**
 
-### **🖱️ Controles de Mouse**
+| Atajo    | Función               | Descripción                          |
+| -------- | --------------------- | ------------------------------------ |
+| `L`      | Modo Conexión         | Activar/desactivar modo conexión     |
+| `C` / `R`| Centrar / Resetear    | Controles de navegación              |
+| `Ctrl+N` | Panel Simulación      | Abrir controles de simulación        |
+| `Ctrl+D` | Dashboard SDN         | Métricas SDN en tiempo real ⭐       |
+| `Ctrl+T` | Panel RL              | Configuración RL ⭐                  |
+| `Ctrl+S` | Guardar               | Guardar proyecto actual              |
+| `Ctrl+G` | Toggle Cuadrícula     | Mostrar/ocultar cuadrícula           |
+| `Delete` | Eliminar              | Quitar elementos seleccionados       |
 
-| Acción                   | Función                                   |
-| ------------------------ | ----------------------------------------- |
-| **Clic Izquierdo**       | Seleccionar dispositivos/elementos        |
-| **Clic Derecho**         | Menú contextual con opciones              |
-| **Botón Central + Drag** | Pan (mover vista)                         |
-| **Rueda del Mouse**      | Zoom in/out                               |
-| **Drag & Drop**          | Mover dispositivos, arrastrar desde panel |
+### **🖱️ Controles del Mouse**
 
-### **🔧 Funcionalidades Avanzadas**
+- **Clic Izquierdo**: Seleccionar dispositivos/elementos
+- **Clic Derecho**: Menú contextual
+- **Medio + Arrastrar**: Mover vista (pan)
+- **Rueda**: Zoom in/out
+- **Arrastrar y Soltar**: Mover dispositivos
 
-#### **Sistema de Simulación NetPONPy**
+### **🔧 Flujos de Trabajo Comunes**
 
-- **Simulación Integrada**: Panel de simulación PON con controles completos
-- **Configuración Temporal**: Control de duración de simulación personalizable
-- **Ejecución Automática**: Sistema de simulación con parámetros optimizados
-- **Resultados en Tiempo Real**: Visualización inmediata de resultados
+**Configuración de Simulación:**
+1. Configurar topología PON (OLT + ONUs)
+2. Abrir panel de simulación (Ctrl+N)
+3. Seleccionar algoritmo (Smart-RL-SDN recomendado)
+4. Establecer duración y ejecutar
+5. Ver resultados en ventana emergente
 
-#### **Visualización de Métricas PON**
+**Monitoreo RL/SDN:**
+1. Iniciar simulación con algoritmo Smart-RL o SDN
+2. Abrir dashboard SDN (Ctrl+D) para métricas en vivo
+3. Configurar políticas en panel RL (Ctrl+T)
+4. Comparar rendimiento de algoritmos
 
-- **Gráficos Interactivos**: Gráficos matplotlib integrados en la interfaz
-- **Métricas en Tiempo Real**: Monitoreo continuo de parámetros de red
-- **Ventana Emergente**: Visualización ampliada de gráficos y resultados
-- **Análisis Detallado**: Métricas de rendimiento y estadísticas avanzadas
+**Cambio de Idioma:**
+- Ayuda → Idioma → Seleccionar idioma preferido
+- La interfaz se actualiza inmediatamente
 
-#### **Gestión de Dispositivos**
+---
 
-- **Agregar Dispositivos**: Arrastra OLT/ONU desde el panel lateral
-- **Mover Dispositivos**: Selecciona y arrastra dispositivos en el canvas
-- **Información Detallada**: Panel de información muestra coordenadas y datos
-- **Selección Múltiple**: Mantén Ctrl para seleccionar múltiples dispositivos
-
-#### **Sistema de Conexiones**
-
-- **Crear Conexiones**: Presiona `L`, luego selecciona dos dispositivos
-- **Etiquetas de Distancia**: Las conexiones muestran distancia automáticamente
-- **Validación**: El sistema previene conexiones inválidas
-- **Gestión Visual**: Conexiones con colores y estilos diferenciados
-
-#### **Navegación y Vista**
-
-- **Zoom Infinito**: Acércate tanto como necesites sin límites
-- **Navegación Suave**: Pan fluido con inercia natural
-- **Centrado Inteligente**: `C` centra en origen, `R` resetea completamente
-- **Coordenadas en Tiempo Real**: Ve las coordenadas del mouse en tiempo real
-
-#### **Sistema de Temas**
-
-- **Temas Intercambiables**: Soporte completo para temas claro y oscuro
-- **Integración QSS**: Todos los componentes respetan el tema seleccionado
-- **Persistencia**: El tema seleccionado se mantiene entre sesiones
-- **Compatibilidad Universal**: Todos los paneles y ventanas soportan temas
-
-## 📁 Estructura del Proyecto Detallada
+## 📁 Estructura del Proyecto
 
 ```
 PonLab/
-├── 📄 main.py                    # 🚀 Punto de entrada principal
-├── 📄 requirements.txt           # 📦 Dependencias del proyecto
-├── 📄 SHORTCUTS.md              # ⌨️ Guía completa de atajos
-├── 📄 README.md                 # 📖 Documentación principal
-├── 📄 .gitignore               # 🚫 Archivos ignorados por Git
+├── 📄 main.py                    # Punto de entrada principal
+├── 📄 requirements.txt           # Dependencias del proyecto
+├── 📄 README.md / README_ES.md   # Documentación
 │
-├── 📁 core/                     # ⚙️ Lógica principal del negocio (REORGANIZADO)
-│   ├── 📄 __init__.py
-│   ├── � devices/             # 📱 Gestión de dispositivos
-│   │   ├── 📄 __init__.py
-│   │   ├── 📄 device.py        # 🔧 Clase base de dispositivos
-│   │   ├── 📄 device_manager.py # 📱 Gestor de dispositivos
-│   │   └── 📄 device_types.py  # 🏭 Factory de dispositivos
-│   ├── � connections/         # 🔗 Sistema de conexiones
-│   │   ├── 📄 __init__.py
-│   │   ├── 📄 connection.py    # 🔗 Clase de conexión base
-│   │   ├── 📄 connection_manager.py # 🔗 Gestor de conexiones
-│   │   ├── 📄 connection_points.py # 📍 Puntos de conexión
-│   │   ├── 📄 pon_connection.py # 🌐 Conexiones PON específicas
-│   │   └── 📄 pon_link.py      # 🔌 Enlaces PON
-│   ├── 📁 pon/                 # 🌐 Componentes PON específicos
-│   │   ├── 📄 __init__.py
-│   │   ├── 📄 pon_adapter.py   # 🔄 Adaptador principal PON
-│   │   ├── 📄 pon_olt.py       # 🔴 Terminal de línea óptica
-│   │   ├── 📄 pon_onu.py       # 🔵 Unidad de red óptica
-│   │   └── 📄 pon_types.py     # 📋 Tipos y constantes PON
-│   ├── 📁 algorithms/          # 🧮 Algoritmos DBA y scheduling
-│   │   ├── 📄 __init__.py
-│   │   ├── 📄 upstream_scheduler.py # ⬆️ Planificador upstream
-│   │   ├── 📄 pon_dba.py       # 🎯 Algoritmos DBA principales
-│   │   └── 📄 pon_dba_cycle.py # 🔄 Gestión de ciclos DBA
-│   ├── 📁 simulation/          # 🎯 Motores de simulación
-│   │   ├── 📄 __init__.py
-│   │   ├── 📄 simulation_manager.py # 🎮 Gestor principal
-│   │   ├── 📄 pon_orchestrator.py # 🎼 Orquestador PON
-│   │   ├── 📄 pon_simulator.py    # 🔬 Simulador principal
-│   │   ├── � pon_event_simulator.py # ⚡ Simulador de eventos
-│   │   ├── 📄 pon_cycle_simulator.py # 🔄 Simulador por ciclos
-│   │   └── 📄 pon_netsim.py       # 🌐 Simulador de red
-│   ├── �📁 events/              # ⚡ Sistema de eventos discretos
-│   │   ├── 📄 __init__.py
-│   │   ├── 📄 event_queue.py   # 📋 Cola de eventos
-│   │   ├── 📄 pon_event.py     # ⚡ Eventos PON base
-│   │   ├── 📄 pon_event_olt.py # 🔴 Eventos OLT híbridos
-│   │   └── 📄 pon_event_onu.py # 🔵 Eventos ONU híbridos
-│   ├── 📁 data/                # 📊 Estructuras de datos
-│   │   ├── 📄 __init__.py
-│   │   ├── 📄 pon_queue.py     # 📋 Colas PON
-│   │   ├── 📄 pon_request.py   # 📤 Peticiones PON
-│   │   └── 📄 project_manager.py # 📁 Gestor de proyectos
-│   └── 📁 utilities/           # 🛠️ Funciones de utilidad
-│       ├── 📄 __init__.py
-│       ├── 📄 pon_traffic.py   # 🚦 Generación de tráfico
-│       ├── 📄 pon_random.py    # 🎲 Variables aleatorias
-│       └── 📄 helpers.py       # 🔧 Funciones auxiliares
+├── 📁 core/                      # Lógica de negocio
+│   ├── 📁 devices/              # Gestión de dispositivos (OLT, ONU)
+│   ├── 📁 connections/          # Sistema de conexiones
+│   ├── 📁 pon/                  # Componentes específicos PON
+│   ├── 📁 algorithms/           # DBA y programación
+│   ├── 📁 simulation/           # Motores de simulación
+│   ├── 📁 events/               # Sistema basado en eventos
+│   ├── 📁 data/                 # Estructuras de datos
+│   └── 📁 utilities/            # Funciones auxiliares
 │
-├── 📁 ui/                       # 🎨 Componentes de interfaz
-│   ├── 📄 __init__.py
-│   ├── 📄 main_window.py       # 🏢 Ventana principal
-│   ├── 📄 canvas.py            # 🎨 Canvas principal de dibujo
-│   ├── 📄 sidebar_panel.py     # 📋 Panel lateral de dispositivos
-│   ├── 📄 netponpy_sidebar.py  # 🧪 Panel de simulación NetPONPy
-│   ├── 📄 integrated_pon_test_panel.py # 🔬 Panel simulador integrado
-│   ├── 📄 pon_simulation_results_panel.py # 📊 Panel de resultados
-│   ├── 📄 graphics_popup_window.py # 🖼️ Ventana emergente gráficos
-│   ├── 📄 log_panel.py         # 📋 Panel de log de eventos
-│   ├── 📄 map_view.py          # 🗺️ Vista de mapas (MapBox)
-│   ├── 📄 map_overlay_toggle.py # 🔘 Botón toggle para mapas
-│   └── 📄 splash_screen.py     # 🎬 Pantalla de carga
+├── 📁 ui/                        # Componentes de interfaz
+│   ├── 📄 main_window.py        # Ventana principal
+│   ├── 📄 canvas.py             # Canvas de dibujo
+│   ├── 📄 netponpy_sidebar.py   # Panel de simulación
+│   ├── 📄 graphics_popup_window.py # Visualización de resultados
+│   └── 📄 splash_screen.py      # Pantalla de carga
 │
-├── 📁 utils/                    # 🛠️ Utilidades y helpers
-│   ├── 📄 __init__.py
-│   ├── 📄 config_manager.py    # ⚙️ Gestor de configuración
-│   ├── 📄 constants.py         # 📊 Constantes de la aplicación
-│   ├── 📄 helpers.py           # 🔧 Funciones auxiliares
-│   ├── 📄 resource_manager.py  # 📦 Gestor de recursos
-│   └── 📄 validators.py        # ✅ Validadores
+├── 📁 utils/                     # Utilidades
+│   ├── 📄 config_manager.py     # Configuración
+│   ├── 📄 constants.py          # Constantes de aplicación
+│   └── 📄 resource_manager.py   # Manejo de recursos
 │
-├── 📁 resources/               # 🎨 Recursos gráficos y assets
-│   ├── 📁 devices/            # 📱 Iconos de dispositivos
-│   │   ├── 🔴 olt_icon.svg    # Icono OLT (Terminal Óptico)
-│   │   └── 🔵 onu_icon.svg    # Icono ONU (Unidad Red Óptica)
-│   ├── 📁 icons/              # 🖼️ Iconos de la aplicación
-│   │   ├── 📄 app_icon.ico    # Icono principal Windows
-│   │   ├── 📄 app_icon.png    # Icono PNG
-│   │   ├── 📄 app_icon.svg    # Icono vectorial
-│   │   ├── 📄 app_icon_16x16.png
-│   │   ├── 📄 app_icon_32x32.png
-│   │   ├── 📄 app_icon_64x64.png
-│   │   └── 📄 app_icon_128x128.png
-│   ├── 📁 images/             # 🖼️ Imágenes adicionales
-│   └── 📁 styles/             # 🎨 Archivos de estilo CSS
-│       ├── 📄 dark_theme.qss  # Tema oscuro
-│       └── 📄 light_theme.qss # Tema claro
-│
-└── 📁 temp/                    # 🗂️ Archivos temporales (auto-generado)
-    └── 📄 autosave_*.pon      # 💾 Auto-guardado de proyectos
+└── 📁 resources/                 # Recursos
+    ├── 📁 devices/              # Iconos SVG de dispositivos
+    ├── 📁 icons/                # Iconos de aplicación
+    ├── 📁 styles/               # Temas QSS (claro/oscuro)
+    └── 📁 translations/         # Archivos JSON de idiomas (5 idiomas)
 ```
 
-## 🚀 Características Técnicas Avanzadas
-
-### **🎯 Rendimiento y Optimización**
-
-- **Renderizado Eficiente**: Canvas optimizado para miles de dispositivos
-- **Gestión de Memoria**: Limpieza automática de recursos y garbage collection
-- **Carga Diferida**: Carga progresiva de recursos para inicio rápido
-- **Auto-guardado Inteligente**: Guardado automático sin interrupciones
-
-### **🔒 Robustez y Confiabilidad**
-
-- **Manejo de Errores**: Sistema robusto de captura y manejo de excepciones
-- **Validación de Datos**: Validación completa de entradas y formatos
-- **Recuperación de Fallos**: Auto-recuperación de archivos temporales
-- **Backup Automático**: Sistema de respaldo automático de proyectos
-
-### **🎨 Personalización y Extensibilidad**
-
-- **Sistema de Temas**: Temas completamente personalizables (claro/oscuro)
-- **Configuración Persistente**: Todas las preferencias se guardan automáticamente
-- **Arquitectura Modular**: Fácil extensión y adición de nuevas funcionalidades
-- **API Interna**: Sistema de events y signals para comunicación entre componentes
-
-### **🔧 Guías de Uso para Funcionalidades RL y SDN**
-
-#### **🤖 Guía de Uso: Sistema Smart-RL**
-
-1. **🚀 Inicio Rápido Smart-RL**:
-
-   - Configura tu topología PON (OLT + ONUs)
-   - Ve al panel RL (Ctrl+T) para configuraciones avanzadas
-   - Selecciona algoritmo **"Smart-RL"** en el panel de simulación
-   - ¡Ejecuta la simulación y observa la optimización automática!
-
-2. **⚙️ Configuración Avanzada**:
-   - **Políticas de Aprendizaje**: Ajusta los factores de las políticas internas
-   - **Learning Rate**: Controla la velocidad de aprendizaje del agente
-   - **Exploración vs Explotación**: Configura el balance entre explorar nuevas estrategias y usar las conocidas
-
-#### **🌐 Guía de Uso: Controlador SDN**
-
-1. **📊 Dashboard SDN en Tiempo Real**:
-
-   - Presiona `Ctrl+D` para abrir el dashboard SDN
-   - Visualiza métricas en tiempo real durante la simulación
-   - Observa: latencia por ONU, throughput, fairness, buffer levels
-
-2. **🎛️ Control Centralizado**:
-   - Selecciona algoritmo **"SDN"** para control puro SDN
-   - El controlador OLT_SDN gestiona automáticamente la red
-   - Métricas de fairness calculadas automáticamente con índice de Jain
-
-#### **🚀 Guía de Uso: Algoritmo Híbrido Smart-RL-SDN**
-
-1. **💫 Mejor de Ambos Mundos**:
-
-   - Selecciona algoritmo **"Smart-RL-SDN"** para máximo rendimiento
-   - El agente RL toma decisiones inteligentes
-   - El controlador SDN las implementa y proporciona retroalimentación
-   - Observa la optimización continua en el dashboard
-
-2. **📈 Análisis de Resultados**:
-   - Compara resultados entre diferentes algoritmos
-   - Analiza métricas de fairness y rendimiento
-   - Exporta gráficos automáticamente generados
-
 ---
 
-## 🤖 **Inteligencia Artificial y Optimización Avanzada**
-
-### **🧠 Características del Sistema Smart-RL**
-
-PonLab incorpora un sistema de **Reinforcement Learning completamente interno** que no requiere dependencias externas adicionales:
-
-#### **🎯 Políticas Inteligentes Implementadas**
-
-- **`prioritize_low_buffer`** (Factor: 0.7): Prioriza ONUs con buffers cerca de la saturación
-- **`balance_throughput`** (Factor: 0.6): Equilibra el throughput entre todos los usuarios
-- **`minimize_delay`** (Factor: 0.8): Optimiza para reducir la latencia promedio
-- **`fairness_factor`** (Factor: 0.5): Garantiza distribución equitativa de recursos
-
-#### **🔄 Mecanismo de Aprendizaje**
-
-- **Tabla Q Interna**: Sistema de aprendizaje por refuerzo con estados discretos
-- **Observación Dinámica**: Análisis continuo del estado de la red (buffer levels, requests, throughput)
-- **Acciones Inteligentes**: Decisiones de asignación de bandwidth basadas en múltiples políticas
-- **Adaptación Continua**: El agente mejora sus decisiones con cada ciclo de simulación
-
-#### **📊 Métricas y Análisis RL**
-
-- **Decision Count**: Seguimiento del número de decisiones tomadas
-- **Policy Performance**: Análisis del rendimiento de cada política
-- **Learning Progress**: Visualización del progreso de aprendizaje
-- **State Space Analysis**: Análisis del espacio de estados explorado
-
-### **🌐 Sistema SDN Integrado**
-
-#### **🎛️ Controlador OLT_SDN**
-
-- **Control Centralizado**: Un único punto de control para toda la red PON
-- **Vista Global**: Conocimiento completo del estado de todos los ONUs
-- **Políticas Dinámicas**: Implementación automática de reglas de red
-- **Monitoring Continuo**: Recolección constante de métricas de rendimiento
-
-#### **📈 Métricas SDN Avanzadas**
-
-- **Latencia por ONU**: Medición individual de delay para cada terminal
-- **Throughput Agregado**: Medición del rendimiento total de la red
-- **Buffer Occupancy**: Monitoreo de niveles de buffer en tiempo real
-- **Link Utilization**: Análisis de utilización de enlaces de fibra
-- **Jain Fairness Index**: Cálculo automático del índice de equidad
-
-#### **🚀 Algoritmo Híbrido Smart-RL-SDN**
-
-**Arquitectura Revolucionaria** que combina lo mejor de ambos mundos:
-
-1. **Capa de Decisión RL**: El agente Smart-RL analiza el estado global y toma decisiones inteligentes
-2. **Capa de Implementación SDN**: El controlador SDN implementa las decisiones y monitorea resultados
-3. **Retroalimentación Inteligente**: SDN proporciona métricas de rendimiento al agente RL
-4. **Optimización Continua**: El sistema se auto-optimiza continuamente basado en resultados
-
-#### **💡 Ventajas del Enfoque Híbrido**
-
-- **🎯 Precisión RL**: Decisiones inteligentes basadas en aprendizaje
-- **⚡ Velocidad SDN**: Implementación rápida y monitoreo en tiempo real
-- **🔄 Adaptabilidad**: Capacidad de adaptarse a cambios en patrones de tráfico
-- **📊 Análisis Completo**: Métricas detalladas de ambos sistemas
-- **🚀 Rendimiento Óptimo**: Combina flexibilidad del RL con control preciso del SDN
-
----
-
-## 📚 **Casos de Uso y Aplicaciones**
+## 📚 Casos de Uso y Aplicaciones
 
 ### **🎓 Investigación Académica**
-
-- Simulación de algoritmos DBA personalizados
+- Simulación de algoritmos DBA personalizados y análisis comparativo
 - Investigación en Reinforcement Learning para redes ópticas
-- Análisis comparativo de rendimiento de algoritmos
-- Desarrollo de nuevas políticas de asignación de bandwidth
+- Desarrollo de nuevas políticas de asignación de ancho de banda
 
 ### **🏢 Desarrollo Industrial**
-
 - Prototipado de redes PON antes del despliegue
 - Optimización de configuraciones de red existentes
 - Análisis de capacidad y planificación de crecimiento
-- Evaluación de nuevos algoritmos de control
 
 ### **📖 Educación y Formación**
+- Demostración de conceptos de redes PON
+- Enseñanza práctica de algoritmos DBA
+- Talleres de IA/SDN aplicados a redes
 
-- Enseñanza de conceptos de redes PON
-- Demostración práctica de algoritmos DBA
-- Formación en Inteligencia Artificial aplicada a redes
-- Workshops de SDN y control de redes
+---
+
+## 🚀 Características Técnicas
+
+### **Rendimiento**
+- Renderizado eficiente de canvas para miles de dispositivos
+- Gestión automática de memoria y recolección de basura
+- Carga progresiva de recursos para inicio rápido
+
+### **Robustez**
+- Manejo exhaustivo de errores y validación
+- Auto-recuperación desde archivos temporales
+- Sistema automático de respaldo de proyectos
+
+### **Extensibilidad**
+- Arquitectura modular para fácil adición de características
+- API interna con sistema de eventos/señales
+- Diseño preparado para plugins
+
+---
+
+## 📄 Licencia
+
+Propósitos académicos y de investigación. Contactar a los autores para información sobre licencias.
+
+---
+
+## 👥 Autores
+
+- **Alex Aravena Tapia** - Desarrollador Principal
+- **Jesús Chaffe González** - Algoritmos Centrales
+- **Eduardo Maldonado Zamora** - Diseño UI/UX
+- **Jorge Barrios Núñez** - Arquitectura de Red
+
+**Repositorio**: [github.com/alex-itico/PonLab](https://github.com/alex-itico/PonLab)
+
+---
+
+## 📝 Historial de Versiones
+
+### **v2.1.0** (Actual)
+✨ Soporte multiidioma completo (5 idiomas: ES, EN, FR, PT, DE)
+📊 660+ claves de traducción cubriendo toda la aplicación
+🎨 Gráficos matplotlib y componentes UI traducidos
+📖 README en inglés para visibilidad internacional
+
+### **v2.0.0**
+🤖 Implementación del sistema Smart-RL
+🌐 Integración del controlador SDN
+🚀 Algoritmo híbrido Smart-RL-SDN
+📊 Dashboard avanzado de métricas con índice de equidad de Jain
+
+### **v1.0.0**
+🎨 Interfaz gráfica inicial
+🔧 Gestión básica de dispositivos y conexiones
+🧪 Integración de simulación PON
+
+---
+
+<div align="center">
+
+**Hecho con ❤️ para la comunidad de redes PON e IA**
+
+_PonLab - Conectando el futuro de las redes ópticas con tecnología inteligente_
+
+</div>
