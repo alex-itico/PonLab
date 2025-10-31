@@ -353,6 +353,10 @@ class NetPONPySidebar(QWidget):
         # Propagar retranslate_ui a los paneles internos
         if hasattr(self, 'simulation_panel') and self.simulation_panel:
             self.simulation_panel.retranslate_ui()
+        
+        # Propagar retranslate_ui al panel RL
+        if hasattr(self, 'rl_panel') and self.rl_panel:
+            self.rl_panel.retranslate_ui()
     
     def cleanup(self):
         """Limpiar recursos del sidebar"""
