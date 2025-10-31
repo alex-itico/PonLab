@@ -15,6 +15,7 @@ import json
 import glob
 from datetime import datetime
 import numpy as np
+from utils.translation_manager import tr
 from .rl_graphics_popup_window import RLGraphicsPopupWindow
 
 
@@ -63,10 +64,10 @@ class RLConfigPanel(QWidget):
         main_layout.setSpacing(8)
 
         # Nota informativa sobre el cambio
-        info_label = QLabel("💡 La simulación con RL ahora está integrada en la pestaña principal de simulación.\nUse 'Smart-RL' como algoritmo DBA después de cargar un modelo entrenado.")
-        info_label.setStyleSheet("color: #2196F3; background-color: #E3F2FD; padding: 8px; border-radius: 4px; margin: 4px;")
-        info_label.setWordWrap(True)
-        main_layout.addWidget(info_label)
+        self.info_label = QLabel(tr("rl_config_panel.info_message"))
+        self.info_label.setStyleSheet("color: #2196F3; background-color: #E3F2FD; padding: 8px; border-radius: 4px; margin: 4px;")
+        self.info_label.setWordWrap(True)
+        main_layout.addWidget(self.info_label)
 
         # Pestaña de Entrenamiento RL solamente (simulación movida a pestaña principal)
         self.tab_widget = QTabWidget()
@@ -172,8 +173,8 @@ class RLConfigPanel(QWidget):
 
     def setup_model_selection_section(self, layout):
         """Sección para seleccionar y cargar modelos entrenados"""
-        group = QGroupBox("Seleccion de Modelo")
-        group_layout = QVBoxLayout(group)
+        self.model_selection_group = QGroupBox(tr("rl_config_panel.model_selection_group"))
+        group_layout = QVBoxLayout(self.model_selection_group)
         group_layout.setSpacing(8)
 
         # Lista de modelos disponibles
@@ -181,7 +182,8 @@ class RLConfigPanel(QWidget):
 
         # Lista de modelos
         models_list_layout = QVBoxLayout()
-        models_list_layout.addWidget(QLabel("Modelos Disponibles:"))
+        self.available_models_label = QLabel(tr("rl_config_panel.available_models"))
+        models_list_layout.addWidget(self.available_models_label)
 
         self.models_list = QListWidget()
         self.models_list.setMaximumHeight(120)
@@ -191,15 +193,15 @@ class RLConfigPanel(QWidget):
         # Botones de gestión de modelos
         model_buttons_layout = QVBoxLayout()
 
-        refresh_button = QPushButton("Actualizar")
-        refresh_button.clicked.connect(self.refresh_models_list)
-        refresh_button.setToolTip("Actualizar lista de modelos disponibles")
-        model_buttons_layout.addWidget(refresh_button)
+        self.refresh_button = QPushButton(tr("rl_config_panel.refresh_button"))
+        self.refresh_button.clicked.connect(self.refresh_models_list)
+        self.refresh_button.setToolTip(tr("rl_config_panel.refresh_tooltip"))
+        model_buttons_layout.addWidget(self.refresh_button)
 
-        load_external_button = QPushButton("Cargar Externo")
-        load_external_button.clicked.connect(self.load_external_model)
-        load_external_button.setToolTip("Cargar modelo desde archivo externo")
-        model_buttons_layout.addWidget(load_external_button)
+        self.load_external_button = QPushButton(tr("rl_config_panel.load_external_button"))
+        self.load_external_button.clicked.connect(self.load_external_model)
+        self.load_external_button.setToolTip(tr("rl_config_panel.load_external_tooltip"))
+        model_buttons_layout.addWidget(self.load_external_button)
 
         model_buttons_layout.addStretch()
 
@@ -210,143 +212,155 @@ class RLConfigPanel(QWidget):
         # Información del modelo seleccionado
         info_layout = QGridLayout()
 
-        info_layout.addWidget(QLabel("Modelo Cargado:"), 0, 0)
-        self.loaded_model_label = QLabel("Ninguno")
+        self.loaded_model_info_label = QLabel(tr("rl_config_panel.loaded_model"))
+        info_layout.addWidget(self.loaded_model_info_label, 0, 0)
+        self.loaded_model_label = QLabel(tr("rl_config_panel.none"))
         self.loaded_model_label.setStyleSheet("font-weight: bold; color: #2196F3;")
         info_layout.addWidget(self.loaded_model_label, 0, 1)
 
-        info_layout.addWidget(QLabel("Algoritmo:"), 1, 0)
+        self.algorithm_info_label = QLabel(tr("rl_config_panel.algorithm"))
+        info_layout.addWidget(self.algorithm_info_label, 1, 0)
         self.model_algorithm_label = QLabel("-")
         info_layout.addWidget(self.model_algorithm_label, 1, 1)
 
-        info_layout.addWidget(QLabel("ONUs Entrenadas:"), 2, 0)
+        self.trained_onus_label = QLabel(tr("rl_config_panel.trained_onus"))
+        info_layout.addWidget(self.trained_onus_label, 2, 0)
         self.model_onus_label = QLabel("-")
         info_layout.addWidget(self.model_onus_label, 2, 1)
 
-        info_layout.addWidget(QLabel("Tráfico:"), 3, 0)
+        self.traffic_info_label = QLabel(tr("rl_config_panel.traffic"))
+        info_layout.addWidget(self.traffic_info_label, 3, 0)
         self.model_traffic_label = QLabel("-")
         info_layout.addWidget(self.model_traffic_label, 3, 1)
 
         group_layout.addLayout(info_layout)
 
-        layout.addWidget(group)
+        layout.addWidget(self.model_selection_group)
 
         # Nota: refresh_models_list() se llamará después de que el log esté configurado
 
     def setup_simulation_config_section(self, layout):
         """Configuración de parámetros de simulación"""
-        group = QGroupBox("Configuracion de Simulacion")
-        group_layout = QGridLayout(group)
+        self.sim_config_group = QGroupBox(tr("rl_config_panel.sim_config_group"))
+        group_layout = QGridLayout(self.sim_config_group)
         group_layout.setSpacing(8)
 
         # Duración de simulación
-        group_layout.addWidget(QLabel("Duración (s):"), 0, 0)
+        self.duration_s_label = QLabel(tr("rl_config_panel.duration_s"))
+        group_layout.addWidget(self.duration_s_label, 0, 0)
         self.sim_duration_spin = QDoubleSpinBox()
         self.sim_duration_spin.setRange(1.0, 300.0)
         self.sim_duration_spin.setValue(10.0)
         self.sim_duration_spin.setSingleStep(1.0)
         self.sim_duration_spin.setDecimals(1)
-        self.sim_duration_spin.setToolTip("Duración total de la simulación en segundos")
+        self.sim_duration_spin.setToolTip(tr("rl_config_panel.duration_tooltip"))
         group_layout.addWidget(self.sim_duration_spin, 0, 1)
 
         # Mostrar decisiones del agente
-        self.show_decisions_check = QCheckBox("Mostrar decisiones del agente")
+        self.show_decisions_check = QCheckBox(tr("rl_config_panel.show_decisions"))
         self.show_decisions_check.setChecked(True)
-        self.show_decisions_check.setToolTip("Mostrar las decisiones que toma el agente RL en tiempo real")
+        self.show_decisions_check.setToolTip(tr("rl_config_panel.show_decisions_tooltip"))
         group_layout.addWidget(self.show_decisions_check, 1, 0, 1, 2)
 
         # Guardar métricas de simulación
-        self.save_metrics_check = QCheckBox("Guardar métricas de simulación")
+        self.save_metrics_check = QCheckBox(tr("rl_config_panel.save_metrics"))
         self.save_metrics_check.setChecked(True)
-        self.save_metrics_check.setToolTip("Guardar métricas de rendimiento de la simulación")
+        self.save_metrics_check.setToolTip(tr("rl_config_panel.save_metrics_tooltip"))
         group_layout.addWidget(self.save_metrics_check, 2, 0, 1, 2)
 
-        layout.addWidget(group)
+        layout.addWidget(self.sim_config_group)
 
     def setup_simulation_controls_section(self, layout):
         """Controles de simulación"""
-        group = QGroupBox("Controles de Simulacion")
-        group_layout = QVBoxLayout(group)
+        self.sim_controls_group = QGroupBox(tr("rl_config_panel.sim_controls_group"))
+        group_layout = QVBoxLayout(self.sim_controls_group)
         group_layout.setSpacing(8)
 
         # Botones de control
         buttons_layout = QHBoxLayout()
 
         # Botón ejecutar simulación
-        self.simulate_button = QPushButton("Ejecutar Simulacion")
+        self.simulate_button = QPushButton(tr("rl_config_panel.execute_simulation"))
         self.simulate_button.setMinimumHeight(35)
         self.simulate_button.clicked.connect(self.start_simulation)
-        self.simulate_button.setToolTip("Ejecutar simulación con el agente RL cargado")
+        self.simulate_button.setToolTip(tr("rl_config_panel.execute_simulation_tooltip"))
         self.simulate_button.setEnabled(False)  # Deshabilitado hasta cargar modelo
         buttons_layout.addWidget(self.simulate_button)
 
         # Botón detener simulación
-        self.stop_simulation_button = QPushButton("Detener")
+        self.stop_simulation_button = QPushButton(tr("rl_config_panel.stop"))
         self.stop_simulation_button.setMinimumHeight(35)
         self.stop_simulation_button.clicked.connect(self.stop_simulation)
-        self.stop_simulation_button.setToolTip("Detener simulación en curso")
+        self.stop_simulation_button.setToolTip(tr("rl_config_panel.stop_simulation_tooltip"))
         self.stop_simulation_button.setEnabled(False)
         buttons_layout.addWidget(self.stop_simulation_button)
 
         group_layout.addLayout(buttons_layout)
 
-        layout.addWidget(group)
+        layout.addWidget(self.sim_controls_group)
 
     def setup_simulation_metrics_section(self, layout):
         """Métricas de simulación en tiempo real"""
-        group = QGroupBox("Metricas de Simulacion")
-        group_layout = QGridLayout(group)
+        self.sim_metrics_group = QGroupBox(tr("rl_config_panel.sim_metrics_group"))
+        group_layout = QGridLayout(self.sim_metrics_group)
         group_layout.setSpacing(8)
 
         # Progreso de simulación
-        group_layout.addWidget(QLabel("Progreso:"), 0, 0)
+        self.sim_progress_label = QLabel(tr("rl_config_panel.progress"))
+        group_layout.addWidget(self.sim_progress_label, 0, 0)
         self.sim_progress_bar = QProgressBar()
         self.sim_progress_bar.setRange(0, 100)
         self.sim_progress_bar.setValue(0)
         group_layout.addWidget(self.sim_progress_bar, 0, 1)
 
         # Decisiones del agente
-        group_layout.addWidget(QLabel("Decisiones:"), 1, 0)
+        self.sim_decisions_label = QLabel(tr("rl_config_panel.decisions"))
+        group_layout.addWidget(self.sim_decisions_label, 1, 0)
         self.decisions_label = QLabel("0")
         self.decisions_label.setStyleSheet("font-weight: bold; color: #2196F3;")
         group_layout.addWidget(self.decisions_label, 1, 1)
 
         # Rendimiento promedio
-        group_layout.addWidget(QLabel("Rendimiento:"), 2, 0)
+        self.sim_performance_label = QLabel(tr("rl_config_panel.performance"))
+        group_layout.addWidget(self.sim_performance_label, 2, 0)
         self.performance_label = QLabel("0.000")
         self.performance_label.setStyleSheet("font-weight: bold; color: #4CAF50;")
         group_layout.addWidget(self.performance_label, 2, 1)
 
         # Bloqueos evitados
-        group_layout.addWidget(QLabel("Bloqueos:"), 3, 0)
+        self.sim_blocks_label = QLabel(tr("rl_config_panel.blocks"))
+        group_layout.addWidget(self.sim_blocks_label, 3, 0)
         self.blocks_label = QLabel("0")
         self.blocks_label.setStyleSheet("font-weight: bold; color: #FF5722;")
         group_layout.addWidget(self.blocks_label, 3, 1)
 
         # Tiempo de simulación
-        group_layout.addWidget(QLabel("Tiempo:"), 4, 0)
+        self.sim_time_info_label = QLabel(tr("rl_config_panel.time"))
+        group_layout.addWidget(self.sim_time_info_label, 4, 0)
         self.sim_time_label = QLabel("00:00:00")
         self.sim_time_label.setStyleSheet("font-weight: bold; color: #9C27B0;")
         group_layout.addWidget(self.sim_time_label, 4, 1)
 
-        layout.addWidget(group)
+        layout.addWidget(self.sim_metrics_group)
 
     def setup_environment_section(self, layout):
         """Configuración del entorno PON"""
-        group = QGroupBox("Entorno PON")
-        group_layout = QGridLayout(group)
+        self.pon_environment_group = QGroupBox(tr("rl_config_panel.pon_environment_group"))
+        group_layout = QGridLayout(self.pon_environment_group)
         group_layout.setSpacing(8)
         
         # Número de ONUs
-        group_layout.addWidget(QLabel("ONUs:"), 0, 0)
+        self.onus_label = QLabel(tr("rl_config_panel.onus"))
+        group_layout.addWidget(self.onus_label, 0, 0)
         self.onus_spin = QSpinBox()
         self.onus_spin.setRange(2, 16)
         self.onus_spin.setValue(4)
-        self.onus_spin.setToolTip("Número de Unidades de Red Óptica")
+        self.onus_spin.setToolTip(tr("rl_config_panel.onus_tooltip"))
         group_layout.addWidget(self.onus_spin, 0, 1)
         
         # Escenario de tráfico
-        group_layout.addWidget(QLabel("Tráfico:"), 1, 0)
+        self.traffic_label = QLabel(tr("rl_config_panel.traffic_label"))
+        group_layout.addWidget(self.traffic_label, 1, 0)
         self.traffic_combo = QComboBox()
         self.traffic_combo.addItems([
             "residential_light",
@@ -355,137 +369,145 @@ class RLConfigPanel(QWidget):
             "business_standard"
         ])
         self.traffic_combo.setCurrentText("residential_medium")
-        self.traffic_combo.setToolTip("Patrón de tráfico para la simulación")
+        self.traffic_combo.setToolTip(tr("rl_config_panel.traffic_tooltip"))
         group_layout.addWidget(self.traffic_combo, 1, 1)
         
         # Duración del episodio
-        group_layout.addWidget(QLabel("Duración (s):"), 2, 0)
+        self.duration_episode_label = QLabel(tr("rl_config_panel.duration_episode"))
+        group_layout.addWidget(self.duration_episode_label, 2, 0)
         self.duration_spin = QDoubleSpinBox()
         self.duration_spin.setRange(0.1, 60.0)
         self.duration_spin.setValue(1.0)
         self.duration_spin.setSingleStep(0.1)
         self.duration_spin.setDecimals(1)
-        self.duration_spin.setToolTip("Duración de cada episodio en segundos")
+        self.duration_spin.setToolTip(tr("rl_config_panel.duration_episode_tooltip"))
         group_layout.addWidget(self.duration_spin, 2, 1)
         
         # Timestep de simulación
-        group_layout.addWidget(QLabel("Timestep (ms):"), 3, 0)
+        self.timestep_label = QLabel(tr("rl_config_panel.timestep_ms"))
+        group_layout.addWidget(self.timestep_label, 3, 0)
         self.timestep_spin = QDoubleSpinBox()
         self.timestep_spin.setRange(0.1, 10.0)
         self.timestep_spin.setValue(0.5)
         self.timestep_spin.setSingleStep(0.1)
         self.timestep_spin.setDecimals(1)
-        self.timestep_spin.setToolTip("Timestep de simulación en milisegundos")
+        self.timestep_spin.setToolTip(tr("rl_config_panel.timestep_tooltip"))
         group_layout.addWidget(self.timestep_spin, 3, 1)
         
-        layout.addWidget(group)
+        layout.addWidget(self.pon_environment_group)
         
     def setup_algorithm_section(self, layout):
         """Configuración del algoritmo RL"""
-        group = QGroupBox("Algoritmo de Aprendizaje")
-        group_layout = QGridLayout(group)
+        self.learning_algorithm_group = QGroupBox(tr("rl_config_panel.learning_algorithm_group"))
+        group_layout = QGridLayout(self.learning_algorithm_group)
         group_layout.setSpacing(8)
         
         # Tipo de algoritmo
-        group_layout.addWidget(QLabel("Algoritmo:"), 0, 0)
+        self.algorithm_label = QLabel(tr("rl_config_panel.algorithm_label"))
+        group_layout.addWidget(self.algorithm_label, 0, 0)
         self.algorithm_combo = QComboBox()
         self.algorithm_combo.addItems(["PPO", "A2C", "DQN", "SAC"])
         self.algorithm_combo.setCurrentText("PPO")
-        self.algorithm_combo.setToolTip("Algoritmo de aprendizaje reforzado")
+        self.algorithm_combo.setToolTip(tr("rl_config_panel.algorithm_tooltip"))
         group_layout.addWidget(self.algorithm_combo, 0, 1)
         
         # Learning Rate
-        group_layout.addWidget(QLabel("Learning Rate:"), 1, 0)
+        self.learning_rate_label = QLabel(tr("rl_config_panel.learning_rate"))
+        group_layout.addWidget(self.learning_rate_label, 1, 0)
         self.lr_spin = QDoubleSpinBox()
         self.lr_spin.setRange(1e-6, 1e-1)
         self.lr_spin.setValue(3e-4)
         self.lr_spin.setDecimals(6)
         self.lr_spin.setSingleStep(1e-5)
-        self.lr_spin.setToolTip("Tasa de aprendizaje del algoritmo")
+        self.lr_spin.setToolTip(tr("rl_config_panel.learning_rate_tooltip"))
         group_layout.addWidget(self.lr_spin, 1, 1)
         
         # Batch Size
-        group_layout.addWidget(QLabel("Batch Size:"), 2, 0)
+        self.batch_size_label = QLabel(tr("rl_config_panel.batch_size"))
+        group_layout.addWidget(self.batch_size_label, 2, 0)
         self.batch_spin = QSpinBox()
         self.batch_spin.setRange(16, 512)
         self.batch_spin.setValue(64)
         self.batch_spin.setSingleStep(16)
-        self.batch_spin.setToolTip("Tamaño del lote para entrenamiento")
+        self.batch_spin.setToolTip(tr("rl_config_panel.batch_size_tooltip"))
         group_layout.addWidget(self.batch_spin, 2, 1)
         
         # Gamma (factor de descuento)
-        group_layout.addWidget(QLabel("Gamma:"), 3, 0)
+        self.gamma_label = QLabel(tr("rl_config_panel.gamma"))
+        group_layout.addWidget(self.gamma_label, 3, 0)
         self.gamma_spin = QDoubleSpinBox()
         self.gamma_spin.setRange(0.8, 0.999)
         self.gamma_spin.setValue(0.99)
         self.gamma_spin.setDecimals(3)
         self.gamma_spin.setSingleStep(0.01)
-        self.gamma_spin.setToolTip("Factor de descuento para recompensas futuras")
+        self.gamma_spin.setToolTip(tr("rl_config_panel.gamma_tooltip"))
         group_layout.addWidget(self.gamma_spin, 3, 1)
         
-        layout.addWidget(group)
+        layout.addWidget(self.learning_algorithm_group)
         
     def setup_training_section(self, layout):
         """Configuración de parámetros de entrenamiento"""
-        group = QGroupBox("Parametros de Entrenamiento")
-        group_layout = QGridLayout(group)
+        self.training_params_group = QGroupBox(tr("rl_config_panel.training_params_group"))
+        group_layout = QGridLayout(self.training_params_group)
         group_layout.setSpacing(8)
         
         # Total timesteps
-        group_layout.addWidget(QLabel("Total Steps:"), 0, 0)
+        self.total_steps_label = QLabel(tr("rl_config_panel.total_steps"))
+        group_layout.addWidget(self.total_steps_label, 0, 0)
         self.timesteps_spin = QSpinBox()
         self.timesteps_spin.setRange(1000, 1000000)
         self.timesteps_spin.setValue(100000)
         self.timesteps_spin.setSingleStep(10000)
-        self.timesteps_spin.setToolTip("Número total de pasos de entrenamiento")
+        self.timesteps_spin.setToolTip(tr("rl_config_panel.total_steps_tooltip"))
         group_layout.addWidget(self.timesteps_spin, 0, 1)
         
         # Frequency de evaluación
-        group_layout.addWidget(QLabel("Eval Freq:"), 1, 0)
+        self.eval_freq_label = QLabel(tr("rl_config_panel.eval_freq"))
+        group_layout.addWidget(self.eval_freq_label, 1, 0)
         self.eval_freq_spin = QSpinBox()
         self.eval_freq_spin.setRange(100, 10000)
         self.eval_freq_spin.setValue(2000)
         self.eval_freq_spin.setSingleStep(100)
-        self.eval_freq_spin.setToolTip("Frecuencia de evaluación del modelo")
+        self.eval_freq_spin.setToolTip(tr("rl_config_panel.eval_freq_tooltip"))
         group_layout.addWidget(self.eval_freq_spin, 1, 1)
         
         # Guardar modelo automáticamente
-        self.auto_save_check = QCheckBox("Guardar automático")
+        self.auto_save_check = QCheckBox(tr("rl_config_panel.auto_save"))
         self.auto_save_check.setChecked(True)
-        self.auto_save_check.setToolTip("Guardar modelo automáticamente durante el entrenamiento")
+        self.auto_save_check.setToolTip(tr("rl_config_panel.auto_save_tooltip"))
         group_layout.addWidget(self.auto_save_check, 2, 0, 1, 2)
         
         # Usar GPU si está disponible
-        self.use_gpu_check = QCheckBox("Usar GPU (si disponible)")
+        self.use_gpu_check = QCheckBox(tr("rl_config_panel.use_gpu"))
         self.use_gpu_check.setChecked(False)
-        self.use_gpu_check.setToolTip("Utilizar GPU para acelerar el entrenamiento")
+        self.use_gpu_check.setToolTip(tr("rl_config_panel.use_gpu_tooltip"))
         group_layout.addWidget(self.use_gpu_check, 3, 0, 1, 2)
         
-        layout.addWidget(group)
+        layout.addWidget(self.training_params_group)
         
     def setup_controls_section(self, layout):
         """Controles de entrenamiento"""
-        group = QGroupBox("Controles")
-        group_layout = QVBoxLayout(group)
+        self.controls_group = QGroupBox(tr("rl_config_panel.controls_group"))
+        group_layout = QVBoxLayout(self.controls_group)
         group_layout.setSpacing(8)
         
         # Primera fila de botones
         buttons_layout1 = QHBoxLayout()
         
         # Botón entrenar
-        self.train_button = QPushButton("Entrenar")
+        self.train_button = QPushButton(tr("rl_config_panel.train"))
         self.train_button.setMinimumHeight(35)
         self.train_button.setMinimumWidth(120)
         self.train_button.clicked.connect(self.start_training)
-        self.train_button.setToolTip("Iniciar entrenamiento del agente RL")
+        self.train_button.setToolTip(tr("rl_config_panel.train_tooltip"))
         buttons_layout1.addWidget(self.train_button)
         
         # Botón pausar
-        self.pause_button = QPushButton("Pausar")
+        self.pause_button = QPushButton(tr("rl_config_panel.pause"))
         self.pause_button.setMinimumHeight(35)
         self.pause_button.clicked.connect(self.pause_training)
         self.pause_button.setEnabled(False)
-        self.pause_button.setToolTip("Pausar entrenamiento")
+        self.pause_button.setToolTip(tr("rl_config_panel.pause_tooltip"))
         buttons_layout1.addWidget(self.pause_button)
         
         group_layout.addLayout(buttons_layout1)
@@ -494,68 +516,73 @@ class RLConfigPanel(QWidget):
         buttons_layout2 = QHBoxLayout()
         
         # Botón detener
-        self.stop_button = QPushButton("Detener")
+        self.stop_button = QPushButton(tr("rl_config_panel.stop"))
         self.stop_button.setMinimumHeight(35)
         self.stop_button.clicked.connect(self.stop_training)
         self.stop_button.setEnabled(False)
-        self.stop_button.setToolTip("Detener entrenamiento")
+        self.stop_button.setToolTip(tr("rl_config_panel.stop_tooltip"))
         buttons_layout2.addWidget(self.stop_button)
         
         # Botón guardar
-        self.save_button = QPushButton("Guardar")
+        self.save_button = QPushButton(tr("rl_config_panel.save"))
         self.save_button.setMinimumHeight(35)
         self.save_button.clicked.connect(self.save_model)
         self.save_button.setEnabled(False)
-        self.save_button.setToolTip("Guardar modelo entrenado")
+        self.save_button.setToolTip(tr("rl_config_panel.save_tooltip"))
         buttons_layout2.addWidget(self.save_button)
         
         group_layout.addLayout(buttons_layout2)
         
-        layout.addWidget(group)
+        layout.addWidget(self.controls_group)
         
     def setup_metrics_section(self, layout):
         """Métricas en tiempo real"""
-        group = QGroupBox("Metricas en Tiempo Real")
-        group_layout = QGridLayout(group)
+        self.realtime_metrics_group = QGroupBox(tr("rl_config_panel.realtime_metrics_group"))
+        group_layout = QGridLayout(self.realtime_metrics_group)
         group_layout.setSpacing(8)
         
         # Progreso de entrenamiento
-        group_layout.addWidget(QLabel("Progreso:"), 0, 0)
+        self.train_progress_label = QLabel(tr("rl_config_panel.progress"))
+        group_layout.addWidget(self.train_progress_label, 0, 0)
         self.progress_bar = QProgressBar()
         self.progress_bar.setRange(0, 100)
         self.progress_bar.setValue(0)
         group_layout.addWidget(self.progress_bar, 0, 1)
         
         # Episodio actual
-        group_layout.addWidget(QLabel("Episodio:"), 1, 0)
+        self.train_episode_label = QLabel(tr("rl_config_panel.episode"))
+        group_layout.addWidget(self.train_episode_label, 1, 0)
         self.episode_label = QLabel("0")
         self.episode_label.setStyleSheet("font-weight: bold; color: #2196F3;")
         group_layout.addWidget(self.episode_label, 1, 1)
         
         # Recompensa promedio
-        group_layout.addWidget(QLabel("Reward:"), 2, 0)
+        self.train_reward_label = QLabel(tr("rl_config_panel.reward"))
+        group_layout.addWidget(self.train_reward_label, 2, 0)
         self.reward_label = QLabel("0.000")
         self.reward_label.setStyleSheet("font-weight: bold; color: #4CAF50;")
         group_layout.addWidget(self.reward_label, 2, 1)
         
         # Loss promedio
-        group_layout.addWidget(QLabel("Loss:"), 3, 0)
+        self.train_loss_label = QLabel(tr("rl_config_panel.loss"))
+        group_layout.addWidget(self.train_loss_label, 3, 0)
         self.loss_label = QLabel("0.000")
         self.loss_label.setStyleSheet("font-weight: bold; color: #FF9800;")
         group_layout.addWidget(self.loss_label, 3, 1)
         
         # Tiempo transcurrido
-        group_layout.addWidget(QLabel("Tiempo:"), 4, 0)
+        self.train_time_label = QLabel(tr("rl_config_panel.time"))
+        group_layout.addWidget(self.train_time_label, 4, 0)
         self.time_label = QLabel("00:00:00")
         self.time_label.setStyleSheet("font-weight: bold; color: #9C27B0;")
         group_layout.addWidget(self.time_label, 4, 1)
         
-        layout.addWidget(group)
+        layout.addWidget(self.realtime_metrics_group)
         
     def setup_log_section(self, layout):
         """Log de entrenamiento"""
-        group = QGroupBox("Log de Entrenamiento")
-        group_layout = QVBoxLayout(group)
+        self.training_log_group = QGroupBox(tr("rl_config_panel.training_log_group"))
+        group_layout = QVBoxLayout(self.training_log_group)
         
         # Área de texto para el log
         self.log_text = QTextEdit()
@@ -571,15 +598,15 @@ class RLConfigPanel(QWidget):
         # Botón para limpiar log
         clear_log_layout = QHBoxLayout()
         clear_log_layout.addStretch()
-        clear_log_button = QPushButton("Limpiar Log")
-        clear_log_button.setMaximumWidth(100)
-        clear_log_button.clicked.connect(self.clear_log)
-        clear_log_layout.addWidget(clear_log_button)
+        self.clear_log_button = QPushButton(tr("rl_config_panel.clear_log"))
+        self.clear_log_button.setMaximumWidth(100)
+        self.clear_log_button.clicked.connect(self.clear_log)
+        clear_log_layout.addWidget(self.clear_log_button)
         
         group_layout.addWidget(self.log_text)
         group_layout.addLayout(clear_log_layout)
         
-        layout.addWidget(group)
+        layout.addWidget(self.training_log_group)
         
     def setup_timer(self):
         """Configurar timer para actualización de métricas"""
@@ -647,13 +674,13 @@ class RLConfigPanel(QWidget):
         if self.is_training_paused:
             # Reanudar (por ahora no implementado en TrainingManager)
             self.is_training_paused = False
-            self.pause_button.setText("Pausar")
+            self.pause_button.setText(tr("rl_config_panel.pause"))
             self.add_log_entry("▶️ Entrenamiento reanudado")
         else:
             # Pausar
             if self.training_manager.pause_training():
                 self.is_training_paused = True
-                self.pause_button.setText("Reanudar")
+                self.pause_button.setText(tr("rl_config_panel.resume"))
                 self.add_log_entry("⏸️ Entrenamiento pausado")
             
         self.training_paused.emit()
@@ -672,7 +699,7 @@ class RLConfigPanel(QWidget):
         self.is_training_paused = False
         self.train_button.setEnabled(True)
         self.pause_button.setEnabled(False)
-        self.pause_button.setText("Pausar")
+        self.pause_button.setText(tr("rl_config_panel.pause"))
         self.stop_button.setEnabled(False)
         
         # Detener timer
@@ -1534,3 +1561,165 @@ class RLConfigPanel(QWidget):
         # Aplicar tema a la ventana de gráficos RL si existe
         if hasattr(self, 'rl_graphics_window') and self.rl_graphics_window:
             self.rl_graphics_window.set_theme(dark_theme)
+    
+    def retranslate_ui(self):
+        """Actualizar todos los textos traducibles"""
+        # Mensaje informativo
+        if hasattr(self, 'info_label'):
+            self.info_label.setText(tr("rl_config_panel.info_message"))
+        
+        # Sección de selección de modelo
+        if hasattr(self, 'model_selection_group'):
+            self.model_selection_group.setTitle(tr("rl_config_panel.model_selection_group"))
+        if hasattr(self, 'available_models_label'):
+            self.available_models_label.setText(tr("rl_config_panel.available_models"))
+        if hasattr(self, 'refresh_button'):
+            self.refresh_button.setText(tr("rl_config_panel.refresh_button"))
+            self.refresh_button.setToolTip(tr("rl_config_panel.refresh_tooltip"))
+        if hasattr(self, 'load_external_button'):
+            self.load_external_button.setText(tr("rl_config_panel.load_external_button"))
+            self.load_external_button.setToolTip(tr("rl_config_panel.load_external_tooltip"))
+        if hasattr(self, 'loaded_model_info_label'):
+            self.loaded_model_info_label.setText(tr("rl_config_panel.loaded_model"))
+        if hasattr(self, 'algorithm_info_label'):
+            self.algorithm_info_label.setText(tr("rl_config_panel.algorithm"))
+        if hasattr(self, 'trained_onus_label'):
+            self.trained_onus_label.setText(tr("rl_config_panel.trained_onus"))
+        if hasattr(self, 'traffic_info_label'):
+            self.traffic_info_label.setText(tr("rl_config_panel.traffic"))
+        
+        # Sección de configuración de simulación
+        if hasattr(self, 'sim_config_group'):
+            self.sim_config_group.setTitle(tr("rl_config_panel.sim_config_group"))
+        if hasattr(self, 'duration_s_label'):
+            self.duration_s_label.setText(tr("rl_config_panel.duration_s"))
+        if hasattr(self, 'sim_duration_spin'):
+            self.sim_duration_spin.setToolTip(tr("rl_config_panel.duration_tooltip"))
+        if hasattr(self, 'show_decisions_check'):
+            self.show_decisions_check.setText(tr("rl_config_panel.show_decisions"))
+            self.show_decisions_check.setToolTip(tr("rl_config_panel.show_decisions_tooltip"))
+        if hasattr(self, 'save_metrics_check'):
+            self.save_metrics_check.setText(tr("rl_config_panel.save_metrics"))
+            self.save_metrics_check.setToolTip(tr("rl_config_panel.save_metrics_tooltip"))
+        
+        # Sección de controles de simulación
+        if hasattr(self, 'sim_controls_group'):
+            self.sim_controls_group.setTitle(tr("rl_config_panel.sim_controls_group"))
+        if hasattr(self, 'simulate_button'):
+            self.simulate_button.setText(tr("rl_config_panel.execute_simulation"))
+            self.simulate_button.setToolTip(tr("rl_config_panel.execute_simulation_tooltip"))
+        if hasattr(self, 'stop_simulation_button'):
+            self.stop_simulation_button.setText(tr("rl_config_panel.stop"))
+            self.stop_simulation_button.setToolTip(tr("rl_config_panel.stop_simulation_tooltip"))
+        
+        # Sección de métricas de simulación
+        if hasattr(self, 'sim_metrics_group'):
+            self.sim_metrics_group.setTitle(tr("rl_config_panel.sim_metrics_group"))
+        if hasattr(self, 'sim_progress_label'):
+            self.sim_progress_label.setText(tr("rl_config_panel.progress"))
+        if hasattr(self, 'sim_decisions_label'):
+            self.sim_decisions_label.setText(tr("rl_config_panel.decisions"))
+        if hasattr(self, 'sim_performance_label'):
+            self.sim_performance_label.setText(tr("rl_config_panel.performance"))
+        if hasattr(self, 'sim_blocks_label'):
+            self.sim_blocks_label.setText(tr("rl_config_panel.blocks"))
+        if hasattr(self, 'sim_time_info_label'):
+            self.sim_time_info_label.setText(tr("rl_config_panel.time"))
+        
+        # Sección de entorno PON
+        if hasattr(self, 'pon_environment_group'):
+            self.pon_environment_group.setTitle(tr("rl_config_panel.pon_environment_group"))
+        if hasattr(self, 'onus_label'):
+            self.onus_label.setText(tr("rl_config_panel.onus"))
+        if hasattr(self, 'onus_spin'):
+            self.onus_spin.setToolTip(tr("rl_config_panel.onus_tooltip"))
+        if hasattr(self, 'traffic_label'):
+            self.traffic_label.setText(tr("rl_config_panel.traffic_label"))
+        if hasattr(self, 'traffic_combo'):
+            self.traffic_combo.setToolTip(tr("rl_config_panel.traffic_tooltip"))
+        if hasattr(self, 'duration_episode_label'):
+            self.duration_episode_label.setText(tr("rl_config_panel.duration_episode"))
+        if hasattr(self, 'duration_spin'):
+            self.duration_spin.setToolTip(tr("rl_config_panel.duration_episode_tooltip"))
+        if hasattr(self, 'timestep_label'):
+            self.timestep_label.setText(tr("rl_config_panel.timestep_ms"))
+        if hasattr(self, 'timestep_spin'):
+            self.timestep_spin.setToolTip(tr("rl_config_panel.timestep_tooltip"))
+        
+        # Sección de algoritmo de aprendizaje
+        if hasattr(self, 'learning_algorithm_group'):
+            self.learning_algorithm_group.setTitle(tr("rl_config_panel.learning_algorithm_group"))
+        if hasattr(self, 'algorithm_label'):
+            self.algorithm_label.setText(tr("rl_config_panel.algorithm_label"))
+        if hasattr(self, 'algorithm_combo'):
+            self.algorithm_combo.setToolTip(tr("rl_config_panel.algorithm_tooltip"))
+        if hasattr(self, 'learning_rate_label'):
+            self.learning_rate_label.setText(tr("rl_config_panel.learning_rate"))
+        if hasattr(self, 'lr_spin'):
+            self.lr_spin.setToolTip(tr("rl_config_panel.learning_rate_tooltip"))
+        if hasattr(self, 'batch_size_label'):
+            self.batch_size_label.setText(tr("rl_config_panel.batch_size"))
+        if hasattr(self, 'batch_spin'):
+            self.batch_spin.setToolTip(tr("rl_config_panel.batch_size_tooltip"))
+        if hasattr(self, 'gamma_label'):
+            self.gamma_label.setText(tr("rl_config_panel.gamma"))
+        if hasattr(self, 'gamma_spin'):
+            self.gamma_spin.setToolTip(tr("rl_config_panel.gamma_tooltip"))
+        
+        # Sección de parámetros de entrenamiento
+        if hasattr(self, 'training_params_group'):
+            self.training_params_group.setTitle(tr("rl_config_panel.training_params_group"))
+        if hasattr(self, 'total_steps_label'):
+            self.total_steps_label.setText(tr("rl_config_panel.total_steps"))
+        if hasattr(self, 'timesteps_spin'):
+            self.timesteps_spin.setToolTip(tr("rl_config_panel.total_steps_tooltip"))
+        if hasattr(self, 'eval_freq_label'):
+            self.eval_freq_label.setText(tr("rl_config_panel.eval_freq"))
+        if hasattr(self, 'eval_freq_spin'):
+            self.eval_freq_spin.setToolTip(tr("rl_config_panel.eval_freq_tooltip"))
+        if hasattr(self, 'auto_save_check'):
+            self.auto_save_check.setText(tr("rl_config_panel.auto_save"))
+            self.auto_save_check.setToolTip(tr("rl_config_panel.auto_save_tooltip"))
+        if hasattr(self, 'use_gpu_check'):
+            self.use_gpu_check.setText(tr("rl_config_panel.use_gpu"))
+            self.use_gpu_check.setToolTip(tr("rl_config_panel.use_gpu_tooltip"))
+        
+        # Sección de controles
+        if hasattr(self, 'controls_group'):
+            self.controls_group.setTitle(tr("rl_config_panel.controls_group"))
+        if hasattr(self, 'train_button'):
+            self.train_button.setText(tr("rl_config_panel.train"))
+            self.train_button.setToolTip(tr("rl_config_panel.train_tooltip"))
+        if hasattr(self, 'pause_button'):
+            # El texto del botón pause cambia dinámicamente
+            if self.is_training_paused:
+                self.pause_button.setText(tr("rl_config_panel.resume"))
+            else:
+                self.pause_button.setText(tr("rl_config_panel.pause"))
+            self.pause_button.setToolTip(tr("rl_config_panel.pause_tooltip"))
+        if hasattr(self, 'stop_button'):
+            self.stop_button.setText(tr("rl_config_panel.stop"))
+            self.stop_button.setToolTip(tr("rl_config_panel.stop_tooltip"))
+        if hasattr(self, 'save_button'):
+            self.save_button.setText(tr("rl_config_panel.save"))
+            self.save_button.setToolTip(tr("rl_config_panel.save_tooltip"))
+        
+        # Sección de métricas en tiempo real
+        if hasattr(self, 'realtime_metrics_group'):
+            self.realtime_metrics_group.setTitle(tr("rl_config_panel.realtime_metrics_group"))
+        if hasattr(self, 'train_progress_label'):
+            self.train_progress_label.setText(tr("rl_config_panel.progress"))
+        if hasattr(self, 'train_episode_label'):
+            self.train_episode_label.setText(tr("rl_config_panel.episode"))
+        if hasattr(self, 'train_reward_label'):
+            self.train_reward_label.setText(tr("rl_config_panel.reward"))
+        if hasattr(self, 'train_loss_label'):
+            self.train_loss_label.setText(tr("rl_config_panel.loss"))
+        if hasattr(self, 'train_time_label'):
+            self.train_time_label.setText(tr("rl_config_panel.time"))
+        
+        # Sección de log de entrenamiento
+        if hasattr(self, 'training_log_group'):
+            self.training_log_group.setTitle(tr("rl_config_panel.training_log_group"))
+        if hasattr(self, 'clear_log_button'):
+            self.clear_log_button.setText(tr("rl_config_panel.clear_log"))
