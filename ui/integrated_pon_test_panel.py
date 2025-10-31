@@ -1356,5 +1356,9 @@ class IntegratedPONTestPanel(QWidget):
         if hasattr(self, 'update_rl_status_display'):
             self.update_rl_status_display()
         
+        # Actualizar ventana popup de gráficos si existe
+        if hasattr(self, 'popup_window') and self.popup_window:
+            self.popup_window.retranslate_ui()
+        
         # Recargar estado (si está disponible, mantiene el estado traducido)
         self.check_pon_status()

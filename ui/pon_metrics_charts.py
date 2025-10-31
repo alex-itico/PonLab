@@ -10,6 +10,7 @@ from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel,
                              QSplitter, QPushButton, QComboBox, QCheckBox)
 from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtGui import QFont, QPixmap
+from utils.translation_manager import tr
 
 try:
     # Configurar matplotlib antes de cualquier importación
@@ -102,18 +103,18 @@ class PONMetricsChart(FigureCanvas):
             delays = self._simulate_delay_evolution(mean_delay, len(time_points))
 
         ax = self.fig.add_subplot(111)
-        ax.plot(time_points, delays, 'b-', linewidth=2, label='Delay promedio')
+        ax.plot(time_points, delays, 'b-', linewidth=2, label=tr('pon_metrics_charts.legend_delay_avg'))
         ax.fill_between(time_points, delays, alpha=0.3, color='blue')
 
-        ax.set_xlabel('Tiempo (s)')
-        ax.set_ylabel('Delay (segundos)')
-        ax.set_title(f'Evolución del Delay Durante la Simulación ({simulation_duration:.1f}s)')
+        ax.set_xlabel(tr('pon_metrics_charts.axis_time'))
+        ax.set_ylabel(tr('pon_metrics_charts.axis_delay'))
+        ax.set_title(tr('pon_metrics_charts.chart_delay_title').format(f"{simulation_duration:.1f}"))
         ax.grid(True, alpha=0.3)
         ax.legend()
 
         # Agregar estadísticas
         final_delay = delays[-1] if len(delays) > 0 else mean_delay
-        ax.text(0.02, 0.98, f'Delay final: {final_delay:.6f}s',
+        ax.text(0.02, 0.98, tr('pon_metrics_charts.stats_final_delay').format(f"{final_delay:.6f}"),
                 transform=ax.transAxes, verticalalignment='top',
                 bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.8))
 
@@ -156,18 +157,18 @@ class PONMetricsChart(FigureCanvas):
             throughputs = self._simulate_throughput_evolution(mean_throughput, len(time_points))
 
         ax = self.fig.add_subplot(111)
-        ax.plot(time_points, throughputs, 'g-', linewidth=2, label='Throughput promedio')
+        ax.plot(time_points, throughputs, 'g-', linewidth=2, label=tr('pon_metrics_charts.legend_throughput_avg'))
         ax.fill_between(time_points, throughputs, alpha=0.3, color='green')
 
-        ax.set_xlabel('Tiempo (s)')
-        ax.set_ylabel('Throughput (MB/s)')
-        ax.set_title(f'Evolución del Throughput Durante la Simulación ({simulation_duration:.1f}s)')
+        ax.set_xlabel(tr('pon_metrics_charts.axis_time'))
+        ax.set_ylabel(tr('pon_metrics_charts.axis_throughput'))
+        ax.set_title(tr('pon_metrics_charts.chart_throughput_title').format(f"{simulation_duration:.1f}"))
         ax.grid(True, alpha=0.3)
         ax.legend()
 
         # Agregar estadísticas
         final_throughput = throughputs[-1] if len(throughputs) > 0 else mean_throughput
-        ax.text(0.02, 0.98, f'Throughput final: {final_throughput:.3f} MB/s',
+        ax.text(0.02, 0.98, tr('pon_metrics_charts.stats_final_throughput').format(f"{final_throughput:.3f}"),
                 transform=ax.transAxes, verticalalignment='top',
                 bbox=dict(boxstyle='round', facecolor='lightgreen', alpha=0.8))
 
@@ -340,24 +341,24 @@ class PONMetricsChart(FigureCanvas):
             # Graficar línea para esta ONU
             ax.plot(time_steps, buffer_levels_percent,
                    color=color, linewidth=2, marker='o', markersize=3,
-                   label=f'ONU {onu_id}', alpha=0.8)
+                   label=tr('pon_metrics_charts.legend_onu').format(onu_id), alpha=0.8)
 
         # Etiquetar ejes según el formato de datos
         if has_timestamps:
-            ax.set_xlabel('Tiempo de Simulación (s)')
+            ax.set_xlabel(tr('pon_metrics_charts.axis_simulation_time'))
         else:
-            ax.set_xlabel('Pasos de Simulación')
+            ax.set_xlabel(tr('pon_metrics_charts.axis_simulation_steps'))
 
-        ax.set_ylabel('Ocupación del Buffer (%)')
-        ax.set_title('Evolución Temporal de los Niveles de Buffer por ONU')
+        ax.set_ylabel(tr('pon_metrics_charts.axis_buffer_level'))
+        ax.set_title(tr('pon_metrics_charts.chart_buffer_title'))
         ax.set_ylim(0, 100)  # Porcentaje de 0 a 100%
         ax.grid(True, alpha=0.3)
         
         # Líneas de referencia en porcentaje
         ax.axhline(y=50, color='orange', linestyle='--', alpha=0.7, 
-                  label='Nivel medio (50%)')
+                  label=tr('pon_metrics_charts.legend_medium_level'))
         ax.axhline(y=80, color='red', linestyle='--', alpha=0.7, 
-                  label='Nivel crítico (80%)')
+                  label=tr('pon_metrics_charts.legend_high_level'))
         
         # Leyenda - manejar muchas ONUs
         if len(onu_ids) <= 8:
@@ -389,7 +390,7 @@ class PONMetricsChart(FigureCanvas):
             throughputs = episode_metrics_root.get('throughputs', [])
         
         if not throughputs:
-            self._plot_no_data("Sin datos de tráfico")
+            self._plot_no_data(tr('pon_metrics_charts.no_traffic_data'))
             return
         
         # Calcular distribución real de tipos de tráfico basada en throughputs
@@ -403,11 +404,17 @@ class PONMetricsChart(FigureCanvas):
         # Convertir a porcentajes
         total_entries = sum(tcont_counts.values())
         if total_entries == 0:
-            self._plot_no_data("Sin datos de tipos de tráfico")
+            self._plot_no_data(tr('pon_metrics_charts.no_traffic_types'))
             return
         
         # Calcular porcentajes reales
-        traffic_types = ['Highest', 'High', 'Medium', 'Low', 'Lowest']
+        traffic_types = [
+            tr('pon_metrics_charts.traffic_highest'),
+            tr('pon_metrics_charts.traffic_high'),
+            tr('pon_metrics_charts.traffic_medium'),
+            tr('pon_metrics_charts.traffic_low'),
+            tr('pon_metrics_charts.traffic_lowest')
+        ]
         tcont_keys = ['highest', 'high', 'medium', 'low', 'lowest']
         values = [(tcont_counts[key] / total_entries) * 100 for key in tcont_keys]
         
@@ -424,7 +431,7 @@ class PONMetricsChart(FigureCanvas):
                 filtered_colors.append(base_colors[i])
         
         if not filtered_values:
-            self._plot_no_data("Sin tipos de tráfico detectados")
+            self._plot_no_data(tr('pon_metrics_charts.no_traffic_detected'))
             return
         
         # Crear gráfico de dona
@@ -436,15 +443,15 @@ class PONMetricsChart(FigureCanvas):
         
         # Agregar porcentaje de utilización en el centro
         if network_utilization > 0:
-            ax.text(0, 0, f'{network_utilization:.1f}%\nUtilización', 
+            ax.text(0, 0, f'{network_utilization:.1f}%\n{tr("pon_metrics_charts.utilization")}', 
                     ha='center', va='center', fontsize=16, fontweight='bold')
         else:
-            ax.text(0, 0, 'N/A\nUtilización', 
+            ax.text(0, 0, f'N/A\n{tr("pon_metrics_charts.utilization")}', 
                     ha='center', va='center', fontsize=16, fontweight='bold')
         
         # Título con información adicional
         total_packets = len(throughputs)
-        ax.set_title(f'{network_utilization:.1f}% - Distribución de Tráfico Real\n({total_packets} paquetes analizados)', 
+        ax.set_title(tr('pon_metrics_charts.network_util_title').format(f"{network_utilization:.1f}", total_packets), 
                     fontsize=14, pad=20)
         
         self.fig.tight_layout()
@@ -511,7 +518,7 @@ class PONMetricsChart(FigureCanvas):
             throughputs = episode_metrics_root.get('throughputs', [])
         
         if not throughputs:
-            self._plot_no_data("Sin datos de tráfico")
+            self._plot_no_data(tr('pon_metrics_charts.no_traffic_data'))
             return
         
         # Calcular distribución real de tipos de tráfico basada en throughputs
@@ -525,11 +532,17 @@ class PONMetricsChart(FigureCanvas):
         # Convertir a porcentajes
         total_entries = sum(tcont_counts.values())
         if total_entries == 0:
-            self._plot_no_data("Sin datos de tipos de tráfico")
+            self._plot_no_data(tr('pon_metrics_charts.no_traffic_types'))
             return
         
         # Calcular porcentajes reales
-        traffic_types = ['Highest', 'High', 'Medium', 'Low', 'Lowest']
+        traffic_types = [
+            tr('pon_metrics_charts.traffic_highest'),
+            tr('pon_metrics_charts.traffic_high'),
+            tr('pon_metrics_charts.traffic_medium'),
+            tr('pon_metrics_charts.traffic_low'),
+            tr('pon_metrics_charts.traffic_lowest')
+        ]
         tcont_keys = ['highest', 'high', 'medium', 'low', 'lowest']
         values = [(tcont_counts[key] / total_entries) * 100 for key in tcont_keys]
         
@@ -546,7 +559,7 @@ class PONMetricsChart(FigureCanvas):
                 filtered_colors.append(base_colors[i])
         
         if not filtered_values:
-            self._plot_no_data("Sin tipos de tráfico detectados")
+            self._plot_no_data(tr('pon_metrics_charts.no_traffic_detected'))
             return
         
         # Crear gráfico de dona
@@ -558,15 +571,15 @@ class PONMetricsChart(FigureCanvas):
         
         # Agregar porcentaje de utilización en el centro
         if network_utilization > 0:
-            ax.text(0, 0, f'{network_utilization:.1f}%\nUtilización', 
+            ax.text(0, 0, f'{network_utilization:.1f}%\n{tr("pon_metrics_charts.utilization")}', 
                     ha='center', va='center', fontsize=16, fontweight='bold')
         else:
-            ax.text(0, 0, 'N/A\nUtilización', 
+            ax.text(0, 0, f'N/A\n{tr("pon_metrics_charts.utilization")}', 
                     ha='center', va='center', fontsize=16, fontweight='bold')
         
         # Título con información adicional
         total_packets = len(throughputs)
-        ax.set_title(f'{network_utilization:.1f}% - Distribución de Tráfico Real\n({total_packets} paquetes analizados)', 
+        ax.set_title(tr('pon_metrics_charts.network_util_title').format(f"{network_utilization:.1f}", total_packets), 
                     fontsize=14, pad=20)
         
         self.fig.tight_layout()
@@ -606,10 +619,10 @@ class PONMetricsChart(FigureCanvas):
             delay_values = np.zeros(10)
 
         # Graficar
-        ax.plot(time_points, delay_values, 'b-', linewidth=2, label='Mean Delay', marker='o', markersize=3)
-        ax.set_xlabel('Tiempo (s)')
-        ax.set_ylabel('Delay (ms)')
-        ax.set_title(f'Evolución del Mean Delay vs Tiempo ({simulation_duration:.1f}s)')
+        ax.plot(time_points, delay_values, 'b-', linewidth=2, label=tr('pon_metrics_charts.legend_mean_delay'), marker='o', markersize=3)
+        ax.set_xlabel(tr('pon_metrics_charts.axis_time'))
+        ax.set_ylabel(tr('pon_metrics_charts.axis_delay'))
+        ax.set_title(tr('pon_metrics_charts.chart_mean_delay_title').format(f"{simulation_duration:.1f}"))
         ax.grid(True, alpha=0.3)
         ax.legend()
 
@@ -617,7 +630,8 @@ class PONMetricsChart(FigureCanvas):
         if len(delay_values) > 0:
             avg_delay = np.mean(delay_values)
             max_delay = np.max(delay_values)
-            ax.text(0.02, 0.98, f'Promedio: {avg_delay:.3f}ms\nMáximo: {max_delay:.3f}ms',
+            ax.text(0.02, 0.98, tr('pon_metrics_charts.stats_avg').format(f"{avg_delay:.3f}") + '\n' + 
+                    tr('pon_metrics_charts.stats_max').format(f"{max_delay:.3f}"),
                     transform=ax.transAxes, verticalalignment='top',
                     bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
 
@@ -673,10 +687,10 @@ class PONMetricsChart(FigureCanvas):
             p95_values = self._simulate_metric_evolution(p95_approx, len(time_points), 'percentile')
 
         # Graficar
-        ax.plot(time_points, p95_values, 'r-', linewidth=2, label='P95 Delay', marker='s', markersize=3)
-        ax.set_xlabel('Tiempo (s)')
-        ax.set_ylabel('Delay (ms)')
-        ax.set_title(f'Evolución del P95 Delay vs Tiempo ({simulation_duration:.1f}s)')
+        ax.plot(time_points, p95_values, 'r-', linewidth=2, label=tr('pon_metrics_charts.legend_p95_delay'), marker='s', markersize=3)
+        ax.set_xlabel(tr('pon_metrics_charts.axis_time'))
+        ax.set_ylabel(tr('pon_metrics_charts.axis_delay'))
+        ax.set_title(tr('pon_metrics_charts.chart_p95_delay_title').format(f"{simulation_duration:.1f}"))
         ax.grid(True, alpha=0.3)
         ax.legend()
 
@@ -684,7 +698,8 @@ class PONMetricsChart(FigureCanvas):
         if len(p95_values) > 0:
             avg_p95 = np.mean(p95_values)
             max_p95 = np.max(p95_values)
-            ax.text(0.02, 0.98, f'Promedio P95: {avg_p95:.3f}ms\nMáximo P95: {max_p95:.3f}ms',
+            ax.text(0.02, 0.98, tr('pon_metrics_charts.stats_avg_p95').format(f"{avg_p95:.3f}") + '\n' + 
+                    tr('pon_metrics_charts.stats_max_p95').format(f"{max_p95:.3f}"),
                     transform=ax.transAxes, verticalalignment='top',
                     bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
 
@@ -745,10 +760,10 @@ class PONMetricsChart(FigureCanvas):
             jitter_values = self._simulate_metric_evolution(jitter_approx, len(time_points), 'jitter')
 
         # Graficar
-        ax.plot(time_points, jitter_values, 'g-', linewidth=2, label='Jitter IPDV Mean', marker='^', markersize=3)
-        ax.set_xlabel('Tiempo (s)')
+        ax.plot(time_points, jitter_values, 'g-', linewidth=2, label=tr('pon_metrics_charts.legend_jitter_ipdv'), marker='^', markersize=3)
+        ax.set_xlabel(tr('pon_metrics_charts.axis_time'))
         ax.set_ylabel('Jitter (ms)')
-        ax.set_title(f'Evolución del Jitter IPDV Mean vs Tiempo ({simulation_duration:.1f}s)')
+        ax.set_title(tr('pon_metrics_charts.chart_jitter_title').format(f"{simulation_duration:.1f}"))
         ax.grid(True, alpha=0.3)
         ax.legend()
 
@@ -756,7 +771,8 @@ class PONMetricsChart(FigureCanvas):
         if len(jitter_values) > 0:
             avg_jitter = np.mean(jitter_values)
             max_jitter = np.max(jitter_values)
-            ax.text(0.02, 0.98, f'Promedio: {avg_jitter:.3f}ms\nMáximo: {max_jitter:.3f}ms',
+            ax.text(0.02, 0.98, tr('pon_metrics_charts.stats_avg').format(f"{avg_jitter:.3f}") + '\n' + 
+                    tr('pon_metrics_charts.stats_max').format(f"{max_jitter:.3f}"),
                     transform=ax.transAxes, verticalalignment='top',
                     bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
 
@@ -779,7 +795,7 @@ class PONMetricsChart(FigureCanvas):
             delays_data = simulation_data.get('episode_metrics', {}).get('delays', [])
         
         if not delays_data:
-            self._plot_no_data("Sin datos de ONUs y TCONTs")
+            self._plot_no_data(tr('pon_metrics_charts.no_onus_tconts_data'))
             return
         
         # Analizar datos para extraer ONUs y sus TCONTs
@@ -798,7 +814,7 @@ class PONMetricsChart(FigureCanvas):
                 onu_tcont_counts[onu_id][tcont_id] += 1
         
         if not onu_tcont_counts:
-            self._plot_no_data("No se encontraron datos de ONUs")
+            self._plot_no_data(tr('pon_metrics_charts.no_onus_found'))
             return
         
         # Crear subgráficas para cada ONU
@@ -823,7 +839,13 @@ class PONMetricsChart(FigureCanvas):
         # Tipos de TCONT y colores
         tcont_types = ['lowest', 'low', 'medium', 'high', 'highest']
         tcont_colors = ['#ff4444', '#ff8800', '#ffdd00', '#4488ff', '#00aa44']
-        tcont_labels = ['Lowest', 'Low', 'Medium', 'High', 'Highest']
+        tcont_labels = [
+            tr('pon_metrics_charts.traffic_lowest'),
+            tr('pon_metrics_charts.traffic_low'),
+            tr('pon_metrics_charts.traffic_medium'),
+            tr('pon_metrics_charts.traffic_high'),
+            tr('pon_metrics_charts.traffic_highest')
+        ]
         
         # Crear gráficas para cada ONU
         for i, (onu_id, tcont_data) in enumerate(onu_tcont_counts.items()):
@@ -846,9 +868,9 @@ class PONMetricsChart(FigureCanvas):
                            f'{int(value)}', ha='center', va='bottom', fontweight='bold')
             
             # Configurar gráfica
-            ax.set_title(f'ONU {onu_id} - Distribución de TCONTs', fontweight='bold')
-            ax.set_xlabel('Tipo de TCONT')
-            ax.set_ylabel('Cantidad')
+            ax.set_title(tr('pon_metrics_charts.chart_onu_tcont_title').format(onu_id), fontweight='bold')
+            ax.set_xlabel(tr('pon_metrics_charts.axis_tcont_type'))
+            ax.set_ylabel(tr('pon_metrics_charts.axis_quantity'))
             ax.grid(True, alpha=0.3, axis='y')
             
             # Rotar etiquetas si es necesario
@@ -860,13 +882,14 @@ class PONMetricsChart(FigureCanvas):
             max_tcont = max(values) if values else 0
             most_used = tcont_labels[values.index(max_tcont)] if max_tcont > 0 else 'N/A'
             
-            ax.text(0.02, 0.98, f'Total: {total_tconts}\nMás usado: {most_used}', 
+            ax.text(0.02, 0.98, tr('pon_metrics_charts.onu_stats_total').format(total_tconts) + '\n' + 
+                    tr('pon_metrics_charts.onu_stats_most_used').format(most_used), 
                     transform=ax.transAxes, verticalalignment='top',
                     bbox=dict(boxstyle='round', facecolor='white', alpha=0.8),
                     fontsize=8)
         
         # Título general
-        self.fig.suptitle(f'Análisis de TCONTs por ONU ({num_onus} ONUs detectadas)', 
+        self.fig.suptitle(tr('pon_metrics_charts.onu_analysis_title').format(num_onus), 
                          fontsize=14, fontweight='bold')
         
         self.fig.tight_layout()
@@ -1093,15 +1116,13 @@ class PONMetricsChartsPanel(QWidget):
         """Configurar UI cuando matplotlib no está disponible"""
         layout = QVBoxLayout(self)
         
-        warning = QLabel("⚠️ Matplotlib no está instalado.\n\n"
-                        "Para ver gráficos, instala matplotlib:\n"
-                        "pip install matplotlib>=3.5.0")
-        warning.setStyleSheet("QLabel { background-color: #fff3cd; border: 1px solid #ffeaa7; "
+        self.warning_label = QLabel(tr('pon_metrics_charts.matplotlib_warning'))
+        self.warning_label.setStyleSheet("QLabel { background-color: #fff3cd; border: 1px solid #ffeaa7; "
                              "border-radius: 5px; padding: 20px; margin: 20px; }")
-        warning.setAlignment(Qt.AlignCenter)
-        warning.setWordWrap(True)
+        self.warning_label.setAlignment(Qt.AlignCenter)
+        self.warning_label.setWordWrap(True)
         
-        layout.addWidget(warning)
+        layout.addWidget(self.warning_label)
     
     def setup_ui(self):
         """Configurar interfaz de usuario con gráficos"""
@@ -1110,18 +1131,18 @@ class PONMetricsChartsPanel(QWidget):
         # Título y controles
         header_layout = QHBoxLayout()
         
-        title = QLabel("📊 Gráficos de Métricas PON")
-        title.setObjectName("pon_charts_title")  # Identificador para QSS
+        self.title_label = QLabel(tr('pon_metrics_charts.title'))
+        self.title_label.setObjectName("pon_charts_title")  # Identificador para QSS
         title_font = QFont()
         title_font.setPointSize(12)
         title_font.setBold(True)
-        title.setFont(title_font)
-        header_layout.addWidget(title)
+        self.title_label.setFont(title_font)
+        header_layout.addWidget(self.title_label)
         
         header_layout.addStretch()
         
         # Botones de control
-        self.refresh_charts_btn = QPushButton("🔄 Actualizar Gráficos")
+        self.refresh_charts_btn = QPushButton(tr('pon_metrics_charts.refresh_btn'))
         self.refresh_charts_btn.setObjectName("pon_charts_button")  # Identificador para QSS
         self.refresh_charts_btn.clicked.connect(self.refresh_all_charts)
         header_layout.addWidget(self.refresh_charts_btn)
@@ -1153,28 +1174,28 @@ class PONMetricsChartsPanel(QWidget):
         splitter = QSplitter(Qt.Vertical)
         
         # Gráfico de delay
-        delay_group = QGroupBox("Evolución del Delay")
-        delay_group.setObjectName("pon_charts_group")
-        delay_layout = QVBoxLayout(delay_group)
+        self.delay_group = QGroupBox(tr('pon_metrics_charts.delay_evolution'))
+        self.delay_group.setObjectName("pon_charts_group")
+        delay_layout = QVBoxLayout(self.delay_group)
         
         self.charts['delay'] = PONMetricsChart(width=10, height=4)
         delay_layout.addWidget(self.charts['delay'])
         
-        splitter.addWidget(delay_group)
+        splitter.addWidget(self.delay_group)
         
         # Gráfico de throughput
-        throughput_group = QGroupBox("Evolución del Throughput")
-        throughput_group.setObjectName("pon_charts_group")
-        throughput_layout = QVBoxLayout(throughput_group)
+        self.throughput_group = QGroupBox(tr('pon_metrics_charts.throughput_evolution'))
+        self.throughput_group.setObjectName("pon_charts_group")
+        throughput_layout = QVBoxLayout(self.throughput_group)
         
         self.charts['throughput'] = PONMetricsChart(width=10, height=4)
         throughput_layout.addWidget(self.charts['throughput'])
         
-        splitter.addWidget(throughput_group)
+        splitter.addWidget(self.throughput_group)
         
         layout.addWidget(splitter)
         
-        self.tabs.addTab(tab, "⏱️ Evolución Temporal")
+        self.tabs.addTab(tab, tr('pon_metrics_charts.tab_temporal'))
     
     def setup_network_state_charts_tab(self):
         """Configurar tab de estados de red"""
@@ -1182,26 +1203,26 @@ class PONMetricsChartsPanel(QWidget):
         layout = QGridLayout(tab)
 
         # Gráfico de niveles de buffer
-        buffer_group = QGroupBox("Niveles de Buffer por ONU")
-        buffer_group.setObjectName("pon_charts_group")
-        buffer_layout = QVBoxLayout(buffer_group)
+        self.buffer_group = QGroupBox(tr('pon_metrics_charts.buffer_levels'))
+        self.buffer_group.setObjectName("pon_charts_group")
+        buffer_layout = QVBoxLayout(self.buffer_group)
 
         self.charts['buffer'] = PONMetricsChart(width=8, height=5)
         buffer_layout.addWidget(self.charts['buffer'])
 
-        layout.addWidget(buffer_group, 0, 0)
+        layout.addWidget(self.buffer_group, 0, 0)
 
         # Gráfico de utilización
-        utilization_group = QGroupBox("Utilización de la Red")
-        utilization_group.setObjectName("pon_charts_group")
-        utilization_layout = QVBoxLayout(utilization_group)
+        self.utilization_group = QGroupBox(tr('pon_metrics_charts.network_utilization'))
+        self.utilization_group.setObjectName("pon_charts_group")
+        utilization_layout = QVBoxLayout(self.utilization_group)
 
         self.charts['utilization'] = PONMetricsChart(width=8, height=5)
         utilization_layout.addWidget(self.charts['utilization'])
 
-        layout.addWidget(utilization_group, 0, 1)
+        layout.addWidget(self.utilization_group, 0, 1)
 
-        self.tabs.addTab(tab, "🌐 Estados de Red")
+        self.tabs.addTab(tab, tr('pon_metrics_charts.tab_network_state'))
     
     def setup_comparative_charts_tab(self):
         """Configurar tab de análisis comparativo con métricas de latencia y jitter"""
@@ -1209,36 +1230,36 @@ class PONMetricsChartsPanel(QWidget):
         layout = QGridLayout(tab)
         
         # Gráfico de Mean Delay vs Tiempo
-        mean_delay_group = QGroupBox("Mean Delay vs Tiempo")
-        mean_delay_group.setObjectName("pon_charts_group")
-        mean_delay_layout = QVBoxLayout(mean_delay_group)
+        self.mean_delay_group = QGroupBox(tr('pon_metrics_charts.mean_delay_time'))
+        self.mean_delay_group.setObjectName("pon_charts_group")
+        mean_delay_layout = QVBoxLayout(self.mean_delay_group)
         
         self.charts['mean_delay'] = PONMetricsChart(width=8, height=5)
         mean_delay_layout.addWidget(self.charts['mean_delay'])
         
-        layout.addWidget(mean_delay_group, 0, 0)
+        layout.addWidget(self.mean_delay_group, 0, 0)
         
         # Gráfico de P95 Delay vs Tiempo
-        p95_delay_group = QGroupBox("P95 Delay vs Tiempo")
-        p95_delay_group.setObjectName("pon_charts_group")
-        p95_delay_layout = QVBoxLayout(p95_delay_group)
+        self.p95_delay_group = QGroupBox(tr('pon_metrics_charts.p95_delay_time'))
+        self.p95_delay_group.setObjectName("pon_charts_group")
+        p95_delay_layout = QVBoxLayout(self.p95_delay_group)
         
         self.charts['p95_delay'] = PONMetricsChart(width=8, height=5)
         p95_delay_layout.addWidget(self.charts['p95_delay'])
         
-        layout.addWidget(p95_delay_group, 0, 1)
+        layout.addWidget(self.p95_delay_group, 0, 1)
         
         # Gráfico de Jitter IPDV Mean vs Tiempo
-        jitter_group = QGroupBox("Jitter IPDV Mean vs Tiempo")
-        jitter_group.setObjectName("pon_charts_group")
-        jitter_layout = QVBoxLayout(jitter_group)
+        self.jitter_group = QGroupBox(tr('pon_metrics_charts.jitter_ipdv_time'))
+        self.jitter_group.setObjectName("pon_charts_group")
+        jitter_layout = QVBoxLayout(self.jitter_group)
         
         self.charts['jitter_ipdv'] = PONMetricsChart(width=8, height=5)
         jitter_layout.addWidget(self.charts['jitter_ipdv'])
         
-        layout.addWidget(jitter_group, 1, 0, 1, 2)  # Span across both columns
+        layout.addWidget(self.jitter_group, 1, 0, 1, 2)  # Span across both columns
         
-        self.tabs.addTab(tab, "📈 Análisis")
+        self.tabs.addTab(tab, tr('pon_metrics_charts.tab_analysis'))
     
     def setup_onu_analysis_tab(self):
         """Configurar tab de análisis de ONUs"""
@@ -1256,21 +1277,21 @@ class PONMetricsChartsPanel(QWidget):
         onu_layout = QVBoxLayout(onu_widget)
         
         # Grupo para análisis de TCONTs por ONU
-        onu_analysis_group = QGroupBox("Análisis de Tipos de TCONT por ONU")
-        onu_analysis_group.setObjectName("pon_charts_group")
-        onu_analysis_layout = QVBoxLayout(onu_analysis_group)
+        self.onu_analysis_group = QGroupBox(tr('pon_metrics_charts.onu_tcont_analysis'))
+        self.onu_analysis_group.setObjectName("pon_charts_group")
+        onu_analysis_layout = QVBoxLayout(self.onu_analysis_group)
         
         # Gráfica principal para análisis de ONUs
         self.charts['onu_tcont_analysis'] = PONMetricsChart(width=12, height=8)
         onu_analysis_layout.addWidget(self.charts['onu_tcont_analysis'])
         
-        onu_layout.addWidget(onu_analysis_group)
+        onu_layout.addWidget(self.onu_analysis_group)
         onu_layout.addStretch()
         
         scroll_area.setWidget(onu_widget)
         layout.addWidget(scroll_area)
         
-        self.tabs.addTab(tab, "🔍 Análisis ONUs")
+        self.tabs.addTab(tab, tr('pon_metrics_charts.tab_onu_analysis'))
     
     def update_charts_with_data(self, simulation_data: Dict[str, Any]):
         """Actualizar todos los gráficos con nuevos datos"""
@@ -1427,3 +1448,52 @@ class PONMetricsChartsPanel(QWidget):
         # (incluso mejor con timestamp, onu_id, tcont_id)
         
         return converted_data
+
+    def retranslate_ui(self):
+        """Actualizar todos los textos traducibles del panel"""
+        # Titulo principal
+        if hasattr(self, 'title_label'):
+            self.title_label.setText(tr('pon_metrics_charts.title'))
+        
+        # Boton de actualizar
+        if hasattr(self, 'refresh_charts_btn'):
+            self.refresh_charts_btn.setText(tr('pon_metrics_charts.refresh_btn'))
+        
+        # Warning de matplotlib
+        if hasattr(self, 'warning_label'):
+            self.warning_label.setText(tr('pon_metrics_charts.matplotlib_warning'))
+        
+        # Titulos de tabs
+        if hasattr(self, 'tabs'):
+            self.tabs.setTabText(0, tr('pon_metrics_charts.tab_temporal'))
+            self.tabs.setTabText(1, tr('pon_metrics_charts.tab_network_state'))
+            self.tabs.setTabText(2, tr('pon_metrics_charts.tab_analysis'))
+            self.tabs.setTabText(3, tr('pon_metrics_charts.tab_onu_analysis'))
+        
+        # GroupBoxes del tab temporal
+        if hasattr(self, 'delay_group'):
+            self.delay_group.setTitle(tr('pon_metrics_charts.delay_evolution'))
+        if hasattr(self, 'throughput_group'):
+            self.throughput_group.setTitle(tr('pon_metrics_charts.throughput_evolution'))
+        
+        # GroupBoxes del tab de estados de red
+        if hasattr(self, 'buffer_group'):
+            self.buffer_group.setTitle(tr('pon_metrics_charts.buffer_levels'))
+        if hasattr(self, 'utilization_group'):
+            self.utilization_group.setTitle(tr('pon_metrics_charts.network_utilization'))
+        
+        # GroupBoxes del tab de analisis
+        if hasattr(self, 'mean_delay_group'):
+            self.mean_delay_group.setTitle(tr('pon_metrics_charts.mean_delay_time'))
+        if hasattr(self, 'p95_delay_group'):
+            self.p95_delay_group.setTitle(tr('pon_metrics_charts.p95_delay_time'))
+        if hasattr(self, 'jitter_group'):
+            self.jitter_group.setTitle(tr('pon_metrics_charts.jitter_ipdv_time'))
+        
+        # GroupBox del tab de analisis ONUs
+        if hasattr(self, 'onu_analysis_group'):
+            self.onu_analysis_group.setTitle(tr('pon_metrics_charts.onu_tcont_analysis'))
+        
+        # Regenerar graficos con textos traducidos si hay datos disponibles
+        if hasattr(self, 'current_data') and self.current_data:
+            self.update_charts_with_data(self.current_data)
