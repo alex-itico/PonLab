@@ -329,11 +329,31 @@ class MainWindow(QMainWindow, MainWindowSDNMixin):
         language_group.addAction(french_action)
         language_menu.addAction(french_action)
         
+        # Idioma Portugués
+        portuguese_action = QAction(tr('menu.language.portuguese'), self)
+        portuguese_action.setCheckable(True)
+        portuguese_action.setChecked(current_lang == 'pt_BR')
+        portuguese_action.setStatusTip(tr('menu.language.portuguese_tip'))
+        portuguese_action.triggered.connect(lambda: self.change_language('pt_BR'))
+        language_group.addAction(portuguese_action)
+        language_menu.addAction(portuguese_action)
+        
+        # Idioma Alemán
+        german_action = QAction(tr('menu.language.german'), self)
+        german_action.setCheckable(True)
+        german_action.setChecked(current_lang == 'de_DE')
+        german_action.setStatusTip(tr('menu.language.german_tip'))
+        german_action.triggered.connect(lambda: self.change_language('de_DE'))
+        language_group.addAction(german_action)
+        language_menu.addAction(german_action)
+        
         # Guardar referencias para poder actualizar después
         self.language_actions = {
             'es_ES': spanish_action,
             'en_US': english_action,
-            'fr_FR': french_action
+            'fr_FR': french_action,
+            'pt_BR': portuguese_action,
+            'de_DE': german_action
         }
         
         options_menu.addSeparator()

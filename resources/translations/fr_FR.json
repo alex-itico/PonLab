@@ -45,11 +45,15 @@
     "language": {
       "title": "&Langue",
       "spanish": "🇪🇸 &Español",
-      "spanish_tip": "Changer la langue en espagnol",
+      "spanish_tip": "Cambiar idioma a Español",
       "english": "🇺🇸 &English",
       "english_tip": "Change language to English",
       "french": "🇫🇷 &Français",
-      "french_tip": "Changer la langue en français"
+      "french_tip": "Changer la langue en français",
+      "portuguese": "🇧🇷 &Português",
+      "portuguese_tip": "Mudar idioma para Português",
+      "german": "🇩🇪 &Deutsch",
+      "german_tip": "Sprache auf Deutsch ändern"
     }
   },
   "sidebar": {
