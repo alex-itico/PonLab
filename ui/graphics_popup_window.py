@@ -11,6 +11,7 @@ from PyQt5.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel,
                              QFrame, QMessageBox)
 from PyQt5.QtCore import Qt, pyqtSignal, QTimer
 from PyQt5.QtGui import QFont, QPixmap, QIcon
+from utils.translation_manager import tr
 
 from .pon_metrics_charts import PONMetricsChartsPanel
 
@@ -24,13 +25,14 @@ class GraphicsPopupWindow(QDialog):
     
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("📊 Resultados de Simulación PON - Gráficos")
+        self.setWindowTitle(tr('graphics_popup.window_title'))
         self.setWindowFlags(Qt.Window | Qt.WindowMaximizeButtonHint | Qt.WindowCloseButtonHint)
         self.resize(1200, 800)
         
         # Datos de la simulación
         self.simulation_data = {}
         self.session_directory = ""
+        self.session_info = None
         self.charts_panel = None
         
         # Configurar interfaz
@@ -60,7 +62,7 @@ class GraphicsPopupWindow(QDialog):
         header_layout = QHBoxLayout(header_frame)
         
         # Título principal
-        self.title_label = QLabel("🎉 ¡Simulación Completada Exitosamente!")
+        self.title_label = QLabel(tr('graphics_popup.title_completed'))
         self.title_label.setObjectName("popup_title_label")  # Identificador para QSS
         title_font = QFont()
         title_font.setPointSize(14)
@@ -71,7 +73,7 @@ class GraphicsPopupWindow(QDialog):
         header_layout.addStretch()
         
         # Información de sesión
-        self.session_info_label = QLabel("📁 Guardado en: [pendiente]")
+        self.session_info_label = QLabel(tr('graphics_popup.saved_pending'))
         self.session_info_label.setObjectName("popup_session_label")  # Identificador para QSS
         header_layout.addWidget(self.session_info_label)
         
@@ -105,7 +107,7 @@ class GraphicsPopupWindow(QDialog):
         scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         
-        self.tabs.addTab(scroll_area, "📊 Gráficos Interactivos")
+        self.tabs.addTab(scroll_area, tr('graphics_popup.tab_graphics'))
     
     def setup_summary_tab(self):
         """Configurar tab de resumen de datos"""
@@ -113,9 +115,9 @@ class GraphicsPopupWindow(QDialog):
         layout = QVBoxLayout(tab)
         
         # Resumen textual
-        summary_group = QGroupBox("📋 Resumen de Simulación")
-        summary_group.setObjectName("popup_group")  # Identificador para QSS
-        summary_layout = QVBoxLayout(summary_group)
+        self.summary_group = QGroupBox(tr('graphics_popup.summary_title'))
+        self.summary_group.setObjectName("popup_group")  # Identificador para QSS
+        summary_layout = QVBoxLayout(self.summary_group)
         
         self.summary_text = QTextEdit()
         self.summary_text.setObjectName("popup_text_edit")  # Identificador para QSS
@@ -123,17 +125,17 @@ class GraphicsPopupWindow(QDialog):
         self.summary_text.setMaximumHeight(200)
         summary_layout.addWidget(self.summary_text)
         
-        layout.addWidget(summary_group)
+        layout.addWidget(self.summary_group)
         
         # Métricas principales en grid
-        metrics_group = QGroupBox("📈 Métricas Principales")
-        metrics_group.setObjectName("popup_group")  # Identificador para QSS
-        self.metrics_layout = QGridLayout(metrics_group)
-        layout.addWidget(metrics_group)
+        self.metrics_group = QGroupBox(tr('graphics_popup.metrics_title'))
+        self.metrics_group.setObjectName("popup_group")  # Identificador para QSS
+        self.metrics_layout = QGridLayout(self.metrics_group)
+        layout.addWidget(self.metrics_group)
         
         layout.addStretch()
         
-        self.tabs.addTab(tab, "📋 Resumen")
+        self.tabs.addTab(tab, tr('graphics_popup.tab_summary'))
     
     def setup_files_tab(self):
         """Configurar tab de archivos generados"""
@@ -141,9 +143,9 @@ class GraphicsPopupWindow(QDialog):
         layout = QVBoxLayout(tab)
         
         # Información de archivos
-        files_group = QGroupBox("📁 Archivos Generados")
-        files_group.setObjectName("popup_group")  # Identificador para QSS
-        files_layout = QVBoxLayout(files_group)
+        self.files_group = QGroupBox(tr('graphics_popup.files_title'))
+        self.files_group.setObjectName("popup_group")  # Identificador para QSS
+        files_layout = QVBoxLayout(self.files_group)
         
         self.files_text = QTextEdit()
         self.files_text.setObjectName("popup_text_edit")  # Identificador para QSS
@@ -154,7 +156,7 @@ class GraphicsPopupWindow(QDialog):
         # Botones para abrir directorio
         buttons_layout = QHBoxLayout()
         
-        self.open_folder_btn = QPushButton("📂 Abrir Carpeta")
+        self.open_folder_btn = QPushButton(tr('graphics_popup.open_folder'))
         self.open_folder_btn.setObjectName("popup_button")  # Identificador para QSS
         self.open_folder_btn.clicked.connect(self.open_session_folder)
         buttons_layout.addWidget(self.open_folder_btn)
@@ -167,38 +169,28 @@ class GraphicsPopupWindow(QDialog):
         buttons_layout.addStretch()
         files_layout.addLayout(buttons_layout)
         
-        layout.addWidget(files_group)
+        layout.addWidget(self.files_group)
         
         # Instrucciones
-        instructions_group = QGroupBox("💡 Instrucciones")
-        instructions_group.setObjectName("popup_group")  # Identificador para QSS
-        instructions_layout = QVBoxLayout(instructions_group)
+        self.instructions_group = QGroupBox(tr('graphics_popup.instructions_title'))
+        self.instructions_group.setObjectName("popup_group")  # Identificador para QSS
+        instructions_layout = QVBoxLayout(self.instructions_group)
         
-        instructions = QLabel("""
-        📊 <b>Gráficos Interactivos:</b> Usa la pestaña "Gráficos Interactivos" para zoom y análisis detallado
+        self.instructions_label = QLabel(tr('graphics_popup.instructions'))
+        self.instructions_label.setObjectName("popup_instructions_label")  # Identificador para QSS
+        self.instructions_label.setWordWrap(True)
+        instructions_layout.addWidget(self.instructions_label)
         
-        📁 <b>Archivos Guardados:</b> Todos los gráficos se han guardado como PNG de alta resolución
+        layout.addWidget(self.instructions_group)
         
-        📄 <b>Datos JSON:</b> Los datos completos están en 'datos_simulacion.json' para análisis posterior
-        
-        📋 <b>Resumen:</b> El archivo 'RESUMEN.txt' contiene un resumen legible de los resultados
-        
-        🔍 <b>Comparación:</b> Guarda múltiples simulaciones para comparar diferentes algoritmos
-        """)
-        instructions.setObjectName("popup_instructions_label")  # Identificador para QSS
-        instructions.setWordWrap(True)
-        instructions_layout.addWidget(instructions)
-        
-        layout.addWidget(instructions_group)
-        
-        self.tabs.addTab(tab, "📁 Archivos")
+        self.tabs.addTab(tab, tr('graphics_popup.tab_files'))
     
     def setup_footer(self, layout):
         """Configurar footer con controles"""
         footer_layout = QHBoxLayout()
         
         # Botón de exportar gráficos
-        self.export_btn = QPushButton("💾 Exportar Gráficos")
+        self.export_btn = QPushButton(tr('graphics_popup.export_graphics'))
         self.export_btn.setObjectName("popup_button")  # Identificador para QSS
         self.export_btn.clicked.connect(self.export_additional_graphics)
         footer_layout.addWidget(self.export_btn)
@@ -206,7 +198,7 @@ class GraphicsPopupWindow(QDialog):
         footer_layout.addStretch()
         
         # Botón de cerrar
-        self.close_btn = QPushButton("✅ Cerrar")
+        self.close_btn = QPushButton(tr('graphics_popup.close'))
         self.close_btn.setObjectName("popup_button")  # Identificador para QSS
         self.close_btn.clicked.connect(self.accept)
         self.close_btn.setDefault(True)
@@ -228,9 +220,10 @@ class GraphicsPopupWindow(QDialog):
         """
         self.simulation_data = simulation_data
         self.session_directory = session_directory
+        self.session_info = session_info  # Guardar para retranslate_ui
         
         # Actualizar header
-        self.session_info_label.setText(f"📁 Guardado en: {session_directory}")
+        self.session_info_label.setText(tr('graphics_popup.saved_in').format(session_directory))
         
         # Actualizar gráficos interactivos
         if self.charts_panel:
@@ -265,29 +258,29 @@ class GraphicsPopupWindow(QDialog):
         perf_metrics = sim_summary.get('performance_metrics', {})
         
         summary_lines = [
-            "🎯 SIMULACIÓN PON COMPLETADA EXITOSAMENTE",
+            tr('graphics_popup.summary_header'),
             "=" * 50,
             "",
-            f"⏱️ Pasos ejecutados: {sim_stats.get('total_steps', 0)}",
-            f"🕐 Tiempo simulado: {sim_stats.get('simulation_time', 0):.6f} segundos",
-            f"📊 Solicitudes totales: {sim_stats.get('total_requests', 0)}",
-            f"✅ Solicitudes exitosas: {sim_stats.get('successful_requests', 0)}",
-            f"📈 Tasa de éxito: {sim_stats.get('success_rate', 0):.1f}%",
+            tr('graphics_popup.summary_steps').format(sim_stats.get('total_steps', 0)),
+            tr('graphics_popup.summary_time').format(f"{sim_stats.get('simulation_time', 0):.6f}"),
+            tr('graphics_popup.summary_requests').format(sim_stats.get('total_requests', 0)),
+            tr('graphics_popup.summary_success_requests').format(sim_stats.get('successful_requests', 0)),
+            tr('graphics_popup.summary_success_rate').format(f"{sim_stats.get('success_rate', 0):.1f}"),
             "",
-            "🔍 MÉTRICAS DE RENDIMIENTO:",
-            f"⚡ Delay promedio: {perf_metrics.get('mean_delay', 0):.6f} segundos",
-            f"📶 Throughput promedio: {perf_metrics.get('mean_throughput', 0):.3f} MB/s",
-            f"📊 Utilización de red: {perf_metrics.get('network_utilization', 0):.1f}%",
-            f"💾 Capacidad total servida: {perf_metrics.get('total_capacity_served', 0):.3f} MB"
+            tr('graphics_popup.summary_performance'),
+            tr('graphics_popup.summary_delay').format(f"{perf_metrics.get('mean_delay', 0):.6f}"),
+            tr('graphics_popup.summary_throughput').format(f"{perf_metrics.get('mean_throughput', 0):.3f}"),
+            tr('graphics_popup.summary_utilization').format(f"{perf_metrics.get('network_utilization', 0):.1f}"),
+            tr('graphics_popup.summary_capacity').format(f"{perf_metrics.get('total_capacity_served', 0):.3f}")
         ]
         
         if session_info:
             summary_lines.extend([
                 "",
-                "⚙️ CONFIGURACIÓN UTILIZADA:",
-                f"🏠 ONUs: {session_info.get('num_onus', 'N/A')}",
-                f"🔧 Algoritmo DBA: {session_info.get('algorithm', 'N/A')}",
-                f"🌐 Escenario: {session_info.get('traffic_scenario', 'N/A')}"
+                tr('graphics_popup.summary_config'),
+                tr('graphics_popup.summary_onus').format(session_info.get('num_onus', 'N/A')),
+                tr('graphics_popup.summary_algorithm').format(session_info.get('algorithm', 'N/A')),
+                tr('graphics_popup.summary_scenario').format(session_info.get('traffic_scenario', 'N/A'))
             ])
         
         return "\n".join(summary_lines)
@@ -304,12 +297,12 @@ class GraphicsPopupWindow(QDialog):
         
         # Métricas para mostrar
         metrics = [
-            ("📊 Pasos", f"{sim_stats.get('total_steps', 0)}", "#e3f2fd"),
-            ("⚡ Delay", f"{perf_metrics.get('mean_delay', 0):.6f}s", "#fff3e0"), 
-            ("📶 Throughput", f"{perf_metrics.get('mean_throughput', 0):.2f} MB/s", "#e8f5e8"),
-            ("📈 Utilización", f"{perf_metrics.get('network_utilization', 0):.1f}%", "#fce4ec"),
-            ("✅ Éxito", f"{sim_stats.get('success_rate', 0):.1f}%", "#f3e5f5"),
-            ("💾 Datos", f"{perf_metrics.get('total_capacity_served', 0):.2f} MB", "#e0f2f1")
+            (tr('graphics_popup.metric_steps'), f"{sim_stats.get('total_steps', 0)}", "#e3f2fd"),
+            (tr('graphics_popup.metric_delay'), f"{perf_metrics.get('mean_delay', 0):.6f}s", "#fff3e0"), 
+            (tr('graphics_popup.metric_throughput'), f"{perf_metrics.get('mean_throughput', 0):.2f} MB/s", "#e8f5e8"),
+            (tr('graphics_popup.metric_utilization'), f"{perf_metrics.get('network_utilization', 0):.1f}%", "#fce4ec"),
+            (tr('graphics_popup.metric_success'), f"{sim_stats.get('success_rate', 0):.1f}%", "#f3e5f5"),
+            (tr('graphics_popup.metric_data'), f"{perf_metrics.get('total_capacity_served', 0):.2f} MB", "#e0f2f1")
         ]
         
         # Agregar métricas al grid
@@ -482,6 +475,53 @@ class GraphicsPopupWindow(QDialog):
                 
         except Exception as e:
             QMessageBox.warning(self, "Error", f"Error exportando gráficos: {e}")
+    
+    def retranslate_ui(self):
+        """Actualizar textos traducibles de la interfaz"""
+        # Título de la ventana
+        self.setWindowTitle(tr('graphics_popup.window_title'))
+        
+        # Header
+        self.title_label.setText(tr('graphics_popup.title_completed'))
+        if self.session_directory:
+            self.session_info_label.setText(tr('graphics_popup.saved_in').format(self.session_directory))
+        else:
+            self.session_info_label.setText(tr('graphics_popup.saved_pending'))
+        
+        # Títulos de tabs (obtener los widgets tabs)
+        self.tabs.setTabText(0, tr('graphics_popup.tab_graphics'))
+        self.tabs.setTabText(1, tr('graphics_popup.tab_summary'))
+        self.tabs.setTabText(2, tr('graphics_popup.tab_files'))
+        
+        # GroupBoxes del tab de resumen
+        if hasattr(self, 'summary_group'):
+            self.summary_group.setTitle(tr('graphics_popup.summary_title'))
+        if hasattr(self, 'metrics_group'):
+            self.metrics_group.setTitle(tr('graphics_popup.metrics_title'))
+        
+        # GroupBoxes del tab de archivos
+        if hasattr(self, 'files_group'):
+            self.files_group.setTitle(tr('graphics_popup.files_title'))
+        if hasattr(self, 'instructions_group'):
+            self.instructions_group.setTitle(tr('graphics_popup.instructions_title'))
+        if hasattr(self, 'instructions_label'):
+            self.instructions_label.setText(tr('graphics_popup.instructions'))
+        
+        # Botones
+        if hasattr(self, 'open_folder_btn'):
+            self.open_folder_btn.setText(tr('graphics_popup.open_folder'))
+        if hasattr(self, 'export_btn'):
+            self.export_btn.setText(tr('graphics_popup.export_graphics'))
+        if hasattr(self, 'close_btn'):
+            self.close_btn.setText(tr('graphics_popup.close'))
+        
+        # Regenerar resumen y métricas si hay datos disponibles
+        if self.simulation_data:
+            self.update_summary_display(self.simulation_data, self.session_info)
+        
+        # Actualizar panel de gráficos si existe
+        if self.charts_panel and hasattr(self.charts_panel, 'retranslate_ui'):
+            self.charts_panel.retranslate_ui()
     
     def closeEvent(self, event):
         """Evento al cerrar la ventana"""
