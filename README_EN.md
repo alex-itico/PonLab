@@ -238,31 +238,31 @@ python main.py
 
 ### **⌨️ Complete Keyboard Shortcuts**
 
-| Shortcut | Function                | Description                                      |
-| -------- | ----------------------- | ------------------------------------------------ |
-| `L`      | **Connection Mode**     | Enable/disable mode to connect devices           |
-| `C`      | **Center View**         | Centers view at origin (0, 0)                    |
-| `R`      | **Reset View**          | Restores zoom and centers view                   |
-| `Escape` | **Cancel**              | Cancels operations in progress                   |
-| `Ctrl+P` | **Components Panel**    | Show/hide device panel                           |
-| `Ctrl+G` | **Grid**                | Show/hide grid and origin                        |
-| `Ctrl+I` | **Info Panel**          | Show/hide information panel                      |
-| `Ctrl+N` | **Simulation Panel**    | Show/hide simulation panel                       |
-| `Ctrl+D` | **🌐 SDN Dashboard**    | Opens SDN dashboard in real-time ⭐              |
-| `Ctrl+T` | **🤖 RL Panel**         | Access RL configuration panel ⭐                 |
-| `Ctrl+S` | **Save**                | Saves current project                            |
-| `Ctrl+O` | **Open**                | Opens existing project                           |
-| `Delete` | **Delete**              | Deletes selected devices/connections             |
+| Shortcut | Function             | Description                            |
+| -------- | -------------------- | -------------------------------------- |
+| `L`      | **Connection Mode**  | Enable/disable mode to connect devices |
+| `C`      | **Center View**      | Centers view at origin (0, 0)          |
+| `R`      | **Reset View**       | Restores zoom and centers view         |
+| `Escape` | **Cancel**           | Cancels operations in progress         |
+| `Ctrl+P` | **Components Panel** | Show/hide device panel                 |
+| `Ctrl+G` | **Grid**             | Show/hide grid and origin              |
+| `Ctrl+I` | **Info Panel**       | Show/hide information panel            |
+| `Ctrl+N` | **Simulation Panel** | Show/hide simulation panel             |
+| `Ctrl+D` | **🌐 SDN Dashboard** | Opens SDN dashboard in real-time ⭐    |
+| `Ctrl+T` | **🤖 RL Panel**      | Access RL configuration panel ⭐       |
+| `Ctrl+S` | **Save**             | Saves current project                  |
+| `Ctrl+O` | **Open**             | Opens existing project                 |
+| `Delete` | **Delete**           | Deletes selected devices/connections   |
 
 ### **🖱️ Mouse Controls**
 
-| Action                   | Function                                |
-| ------------------------ | --------------------------------------- |
-| **Left Click**           | Select devices/elements                 |
-| **Right Click**          | Context menu with options               |
-| **Middle Button + Drag** | Pan (move view)                         |
-| **Mouse Wheel**          | Zoom in/out                             |
-| **Drag & Drop**          | Move devices, drag from panel           |
+| Action                   | Function                      |
+| ------------------------ | ----------------------------- |
+| **Left Click**           | Select devices/elements       |
+| **Right Click**          | Context menu with options     |
+| **Middle Button + Drag** | Pan (move view)               |
+| **Mouse Wheel**          | Zoom in/out                   |
+| **Drag & Drop**          | Move devices, drag from panel |
 
 ### **🔧 Advanced Features**
 
@@ -634,6 +634,7 @@ This project is under development for academic and research purposes. Please con
 ## 📝 **Version History**
 
 ### **Version 2.1.0** (Current)
+
 - ✨ Added complete multilanguage support (5 languages)
 - 🌍 Spanish, English, French, Portuguese, German translations
 - 🎨 Translated matplotlib charts and all UI components
@@ -642,6 +643,7 @@ This project is under development for academic and research purposes. Please con
 - 📖 Created English README for international visibility
 
 ### **Version 2.0.0**
+
 - 🤖 Implementation of Smart-RL system
 - 🌐 Integration of SDN controller
 - 🚀 Development of Smart-RL-SDN hybrid algorithm
@@ -649,6 +651,7 @@ This project is under development for academic and research purposes. Please con
 - ⚖️ Automatic fairness analysis with Jain index
 
 ### **Version 1.0.0**
+
 - 🎨 Initial graphical interface
 - 🔧 Basic device management
 - 🔗 Connection system
