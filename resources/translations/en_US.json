@@ -208,5 +208,27 @@
       "grid_size": "Grid size: {size}px",
       "total_devices": "📦 Total devices: {count}"
     }
+  },
+  "properties_dialog": {
+    "title": "Properties - {name}",
+    "device_properties": "Device Properties",
+    "basic_info": "Basic Information",
+    "id": "ID:",
+    "type": "Type:",
+    "name": "Name:",
+    "coordinates": "Coordinates:",
+    "x_label": "X:",
+    "y_label": "Y:",
+    "olt_info": "OLT Information",
+    "connected_onus": "Connected ONUs:",
+    "transmission_rate": "Transmission Rate:",
+    "onu_info": "ONU Information",
+    "distance_to_olt": "Distance to OLT:",
+    "not_connected": "Not connected",
+    "cancel": "Cancel",
+    "save": "Save",
+    "validation_error": "Validation Error",
+    "empty_name_error": "Device name cannot be empty.",
+    "invalid_rate_error": "Transmission rate must be greater than 0."
   }
 }

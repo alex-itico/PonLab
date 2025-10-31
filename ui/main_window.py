@@ -727,6 +727,10 @@ class MainWindow(QMainWindow, MainWindowSDNMixin):
             if hasattr(self, 'log_panel') and self.log_panel:
                 self.log_panel.set_theme(dark_mode)
             
+            # Actualizar tema del dashboard SDN si existe
+            if hasattr(self, 'sdn_dashboard') and self.sdn_dashboard:
+                self.sdn_dashboard.set_theme(dark_mode)
+            
             # Actualizar mensaje en la barra de estado
             self.statusBar().showMessage(f'Tema {theme_name} aplicado', 2000)
             

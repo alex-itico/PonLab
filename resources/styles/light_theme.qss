@@ -562,3 +562,32 @@ QTabWidget#popup_tabs QTabBar::tab:hover {
 QTabWidget#popup_tabs QTabBar::tab:selected:hover {
     background-color: #1565c0;
 }
+
+/* Dashboard SDN - Tarjetas de Métricas */
+QFrame[objectName="MetricCard"] {
+    background-color: #ffffff;
+    border: 1px solid #d0d0d0;
+    border-radius: 8px;
+    color: #333333;
+    margin: 2px;
+}
+
+QLabel[objectName="MetricTitle"] {
+    color: #333333;
+    background-color: transparent;
+    font-weight: bold;
+    font-size: 16px;
+}
+
+QLabel[objectName="MetricValue"] {
+    color: #1976d2;
+    background-color: transparent;
+    font-size: 30px;
+    font-weight: bold;
+}
+
+QLabel[objectName="MetricDescription"] {
+    color: #666666;
+    background-color: transparent;
+    font-size: 14px;
+}

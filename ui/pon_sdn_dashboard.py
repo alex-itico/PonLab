@@ -34,21 +34,26 @@ class MetricCard(QFrame):
         
         # Layout principal
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(10, 10, 10, 10)
+        layout.setContentsMargins(15, 15, 15, 15)
+        layout.setSpacing(8)
         
         # Título
         title_label = QLabel(title)
         title_label.setObjectName("MetricTitle")
         title_font = QFont()
         title_font.setBold(True)
+        title_font.setPointSize(16)  # Título más visible
         title_label.setFont(title_font)
+        title_label.setAlignment(Qt.AlignCenter)  # Centrado
+        title_label.setWordWrap(True)  # Permitir salto de línea si es necesario
         layout.addWidget(title_label)
         
         # Valor
         self.value_label = QLabel(value)
         self.value_label.setObjectName("MetricValue")
         value_font = QFont()
-        value_font.setPointSize(16)
+        value_font.setPointSize(30)  # Valor prominente
+        value_font.setBold(True)  # Hacerlo más prominente
         self.value_label.setFont(value_font)
         self.value_label.setAlignment(Qt.AlignCenter)
         layout.addWidget(self.value_label)
@@ -58,9 +63,10 @@ class MetricCard(QFrame):
             desc_label = QLabel(description)
             desc_label.setObjectName("MetricDescription")
             desc_font = QFont()
-            desc_font.setPointSize(8)
+            desc_font.setPointSize(14)  # Descripción más legible
             desc_label.setFont(desc_font)
             desc_label.setAlignment(Qt.AlignCenter)
+            desc_label.setWordWrap(True)  # Permitir salto de línea si es necesario
             layout.addWidget(desc_label)
     
     def update_value(self, new_value: str):
@@ -73,7 +79,16 @@ class PONSDNDashboard(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setObjectName("PONSDNDashboard")
+        
+        # Detectar tema del parent si existe
+        self.dark_theme = False
+        if parent and hasattr(parent, 'dark_theme'):
+            self.dark_theme = parent.dark_theme
+        
         self.setup_ui()
+        
+        # Aplicar tema inicial
+        self.set_theme(self.dark_theme)
         
     def setup_ui(self):
         """Configurar la interfaz del dashboard con pestañas"""
@@ -379,6 +394,145 @@ class PONSDNDashboard(QWidget):
         scroll.setWidget(content)
         layout.addWidget(scroll)
         return tab
+    
+    def set_theme(self, dark_mode):
+        """Aplicar tema al dashboard y todos sus componentes"""
+        self.dark_theme = dark_mode
+        
+        if dark_mode:
+            self._apply_dark_theme()
+        else:
+            self._apply_light_theme()
+    
+    def _apply_dark_theme(self):
+        """Aplicar tema oscuro al dashboard"""
+        # Estilos para QTabWidget
+        tab_style = """
+            QTabWidget::pane {
+                border: 1px solid #555555;
+                background-color: #2b2b2b;
+            }
+            QTabBar::tab {
+                background-color: #3c3c3c;
+                color: #e0e0e0;
+                padding: 8px 16px;
+                margin-right: 2px;
+                border: 1px solid #555555;
+                border-bottom: none;
+                border-top-left-radius: 4px;
+                border-top-right-radius: 4px;
+            }
+            QTabBar::tab:selected {
+                background-color: #2b2b2b;
+                color: #ffffff;
+                border-bottom: 2px solid #4CAF50;
+            }
+            QTabBar::tab:hover {
+                background-color: #4a4a4a;
+            }
+        """
+        
+        # Estilos para tablas
+        table_style = """
+            QTableWidget {
+                background-color: #2b2b2b;
+                alternate-background-color: #353535;
+                color: #e0e0e0;
+                gridline-color: #555555;
+                border: 1px solid #555555;
+            }
+            QTableWidget::item {
+                padding: 5px;
+                color: #e0e0e0;
+            }
+            QTableWidget::item:selected {
+                background-color: #4CAF50;
+                color: #ffffff;
+            }
+            QHeaderView::section {
+                background-color: #3c3c3c;
+                color: #e0e0e0;
+                padding: 5px;
+                border: 1px solid #555555;
+                font-weight: bold;
+            }
+        """
+        
+        # Aplicar estilos a tabs
+        self.tabs.setStyleSheet(tab_style)
+        
+        # Aplicar estilos a todas las tablas
+        if hasattr(self, 'onu_table'):
+            self.onu_table.setStyleSheet(table_style)
+        if hasattr(self, 'sla_table'):
+            self.sla_table.setStyleSheet(table_style)
+        if hasattr(self, 'service_table'):
+            self.service_table.setStyleSheet(table_style)
+    
+    def _apply_light_theme(self):
+        """Aplicar tema claro al dashboard"""
+        # Estilos para QTabWidget
+        tab_style = """
+            QTabWidget::pane {
+                border: 1px solid #cccccc;
+                background-color: #ffffff;
+            }
+            QTabBar::tab {
+                background-color: #f0f0f0;
+                color: #333333;
+                padding: 8px 16px;
+                margin-right: 2px;
+                border: 1px solid #cccccc;
+                border-bottom: none;
+                border-top-left-radius: 4px;
+                border-top-right-radius: 4px;
+            }
+            QTabBar::tab:selected {
+                background-color: #ffffff;
+                color: #000000;
+                border-bottom: 2px solid #4CAF50;
+            }
+            QTabBar::tab:hover {
+                background-color: #e0e0e0;
+            }
+        """
+        
+        # Estilos para tablas
+        table_style = """
+            QTableWidget {
+                background-color: #ffffff;
+                alternate-background-color: #f5f5f5;
+                color: #333333;
+                gridline-color: #cccccc;
+                border: 1px solid #cccccc;
+            }
+            QTableWidget::item {
+                padding: 5px;
+                color: #333333;
+            }
+            QTableWidget::item:selected {
+                background-color: #4CAF50;
+                color: #ffffff;
+            }
+            QHeaderView::section {
+                background-color: #f0f0f0;
+                color: #333333;
+                padding: 5px;
+                border: 1px solid #cccccc;
+                font-weight: bold;
+            }
+        """
+        
+        # Aplicar estilos a tabs
+        self.tabs.setStyleSheet(tab_style)
+        
+        # Aplicar estilos a todas las tablas
+        if hasattr(self, 'onu_table'):
+            self.onu_table.setStyleSheet(table_style)
+        if hasattr(self, 'sla_table'):
+            self.sla_table.setStyleSheet(table_style)
+        if hasattr(self, 'service_table'):
+            self.service_table.setStyleSheet(table_style)
     
     def update_metrics(self, sdn_metrics: dict):
         """Actualizar todas las métricas avanzadas del dashboard"""

@@ -208,5 +208,27 @@
       "grid_size": "Tamaño de cuadrícula: {size}px",
       "total_devices": "📦 Total de dispositivos: {count}"
     }
+  },
+  "properties_dialog": {
+    "title": "Propiedades - {name}",
+    "device_properties": "Propiedades del Dispositivo",
+    "basic_info": "Información Básica",
+    "id": "ID:",
+    "type": "Tipo:",
+    "name": "Nombre:",
+    "coordinates": "Coordenadas:",
+    "x_label": "X:",
+    "y_label": "Y:",
+    "olt_info": "Información OLT",
+    "connected_onus": "ONUs Conectadas:",
+    "transmission_rate": "Tasa de Transmisión:",
+    "onu_info": "Información ONU",
+    "distance_to_olt": "Distancia a OLT:",
+    "not_connected": "No conectada",
+    "cancel": "Cancelar",
+    "save": "Guardar",
+    "validation_error": "Error de Validación",
+    "empty_name_error": "El nombre del dispositivo no puede estar vacío.",
+    "invalid_rate_error": "La tasa de transmisión debe ser mayor a 0."
   }
 }
