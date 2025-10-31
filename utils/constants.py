@@ -5,7 +5,7 @@ Constantes de la aplicación y valores de configuración
 
 # Constantes de la aplicación
 APP_NAME = "PonLab - Simulador de Redes Ópticas Pasivas"
-APP_VERSION = "2.0.0"
+APP_VERSION = "2.1.0"
 
 # Constantes de UI
 DEFAULT_WINDOW_WIDTH = 1200

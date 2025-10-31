@@ -158,7 +158,7 @@
       "title": "About PonLab",
       "app_title": "PonLab Simulator",
       "subtitle": "Passive Optical Network Simulator",
-      "version": "Version 2.0.0",
+      "version": "Version 2.1.0",
       "description": "An advanced application to simulate and design passive optical networks (PON).",
       "features_title": "Key Features:",
       "feature_1": "• Interactive visual design of PON topologies via drag & drop",

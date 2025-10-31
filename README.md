@@ -10,9 +10,11 @@ _Una aplicación de escritorio avanzada para la simulación, diseño y análisis
 [![PyQt5](https://img.shields.io/badge/PyQt5-5.15+-green.svg)](https://pypi.org/project/PyQt5/)
 [![RL](https://img.shields.io/badge/Reinforcement%20Learning-Smart--RL-ff6b6b.svg)](https://github.com/alex-itico/PonLab)
 [![SDN](https://img.shields.io/badge/SDN-Controller-4ecdc4.svg)](https://github.com/alex-itico/PonLab)
-[![Version](https://img.shields.io/badge/Version-2.0.0-brightgreen.svg)](releases)
+[![Version](https://img.shields.io/badge/Version-2.1.0-brightgreen.svg)](releases)
 
-**🎯 Desarrollado por:** Alex Aravena Tapia • Jesús Chaffe González • Eduardo Maldonado Zamora • Jorge Barrios Núñez
+**� Idiomas Disponibles:** 🇪🇸 Español | 🇺🇸 English | 🇫🇷 Français | 🇧🇷🇵🇹 Português | 🇩🇪 Deutsch
+
+**�🎯 Desarrollado por:** Alex Aravena Tapia • Jesús Chaffe González • Eduardo Maldonado Zamora • Jorge Barrios Núñez
 
 </div>
 
