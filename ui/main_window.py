@@ -299,10 +299,13 @@ class MainWindow(QMainWindow, MainWindowSDNMixin):
         # Grupo de acciones para idiomas (solo uno puede estar seleccionado)
         language_group = QActionGroup(self)
         
+        # Obtener idioma actual para marcar la opción correcta
+        current_lang = translation_manager.get_current_language()
+        
         # Idioma Español
         spanish_action = QAction(tr('menu.language.spanish'), self)
         spanish_action.setCheckable(True)
-        spanish_action.setChecked(True)  # Por defecto español
+        spanish_action.setChecked(current_lang == 'es_ES')
         spanish_action.setStatusTip(tr('menu.language.spanish_tip'))
         spanish_action.triggered.connect(lambda: self.change_language('es_ES'))
         language_group.addAction(spanish_action)
@@ -311,22 +314,27 @@ class MainWindow(QMainWindow, MainWindowSDNMixin):
         # Idioma Inglés
         english_action = QAction(tr('menu.language.english'), self)
         english_action.setCheckable(True)
-        english_action.setChecked(False)
+        english_action.setChecked(current_lang == 'en_US')
         english_action.setStatusTip(tr('menu.language.english_tip'))
         english_action.triggered.connect(lambda: self.change_language('en_US'))
         language_group.addAction(english_action)
         language_menu.addAction(english_action)
         
+        # Idioma Francés
+        french_action = QAction(tr('menu.language.french'), self)
+        french_action.setCheckable(True)
+        french_action.setChecked(current_lang == 'fr_FR')
+        french_action.setStatusTip(tr('menu.language.french_tip'))
+        french_action.triggered.connect(lambda: self.change_language('fr_FR'))
+        language_group.addAction(french_action)
+        language_menu.addAction(french_action)
+        
         # Guardar referencias para poder actualizar después
         self.language_actions = {
             'es_ES': spanish_action,
-            'en_US': english_action
+            'en_US': english_action,
+            'fr_FR': french_action
         }
-        
-        # Marcar el idioma actual como seleccionado
-        current_lang = translation_manager.get_current_language()
-        if current_lang in self.language_actions:
-            self.language_actions[current_lang].setChecked(True)
         
         options_menu.addSeparator()
         
@@ -770,7 +778,7 @@ class MainWindow(QMainWindow, MainWindowSDNMixin):
         
         # Crear diálogo personalizado
         dialog = QDialog(self)
-        dialog.setWindowTitle('Acerca de PonLab')
+        dialog.setWindowTitle(tr('dialog.about.title'))
         dialog.setModal(True)
         dialog.setFixedSize(1000, 600)  # Tamaño fijo para evitar problemas de redimensionado
         dialog.setWindowFlags(Qt.Dialog | Qt.WindowTitleHint | Qt.WindowCloseButtonHint)  # Evitar redimensionado
@@ -861,28 +869,28 @@ class MainWindow(QMainWindow, MainWindowSDNMixin):
         info_layout.setSpacing(20)  # Aumentado de 15 a 20 para más separación vertical
         
         # Título principal
-        title_label = QLabel("PonLab Simulator")
+        title_label = QLabel(tr('dialog.about.app_title'))
         title_font = QFont("Segoe UI", 32, QFont.Bold)  # Aumentado de 28 a 32
         title_label.setFont(title_font)
         title_label.setStyleSheet(f"color: #e208d7; margin-bottom: 10px;")  # Color magenta del splash
         info_layout.addWidget(title_label)
         
         # Subtítulo
-        subtitle_label = QLabel("Simulador de Redes Pasivas Ópticas")
+        subtitle_label = QLabel(tr('dialog.about.subtitle'))
         subtitle_font = QFont("Segoe UI", 18)  # Aumentado de 16 a 18
         subtitle_label.setFont(subtitle_font)
         subtitle_label.setStyleSheet(f"color: {text_color}; margin-bottom: 15px;")
         info_layout.addWidget(subtitle_label)
         
         # Versión
-        version_label = QLabel("Versión 2.0.0")
+        version_label = QLabel(tr('dialog.about.version'))
         version_font = QFont("Segoe UI", 16, QFont.Bold)  # Aumentado de 14 a 16
         version_label.setFont(version_font)
         version_label.setStyleSheet(f"color: #666666; margin-bottom: 20px;")
         info_layout.addWidget(version_label)
         
         # Descripción
-        desc_label = QLabel("Una aplicación avanzada para simular y diseñar redes pasivas ópticas (PON).")
+        desc_label = QLabel(tr('dialog.about.description'))
         desc_font = QFont("Segoe UI", 14)  # Aumentado de 12 a 14
         desc_label.setFont(desc_font)
         desc_label.setWordWrap(True)
@@ -890,40 +898,40 @@ class MainWindow(QMainWindow, MainWindowSDNMixin):
         info_layout.addWidget(desc_label)
         
         # Características
-        features_label = QLabel("""<b>Características principales:</b><br>
-        • Diseño visual interactivo de topologías PON mediante drag & drop<br>
-        • Soporte para dispositivos OLT, OLT_SDN y múltiples tipos de ONU<br>
-        • Sistema de conexiones automáticas entre dispositivos de fibra óptica<br>
-        • Simulación completa con NetPONPy para análisis de rendimiento<br>
-        • Cálculos de potencia óptica, atenuación y presupuesto de enlace<br>
-        • Generación automática de gráficos y reportes de simulación<br>
-        • Guardado y carga de proyectos en formato .pon<br>
-        • Interfaz con temas claro y oscuro personalizables<br>
-        • Panel de propiedades editable para configuración de dispositivos<br>
-        • Sistema de logs integrado para seguimiento de operaciones""")
+        features_label = QLabel(f"""<b>{tr('dialog.about.features_title')}</b><br>
+        {tr('dialog.about.feature_1')}<br>
+        {tr('dialog.about.feature_2')}<br>
+        {tr('dialog.about.feature_3')}<br>
+        {tr('dialog.about.feature_4')}<br>
+        {tr('dialog.about.feature_5')}<br>
+        {tr('dialog.about.feature_6')}<br>
+        {tr('dialog.about.feature_7')}<br>
+        {tr('dialog.about.feature_8')}<br>
+        {tr('dialog.about.feature_9')}<br>
+        {tr('dialog.about.feature_10')}""")
         features_label.setWordWrap(True)
         features_label.setStyleSheet(f"color: {text_color}; margin-bottom: 20px; font-size: 13px;")  # Añadido font-size: 13px
         info_layout.addWidget(features_label)
         
         # Desarrolladores
-        dev_label = QLabel("""<b>Desarrollado por:</b><br>
-        • Alex Aravena Tapia<br>
-        • Jesús Chaffe González<br>
-        • Eduardo Maldonado Zamora<br>
-        • Jorge Barrios Núñez""")
+        dev_label = QLabel(f"""<b>{tr('dialog.about.developers_title')}</b><br>
+        {tr('dialog.about.developer_1')}<br>
+        {tr('dialog.about.developer_2')}<br>
+        {tr('dialog.about.developer_3')}<br>
+        {tr('dialog.about.developer_4')}""")
         dev_label.setWordWrap(True)
         dev_label.setStyleSheet(f"color: {text_color}; margin-bottom: 15px; font-size: 13px;")  # Añadido font-size: 13px
         info_layout.addWidget(dev_label)
         
         # Repositorio
-        repo_label = QLabel('<b>Repositorio GitHub:</b><br><a href="https://github.com/alex-itico/PonLab" style="color: #2563eb;">https://github.com/alex-itico/PonLab</a>')
+        repo_label = QLabel(f'<b>{tr("dialog.about.repository_title")}</b><br><a href="{tr("dialog.about.repository_link")}" style="color: #2563eb;">{tr("dialog.about.repository_link")}</a>')
         repo_label.setWordWrap(True)
         repo_label.setOpenExternalLinks(True)
         repo_label.setStyleSheet(f"color: {text_color}; margin-bottom: 15px; font-size: 13px;")  # Añadido font-size: 13px
         info_layout.addWidget(repo_label)
         
         # Copyright
-        copyright_label = QLabel("© 2025 - Desarrollado con PyQt5 y Python")
+        copyright_label = QLabel(tr('dialog.about.copyright'))
         copyright_font = QFont("Segoe UI", 12)  # Aumentado de 10 a 12
         copyright_label.setFont(copyright_font)
         copyright_label.setStyleSheet(f"color: #888888;")
@@ -933,7 +941,7 @@ class MainWindow(QMainWindow, MainWindowSDNMixin):
         info_layout.addStretch()
         
         # Botón OK al final
-        ok_button = QPushButton("Aceptar")
+        ok_button = QPushButton(tr('dialog.about.button_ok'))
         ok_button.clicked.connect(dialog.accept)
         ok_button.setFixedSize(100, 35)
         info_layout.addWidget(ok_button, alignment=Qt.AlignRight)

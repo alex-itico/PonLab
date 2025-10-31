@@ -47,7 +47,9 @@
       "spanish": "🇪🇸 &Español",
       "spanish_tip": "Cambiar idioma a Español",
       "english": "🇺🇸 &English",
-      "english_tip": "Change language to English"
+      "english_tip": "Change language to English",
+      "french": "🇫🇷 &Français",
+      "french_tip": "Changer la langue en français"
     }
   },
   "sidebar": {
@@ -150,9 +152,30 @@
   "dialog": {
     "about": {
       "title": "Acerca de PonLab",
-      "description": "Simulador de Redes Ópticas Pasivas (PON) con capacidades de Machine Learning",
-      "version": "Versión: {version}",
-      "close": "Cerrar"
+      "app_title": "PonLab Simulator",
+      "subtitle": "Simulador de Redes Pasivas Ópticas",
+      "version": "Versión 2.0.0",
+      "description": "Una aplicación avanzada para simular y diseñar redes pasivas ópticas (PON).",
+      "features_title": "Características principales:",
+      "feature_1": "• Diseño visual interactivo de topologías PON mediante drag & drop",
+      "feature_2": "• Soporte para dispositivos OLT, OLT_SDN y múltiples tipos de ONU",
+      "feature_3": "• Sistema de conexiones automáticas entre dispositivos de fibra óptica",
+      "feature_4": "• Simulación completa con NetPONPy para análisis de rendimiento",
+      "feature_5": "• Cálculos de potencia óptica, atenuación y presupuesto de enlace",
+      "feature_6": "• Generación automática de gráficos y reportes de simulación",
+      "feature_7": "• Guardado y carga de proyectos en formato .pon",
+      "feature_8": "• Interfaz con temas claro y oscuro personalizables",
+      "feature_9": "• Panel de propiedades editable para configuración de dispositivos",
+      "feature_10": "• Sistema de logs integrado para seguimiento de operaciones",
+      "developers_title": "Desarrollado por:",
+      "developer_1": "• Alex Aravena Tapia",
+      "developer_2": "• Jesús Chaffe González",
+      "developer_3": "• Eduardo Maldonado Zamora",
+      "developer_4": "• Jorge Barrios Núñez",
+      "repository_title": "Repositorio GitHub:",
+      "repository_link": "https://github.com/alex-itico/PonLab",
+      "copyright": "© 2025 - Desarrollado con PyQt5 y Python",
+      "button_ok": "Aceptar"
     },
     "unsaved": {
       "title": "Trabajo sin guardar",
