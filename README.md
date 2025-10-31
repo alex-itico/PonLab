@@ -94,12 +94,14 @@ _An advanced desktop application for simulation, design, and analysis of PON fib
 PonLab features a **completely internal RL agent** requiring no external dependencies:
 
 **Intelligent Policies:**
+
 - `prioritize_low_buffer` (0.7) - Prioritizes ONUs near buffer saturation
 - `balance_throughput` (0.6) - Balances throughput distribution
 - `minimize_delay` (0.8) - Optimizes average latency
 - `fairness_factor` (0.5) - Guarantees equitable resource allocation
 
 **Learning Mechanism:**
+
 - Internal Q-Table with discrete state space
 - Dynamic network observation (buffer levels, requests, throughput)
 - Adaptive policy improvement with each simulation cycle
@@ -108,11 +110,13 @@ PonLab features a **completely internal RL agent** requiring no external depende
 ### **🌐 SDN Controller (OLT_SDN)**
 
 **Centralized Control:**
+
 - Unified management with global network state visibility
 - Dynamic policy implementation and continuous monitoring
 - Real-time metrics: latency per ONU, aggregate throughput, buffer occupancy, link utilization, Jain index
 
 **Interactive Dashboard (Ctrl+D):**
+
 - Live visualization of all network metrics
 - Automated fairness calculations
 - Historical performance tracking
@@ -126,12 +130,14 @@ PonLab features a **completely internal RL agent** requiring no external depende
 3. **Intelligent Feedback Loop**: Continuous optimization based on real-time results
 
 **Advantages:**
+
 - 🎯 RL Precision + ⚡ SDN Speed
 - 🔄 Adaptability to traffic pattern changes
 - 📊 Complete dual-system metrics analysis
 - 🚀 Optimal performance combining flexibility and control
 
 **Quick Start:**
+
 - Select algorithm in simulation panel (Ctrl+N)
 - Configure policies in RL panel (Ctrl+T)
 - Monitor in SDN dashboard (Ctrl+D)
@@ -142,12 +148,14 @@ PonLab features a **completely internal RL agent** requiring no external depende
 ## 🛠️ Technologies and Architecture
 
 **Technology Stack:**
+
 - **Python 3.8+** with PyQt5, PyQtWebEngine, Matplotlib, NumPy
 - **AI/ML**: Stable-Baselines3, PyTorch, Gymnasium, Scikit-learn
 - **Data**: Pandas for analysis, JSON for configuration
 - **Graphics**: SVG vector icons, QSS themes
 
 **Architecture:**
+
 - Modular design with separated concerns (core, ui, utils)
 - Event-driven simulation with precise timing
 - Signal-based component communication
@@ -204,16 +212,16 @@ python main.py
 
 ### **⌨️ Essential Shortcuts**
 
-| Shortcut | Function             | Description                          |
-| -------- | -------------------- | ------------------------------------ |
-| `L`      | Connection Mode      | Enable/disable connection mode       |
-| `C` / `R`| Center / Reset View  | Navigation controls                  |
-| `Ctrl+N` | Simulation Panel     | Open simulation controls             |
-| `Ctrl+D` | SDN Dashboard        | Real-time SDN metrics ⭐             |
-| `Ctrl+T` | RL Panel             | RL configuration ⭐                  |
-| `Ctrl+S` | Save                 | Save current project                 |
-| `Ctrl+G` | Grid Toggle          | Show/hide grid                       |
-| `Delete` | Delete               | Remove selected items                |
+| Shortcut  | Function            | Description                    |
+| --------- | ------------------- | ------------------------------ |
+| `L`       | Connection Mode     | Enable/disable connection mode |
+| `C` / `R` | Center / Reset View | Navigation controls            |
+| `Ctrl+N`  | Simulation Panel    | Open simulation controls       |
+| `Ctrl+D`  | SDN Dashboard       | Real-time SDN metrics ⭐       |
+| `Ctrl+T`  | RL Panel            | RL configuration ⭐            |
+| `Ctrl+S`  | Save                | Save current project           |
+| `Ctrl+G`  | Grid Toggle         | Show/hide grid                 |
+| `Delete`  | Delete              | Remove selected items          |
 
 ### **🖱️ Mouse Controls**
 
@@ -226,6 +234,7 @@ python main.py
 ### **🔧 Common Workflows**
 
 **Simulation Setup:**
+
 1. Configure PON topology (OLT + ONUs)
 2. Open simulation panel (Ctrl+N)
 3. Select algorithm (Smart-RL-SDN recommended)
@@ -233,12 +242,14 @@ python main.py
 5. View results in popup window
 
 **RL/SDN Monitoring:**
+
 1. Start simulation with Smart-RL or SDN algorithm
 2. Open SDN dashboard (Ctrl+D) for live metrics
 3. Configure policies in RL panel (Ctrl+T)
 4. Compare algorithm performance
 
 **Language Change:**
+
 - Help → Language → Select preferred language
 - Interface updates immediately
 
@@ -286,16 +297,19 @@ PonLab/
 ## 📚 Use Cases and Applications
 
 ### **🎓 Academic Research**
+
 - Custom DBA algorithm simulation and comparative analysis
 - Reinforcement Learning research for optical networks
 - Development of new bandwidth allocation policies
 
 ### **� Industrial Development**
+
 - PON network prototyping before deployment
 - Existing network configuration optimization
 - Capacity analysis and growth planning
 
 ### **📖 Education and Training**
+
 - PON network concepts demonstration
 - DBA algorithms practical teaching
 - AI/SDN applied to networks workshops
@@ -305,16 +319,19 @@ PonLab/
 ## � Technical Features
 
 ### **Performance**
+
 - Efficient canvas rendering for thousands of devices
 - Automatic memory management and garbage collection
 - Progressive resource loading for fast startup
 
 ### **Robustness**
+
 - Comprehensive error handling and validation
 - Auto-recovery from temporary files
 - Automatic project backup system
 
 ### **Extensibility**
+
 - Modular architecture for easy feature addition
 - Internal API with event/signal system
 - Plugin-ready design
@@ -341,18 +358,21 @@ Academic and research purposes. Contact authors for licensing information.
 ## 📝 Version History
 
 ### **v2.1.0** (Current)
+
 ✨ Complete multilanguage support (5 languages: ES, EN, FR, PT, DE)
 📊 660+ translation keys covering entire application
 🎨 Translated matplotlib charts and UI components
 📖 English README for international visibility
 
 ### **v2.0.0**
+
 🤖 Smart-RL system implementation
 🌐 SDN controller integration
 🚀 Smart-RL-SDN hybrid algorithm
 📊 Advanced metrics dashboard with Jain fairness index
 
 ### **v1.0.0**
+
 🎨 Initial graphical interface
 🔧 Basic device and connection management
 🧪 PON simulation integration
@@ -360,8 +380,6 @@ Academic and research purposes. Contact authors for licensing information.
 ---
 
 <div align="center">
-
-**Made with ❤️ for the PON networks and AI community**
 
 _PonLab - Connecting the future of optical networks with intelligent technology_
 
