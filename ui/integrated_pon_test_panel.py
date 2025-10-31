@@ -19,6 +19,10 @@ from .pon_simulation_results_panel import PONResultsPanel
 from .auto_graphics_saver import AutoGraphicsSaver
 from .graphics_popup_window import GraphicsPopupWindow
 
+# Importar sistema de traducciones
+from utils.translation_manager import translation_manager
+tr = translation_manager.get_text
+
 # Model Bridge no disponible - eliminado para independencia
 MODEL_BRIDGE_AVAILABLE = False
 
@@ -103,36 +107,37 @@ class IntegratedPONTestPanel(QWidget):
         layout.setContentsMargins(6, 6, 6, 6)  # Reducir márgenes
         
         # Título
-        title = QLabel("Simulador PON Integrado")
+        self.title_label = QLabel(tr("integrated_pon_panel.title"))
         title_font = QFont()
         title_font.setPointSize(10)
         title_font.setBold(True)
-        title.setFont(title_font)
-        title.setAlignment(Qt.AlignCenter)
-        layout.addWidget(title)
+        self.title_label.setFont(title_font)
+        self.title_label.setAlignment(Qt.AlignCenter)
+        layout.addWidget(self.title_label)
         
         # Estado
-        self.status_group = QGroupBox("Estado del Sistema")
+        self.status_group = QGroupBox(tr("integrated_pon_panel.status_group"))
         status_layout = QVBoxLayout(self.status_group)
         
-        self.status_label = QLabel("Verificando...")
+        self.status_label = QLabel(tr("integrated_pon_panel.status_checking"))
         self.status_label.setWordWrap(True)
         status_layout.addWidget(self.status_label)
         
         layout.addWidget(self.status_group)
         
         # Configuración de simulación
-        config_group = QGroupBox("Configuración")
-        config_layout = QGridLayout(config_group)
+        self.config_group = QGroupBox(tr("integrated_pon_panel.config_group"))
+        config_layout = QGridLayout(self.config_group)
         
         # Número de ONUs conectadas (automático desde topología)
-        config_layout.addWidget(QLabel("ONUs conectadas:"), 0, 0)
+        self.onus_connected_label = QLabel(tr("integrated_pon_panel.onus_connected"))
+        config_layout.addWidget(self.onus_connected_label, 0, 0)
         
         # Layout horizontal para el conteo y botón de actualización
         onu_layout = QHBoxLayout()
         self.onu_count_label = QLabel("0")
         self.onu_count_label.setStyleSheet("font-weight: bold; color: #2563eb; padding: 4px; background-color: #f0f4ff; border-radius: 4px;")
-        self.onu_count_label.setToolTip("Número de ONUs conectadas a OLTs detectadas automáticamente")
+        self.onu_count_label.setToolTip(tr("integrated_pon_panel.onus_tooltip"))
         onu_layout.addWidget(self.onu_count_label)
         
         onu_widget = QWidget()
@@ -140,7 +145,8 @@ class IntegratedPONTestPanel(QWidget):
         config_layout.addWidget(onu_widget, 0, 1)
         
         # Algoritmo DBA
-        config_layout.addWidget(QLabel("DBA:"), 1, 0)
+        self.dba_label = QLabel(tr("integrated_pon_panel.dba"))
+        config_layout.addWidget(self.dba_label, 1, 0)
         self.algorithm_combo = QComboBox()
         if self.adapter.is_pon_available():
             algorithms = self.adapter.get_available_algorithms()
@@ -154,7 +160,8 @@ class IntegratedPONTestPanel(QWidget):
         config_layout.addWidget(self.algorithm_combo, 1, 1)
         
         # Selector de modelo RL (inicialmente oculto)
-        config_layout.addWidget(QLabel("Modelo RL:"), 2, 0)
+        self.rl_model_label = QLabel(tr("integrated_pon_panel.rl_model"))
+        config_layout.addWidget(self.rl_model_label, 2, 0)
         
         # Layout vertical para organizar mejor los elementos RL
         rl_main_layout = QVBoxLayout()
@@ -164,15 +171,15 @@ class IntegratedPONTestPanel(QWidget):
         rl_buttons_layout.setSpacing(8)  # Espacio entre botones
         
         # Smart RL model loading
-        self.load_rl_model_btn = QPushButton("📁 Cargar Modelo RL")
-        self.load_rl_model_btn.setToolTip("Cargar modelo RL entrenado (.zip)")
+        self.load_rl_model_btn = QPushButton(tr("integrated_pon_panel.load_rl_model"))
+        self.load_rl_model_btn.setToolTip(tr("integrated_pon_panel.load_rl_model_tooltip"))
         self.load_rl_model_btn.setMinimumHeight(30)  # Altura mínima para botones
         self.load_rl_model_btn.clicked.connect(self.load_smart_rl_model)
         rl_buttons_layout.addWidget(self.load_rl_model_btn)
 
         # Botón para desactivar RL
-        self.unload_rl_model_btn = QPushButton("❌ Desactivar RL")
-        self.unload_rl_model_btn.setToolTip("Desactivar simulación RL y volver a algoritmos normales")
+        self.unload_rl_model_btn = QPushButton(tr("integrated_pon_panel.unload_rl_model"))
+        self.unload_rl_model_btn.setToolTip(tr("integrated_pon_panel.unload_rl_model_tooltip"))
         self.unload_rl_model_btn.setMinimumHeight(30)  # Altura mínima
         self.unload_rl_model_btn.clicked.connect(self.unload_rl_model)
         self.unload_rl_model_btn.setVisible(False)  # Inicialmente oculto
@@ -198,7 +205,7 @@ class IntegratedPONTestPanel(QWidget):
         rl_main_layout.addWidget(rl_buttons_frame)
 
         # RL model status en una línea separada con margen
-        self.rl_status_label = QLabel("No hay modelo cargado")
+        self.rl_status_label = QLabel(tr("integrated_pon_panel.rl_status_no_model"))
         self.rl_status_label.setStyleSheet("color: #666; font-size: 8pt; margin-top: 5px;")
         rl_main_layout.addWidget(self.rl_status_label)
 
@@ -211,7 +218,8 @@ class IntegratedPONTestPanel(QWidget):
         # RL model list update removed - use internal RL-DBA instead
         
         # Escenario de tráfico
-        config_layout.addWidget(QLabel("Escenario:"), 3, 0)
+        self.scenario_label = QLabel(tr("integrated_pon_panel.scenario"))
+        config_layout.addWidget(self.scenario_label, 3, 0)
         self.scenario_combo = QComboBox()
         if self.adapter.is_pon_available():
             self.scenario_combo.addItems(self.adapter.get_available_traffic_scenarios())
@@ -219,27 +227,28 @@ class IntegratedPONTestPanel(QWidget):
         config_layout.addWidget(self.scenario_combo, 3, 1)
         
         # Arquitectura de simulación (OCULTA - siempre híbrida event-driven)
-        self.architecture_label = QLabel("Arquitectura:")
+        self.architecture_label = QLabel(tr("integrated_pon_panel.architecture"))
         self.architecture_label.setVisible(False)  # Ocultar etiqueta
         config_layout.addWidget(self.architecture_label, 4, 0)
-        self.hybrid_checkbox = QCheckBox("Híbrida Event-Driven")
+        self.hybrid_checkbox = QCheckBox(tr("integrated_pon_panel.hybrid_architecture"))
         self.hybrid_checkbox.setChecked(True)  # Por defecto usar híbrida (siempre activo)
         self.hybrid_checkbox.setVisible(False)  # Ocultar checkbox
-        self.hybrid_checkbox.setToolTip("Usar arquitectura híbrida con control temporal estricto")
+        self.hybrid_checkbox.setToolTip(tr("integrated_pon_panel.hybrid_tooltip"))
         self.hybrid_checkbox.toggled.connect(self.on_architecture_changed)
         config_layout.addWidget(self.hybrid_checkbox, 4, 1)
         
         # Tiempo de simulación (para arquitectura híbrida)
-        config_layout.addWidget(QLabel("Tiempo (s):"), 5, 0)
+        self.time_label = QLabel(tr("integrated_pon_panel.time_seconds"))
+        config_layout.addWidget(self.time_label, 5, 0)
         self.duration_spinbox = QSpinBox()
         self.duration_spinbox.setRange(1, 120)
         self.duration_spinbox.setValue(10)
-        self.duration_spinbox.setToolTip("Duración en segundos (solo arquitectura híbrida)")
+        self.duration_spinbox.setToolTip(tr("integrated_pon_panel.time_tooltip"))
         self.duration_spinbox.valueChanged.connect(self.on_duration_changed)
         config_layout.addWidget(self.duration_spinbox, 5, 1)
         
         # Pasos de simulación (OCULTOS - no se usan en arquitectura híbrida)
-        self.steps_label = QLabel("Pasos:")
+        self.steps_label = QLabel(tr("integrated_pon_panel.steps"))
         self.steps_label.setVisible(False)  # Ocultar etiqueta
         config_layout.addWidget(self.steps_label, 6, 0)
         self.steps_spinbox = QSpinBox()
@@ -247,25 +256,25 @@ class IntegratedPONTestPanel(QWidget):
         self.steps_spinbox.setValue(1000)
         self.steps_spinbox.setSingleStep(100)
         self.steps_spinbox.setVisible(False)  # Ocultar control
-        self.steps_spinbox.setToolTip("Número de pasos (solo arquitectura clásica)")
+        self.steps_spinbox.setToolTip(tr("integrated_pon_panel.steps_tooltip"))
         config_layout.addWidget(self.steps_spinbox, 6, 1)
         
-        layout.addWidget(config_group)
+        layout.addWidget(self.config_group)
         
         # Controles de simulación
-        sim_group = QGroupBox("Simulación")
-        sim_layout = QVBoxLayout(sim_group)
+        self.sim_group = QGroupBox(tr("integrated_pon_panel.simulation_group"))
+        sim_layout = QVBoxLayout(self.sim_group)
         
         # Botones principales
         buttons_layout = QGridLayout()
         
-        self.init_btn = QPushButton("⚙️ Inicialización Manual")
+        self.init_btn = QPushButton(tr("integrated_pon_panel.manual_init"))
         self.init_btn.clicked.connect(self.initialize_simulation)
-        self.init_btn.setToolTip("Usar solo si la inicialización automática falló")
+        self.init_btn.setToolTip(tr("integrated_pon_panel.manual_init_tooltip"))
         self.init_btn.setVisible(False)  # Ocultar por defecto - inicialización es automática
         buttons_layout.addWidget(self.init_btn, 0, 0)
         
-        self.start_btn = QPushButton("▶️ Ejecutar")
+        self.start_btn = QPushButton(tr("integrated_pon_panel.execute"))
         self.start_btn.clicked.connect(self.run_full_simulation)
         self.start_btn.setEnabled(False)
         buttons_layout.addWidget(self.start_btn, 0, 1)
@@ -280,18 +289,18 @@ class IntegratedPONTestPanel(QWidget):
         # Opciones adicionales
         options_layout = QVBoxLayout()
         
-        self.popup_window_checkbox = QCheckBox("Mostrar ventana emergente")
+        self.popup_window_checkbox = QCheckBox(tr("integrated_pon_panel.show_popup"))
         self.popup_window_checkbox.setChecked(True)
         options_layout.addWidget(self.popup_window_checkbox)
         
-        self.detailed_log_checkbox = QCheckBox("Logging detallado")
+        self.detailed_log_checkbox = QCheckBox(tr("integrated_pon_panel.detailed_logging"))
         self.detailed_log_checkbox.setChecked(True)
         self.detailed_log_checkbox.toggled.connect(self.toggle_detailed_logging)
         options_layout.addWidget(self.detailed_log_checkbox)
         
-        self.auto_init_checkbox = QCheckBox("Inicialización automática")
+        self.auto_init_checkbox = QCheckBox(tr("integrated_pon_panel.auto_init"))
         self.auto_init_checkbox.setChecked(True)
-        self.auto_init_checkbox.setToolTip("Reinicializar automáticamente cuando cambien los parámetros")
+        self.auto_init_checkbox.setToolTip(tr("integrated_pon_panel.auto_init_tooltip"))
         self.auto_init_checkbox.toggled.connect(self.toggle_auto_initialize)
         self.auto_init_checkbox.setVisible(False)  # Invisible pero siempre activo
         options_layout.addWidget(self.auto_init_checkbox)
@@ -299,30 +308,30 @@ class IntegratedPONTestPanel(QWidget):
         sim_layout.addLayout(options_layout)
         
         # Panel de información del agente RL (inicialmente oculto)
-        self.rl_info_group = QGroupBox("Estado del Agente RL")
+        self.rl_info_group = QGroupBox(tr("integrated_pon_panel.rl_agent_group"))
         self.rl_info_group.setVisible(False)
         rl_info_layout = QVBoxLayout(self.rl_info_group)
         
-        self.rl_model_info_label = QLabel("Modelo: No cargado")
+        self.rl_model_info_label = QLabel(tr("integrated_pon_panel.rl_model_info"))
         self.rl_model_info_label.setWordWrap(True)
         rl_info_layout.addWidget(self.rl_model_info_label)
         
-        self.rl_decisions_label = QLabel("Decisiones: 0")
+        self.rl_decisions_label = QLabel(tr("integrated_pon_panel.rl_decisions").format(0))
         rl_info_layout.addWidget(self.rl_decisions_label)
         
-        self.rl_last_action_label = QLabel("Última acción: N/A")
+        self.rl_last_action_label = QLabel(tr("integrated_pon_panel.rl_last_action"))
         self.rl_last_action_label.setWordWrap(True)
         rl_info_layout.addWidget(self.rl_last_action_label)
         
         sim_layout.addWidget(self.rl_info_group)
         
         # Información sobre visualización de resultados
-        info_label = QLabel("Los resultados se mostraran en una ventana emergente al terminar la simulacion")
-        info_label.setWordWrap(True)
-        info_label.setStyleSheet("color: #666; font-style: italic; padding: 4px;")
-        sim_layout.addWidget(info_label)
+        self.info_label = QLabel(tr("integrated_pon_panel.results_info"))
+        self.info_label.setWordWrap(True)
+        self.info_label.setStyleSheet("color: #666; font-style: italic; padding: 4px;")
+        sim_layout.addWidget(self.info_label)
         
-        layout.addWidget(sim_group)
+        layout.addWidget(self.sim_group)
         
         
         layout.addStretch()
@@ -332,14 +341,14 @@ class IntegratedPONTestPanel(QWidget):
     def check_pon_status(self):
         """Verificar estado del sistema PON"""
         if self.adapter.is_pon_available():
-            self.status_label.setText("✅ PON Core disponible")
+            self.status_label.setText(tr("integrated_pon_panel.status_available"))
             self.status_label.setStyleSheet("color: green;")
             
             # Configurar callback de logging
             self.adapter.set_log_callback(self.results_panel.add_log_message)
             
         else:
-            self.status_label.setText("❌ PON Core no disponible")
+            self.status_label.setText(tr("integrated_pon_panel.status_unavailable"))
             self.status_label.setStyleSheet("color: red;")
             
             # Deshabilitar controles
@@ -449,7 +458,7 @@ class IntegratedPONTestPanel(QWidget):
                 self.onu_count_label.setToolTip("No se detectaron ONUs conectadas a OLTs")
             elif current_onus < 2:
                 self.onu_count_label.setStyleSheet("font-weight: bold; color: #f59e0b; padding: 4px; background-color: #fffbeb; border-radius: 4px;")
-                self.onu_count_label.setToolTip("Se requieren al menos 2 ONUs conectadas para simulación")
+                self.onu_count_label.setToolTip(tr('integrated_pon_panel.onus_tooltip_insufficient'))
             else:
                 self.onu_count_label.setStyleSheet("font-weight: bold; color: #059669; padding: 4px; background-color: #ecfdf5; border-radius: 4px;")
                 self.onu_count_label.setToolTip(f"{current_onus} ONUs conectadas - listo para simular")
@@ -627,7 +636,7 @@ class IntegratedPONTestPanel(QWidget):
                     self.results_panel.add_log_message("[DEBUG] Algoritmo del adapter cambiado a FCFS")
 
             # Actualizar UI
-            self.rl_status_label.setText("No hay modelo cargado")
+            self.rl_status_label.setText(tr("integrated_pon_panel.rl_status_no_model"))
             self.rl_status_label.setStyleSheet("color: #666; font-size: 8pt;")
 
             # Ocultar botón de desactivar
@@ -671,7 +680,7 @@ class IntegratedPONTestPanel(QWidget):
                 self.rl_status_label.setText("✅ Modelo cargado")
                 self.rl_status_label.setStyleSheet("color: green; font-size: 8pt;")
         else:
-            self.rl_status_label.setText("No hay modelo cargado")
+            self.rl_status_label.setText(tr("integrated_pon_panel.rl_status_no_model"))
             self.rl_status_label.setStyleSheet("color: #666; font-size: 8pt;")
     
     
@@ -752,9 +761,9 @@ class IntegratedPONTestPanel(QWidget):
         if num_onus < 2:
             if getattr(self, 'verbose_debug', False):
                 print(f"DEBUG ONUs conectadas insuficientes: {num_onus} < 2")
-            self.status_label.setText("❌ Se requieren al menos 2 ONUs conectadas a OLTs")
+            self.status_label.setText(tr('integrated_pon_panel.status_insufficient_onus'))
             self.status_label.setStyleSheet("color: red;")
-            self.results_panel.add_log_message(f"⚠️ Topología insuficiente: {num_onus} ONUs conectadas (se requieren mínimo 2)")
+            self.results_panel.add_log_message(tr('integrated_pon_panel.status_insufficient_topology').format(num_onus))
             return
         
         if use_hybrid:
@@ -795,8 +804,9 @@ class IntegratedPONTestPanel(QWidget):
                 if not success_alg:
                     self.results_panel.add_log_message(f"Warning: {msg_alg}")
             
-            arch_type = "híbrida" if use_hybrid else "clásica"
-            self.status_label.setText(f"✅ Simulación {arch_type} inicializada")
+            arch_type_key = "integrated_pon_panel.arch_hybrid" if use_hybrid else "integrated_pon_panel.arch_classic"
+            arch_type = tr(arch_type_key)
+            self.status_label.setText(tr('integrated_pon_panel.status_initialized').format(arch_type))
             self.status_label.setStyleSheet("color: green;")
             
             self.start_btn.setEnabled(True)
@@ -1259,3 +1269,92 @@ class IntegratedPONTestPanel(QWidget):
         # Este método fue eliminado en la refactorización a Smart RL interno
         # pero se mantiene como stub para evitar errores de atributo
         pass
+    
+    def retranslate_ui(self):
+        """Actualizar todos los textos traducibles del panel"""
+        # Título
+        if hasattr(self, 'title_label'):
+            self.title_label.setText(tr("integrated_pon_panel.title"))
+        
+        # GroupBox titles
+        if hasattr(self, 'status_group'):
+            self.status_group.setTitle(tr("integrated_pon_panel.status_group"))
+        if hasattr(self, 'config_group'):
+            self.config_group.setTitle(tr("integrated_pon_panel.config_group"))
+        if hasattr(self, 'sim_group'):
+            self.sim_group.setTitle(tr("integrated_pon_panel.simulation_group"))
+        if hasattr(self, 'rl_info_group'):
+            self.rl_info_group.setTitle(tr("integrated_pon_panel.rl_agent_group"))
+        
+        # Labels de configuración
+        if hasattr(self, 'onus_connected_label'):
+            self.onus_connected_label.setText(tr("integrated_pon_panel.onus_connected"))
+        if hasattr(self, 'onu_count_label'):
+            self.onu_count_label.setToolTip(tr("integrated_pon_panel.onus_tooltip"))
+        if hasattr(self, 'dba_label'):
+            self.dba_label.setText(tr("integrated_pon_panel.dba"))
+        if hasattr(self, 'rl_model_label'):
+            self.rl_model_label.setText(tr("integrated_pon_panel.rl_model"))
+        if hasattr(self, 'scenario_label'):
+            self.scenario_label.setText(tr("integrated_pon_panel.scenario"))
+        if hasattr(self, 'architecture_label'):
+            self.architecture_label.setText(tr("integrated_pon_panel.architecture"))
+        if hasattr(self, 'time_label'):
+            self.time_label.setText(tr("integrated_pon_panel.time_seconds"))
+        if hasattr(self, 'steps_label'):
+            self.steps_label.setText(tr("integrated_pon_panel.steps"))
+        
+        # Botones
+        if hasattr(self, 'load_rl_model_btn'):
+            self.load_rl_model_btn.setText(tr("integrated_pon_panel.load_rl_model"))
+            self.load_rl_model_btn.setToolTip(tr("integrated_pon_panel.load_rl_model_tooltip"))
+        if hasattr(self, 'unload_rl_model_btn'):
+            self.unload_rl_model_btn.setText(tr("integrated_pon_panel.unload_rl_model"))
+            self.unload_rl_model_btn.setToolTip(tr("integrated_pon_panel.unload_rl_model_tooltip"))
+        if hasattr(self, 'init_btn'):
+            self.init_btn.setText(tr("integrated_pon_panel.manual_init"))
+            self.init_btn.setToolTip(tr("integrated_pon_panel.manual_init_tooltip"))
+        if hasattr(self, 'start_btn'):
+            self.start_btn.setText(tr("integrated_pon_panel.execute"))
+        
+        # Checkboxes
+        if hasattr(self, 'hybrid_checkbox'):
+            self.hybrid_checkbox.setText(tr("integrated_pon_panel.hybrid_architecture"))
+            self.hybrid_checkbox.setToolTip(tr("integrated_pon_panel.hybrid_tooltip"))
+        if hasattr(self, 'popup_window_checkbox'):
+            self.popup_window_checkbox.setText(tr("integrated_pon_panel.show_popup"))
+        if hasattr(self, 'detailed_log_checkbox'):
+            self.detailed_log_checkbox.setText(tr("integrated_pon_panel.detailed_logging"))
+        if hasattr(self, 'auto_init_checkbox'):
+            self.auto_init_checkbox.setText(tr("integrated_pon_panel.auto_init"))
+            self.auto_init_checkbox.setToolTip(tr("integrated_pon_panel.auto_init_tooltip"))
+        
+        # Tooltips de spinboxes
+        if hasattr(self, 'duration_spinbox'):
+            self.duration_spinbox.setToolTip(tr("integrated_pon_panel.time_tooltip"))
+        if hasattr(self, 'steps_spinbox'):
+            self.steps_spinbox.setToolTip(tr("integrated_pon_panel.steps_tooltip"))
+        
+        # Labels del panel de info RL
+        if hasattr(self, 'rl_model_info_label'):
+            self.rl_model_info_label.setText(tr("integrated_pon_panel.rl_model_info"))
+        if hasattr(self, 'rl_last_action_label'):
+            self.rl_last_action_label.setText(tr("integrated_pon_panel.rl_last_action"))
+        
+        # Label de información
+        if hasattr(self, 'info_label'):
+            self.info_label.setText(tr("integrated_pon_panel.results_info"))
+        
+        # Actualizar el status label con el estado actual si está inicializado
+        if hasattr(self, 'status_label') and self.orchestrator_initialized:
+            use_hybrid = self.hybrid_checkbox.isChecked()
+            arch_type_key = "integrated_pon_panel.arch_hybrid" if use_hybrid else "integrated_pon_panel.arch_classic"
+            arch_type = tr(arch_type_key)
+            self.status_label.setText(tr('integrated_pon_panel.status_initialized').format(arch_type))
+        
+        # Actualizar el estado del modelo RL
+        if hasattr(self, 'update_rl_status_display'):
+            self.update_rl_status_display()
+        
+        # Recargar estado (si está disponible, mantiene el estado traducido)
+        self.check_pon_status()

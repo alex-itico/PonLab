@@ -381,6 +381,14 @@ class MainWindow(QMainWindow, MainWindowSDNMixin):
         if hasattr(self, 'sdn_dashboard') and self.sdn_dashboard:
             self.sdn_dashboard.retranslate_ui()
         
+        # Actualizar panel de resultados de simulación si existe
+        if hasattr(self, 'pon_results_panel') and self.pon_results_panel:
+            self.pon_results_panel.retranslate_ui()
+        
+        # Actualizar NetPONPy sidebar (incluye integrated_pon_test_panel)
+        if hasattr(self, 'netponpy_sidebar') and self.netponpy_sidebar:
+            self.netponpy_sidebar.retranslate_ui()
+        
         # Actualizar título de la ventana si es necesario
         # self.setWindowTitle(tr('app.name'))
         

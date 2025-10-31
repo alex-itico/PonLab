@@ -304,5 +304,126 @@
         "best_effort": "🔵 Best Effort"
       }
     }
+  },
+  "simulation_results": {
+    "title": "📊 Resultados de Simulación PON",
+    "tabs": {
+      "summary": "📋 Resumen",
+      "network": "🌐 Red",
+      "onus": "🏠 ONUs",
+      "history": "📈 Historial",
+      "charts": "📊 Gráficos",
+      "log": "📝 Log"
+    },
+    "buttons": {
+      "refresh": "🔄 Actualizar",
+      "sdn_dashboard": "📊 Dashboard SDN",
+      "sdn_dashboard_tip": "Calcular y mostrar métricas SDN desde archivo de simulación",
+      "export": "📁 Exportar",
+      "auto_update": "⏱️ Auto-actualizar",
+      "clear_log": "🗑️ Limpiar Log"
+    },
+    "summary": {
+      "status_group": "Estado de la Simulación",
+      "status": "Estado:",
+      "status_disconnected": "❓ No conectado",
+      "status_running": "▶️ En ejecución",
+      "status_stopped": "⏹️ Detenido",
+      "current_step": "Paso actual:",
+      "simulated_time": "Tiempo simulado:",
+      "dba_algorithm": "Algoritmo DBA:",
+      "step": "Paso: {0}",
+      "time": "Tiempo: {0}s",
+      "algorithm": "Algoritmo: {0}",
+      "metrics_group": "Métricas Principales",
+      "requests_processed": "Solicitudes procesadas:",
+      "data_transmitted": "Datos transmitidos:",
+      "average_delay": "Delay promedio:",
+      "average_throughput": "Throughput promedio:",
+      "network_utilization": "Utilización de red:"
+    },
+    "network": {
+      "table_headers": {
+        "metric": "Métrica",
+        "value": "Valor"
+      }
+    },
+    "onus": {
+      "table_headers": {
+        "onu_id": "ONU ID",
+        "buffer": "Buffer (%)",
+        "requests": "Solicitudes",
+        "transmitted": "Transmitido (MB)",
+        "response_rate": "Tasa Respuesta (%)",
+        "losses": "Pérdidas",
+        "status": "Estado"
+      }
+    },
+    "history": {
+      "delays_group": "Historial de Delays",
+      "throughputs_group": "Historial de Throughput",
+      "delays_headers": {
+        "time": "Tiempo",
+        "onu": "ONU",
+        "delay": "Delay (s)"
+      },
+      "throughputs_headers": {
+        "time": "Tiempo",
+        "onu": "ONU",
+        "throughput": "Throughput (MB/s)"
+      }
+    }
+  },
+  "integrated_pon_panel": {
+    "title": "Simulador PON Integrado",
+    "status_group": "Estado del Sistema",
+    "status_checking": "Verificando...",
+    "status_available": "✅ PON Core disponible",
+    "status_unavailable": "❌ PON Core no disponible",
+    "config_group": "Configuración",
+    "onus_connected": "ONUs conectadas:",
+    "onus_tooltip": "Número de ONUs conectadas a OLTs detectadas automáticamente",
+    "onus_tooltip_insufficient": "Se requieren al menos 2 ONUs conectadas para simulación",
+    "dba": "DBA:",
+    "rl_model": "Modelo RL:",
+    "load_rl_model": "📁 Cargar Modelo RL",
+    "load_rl_model_tooltip": "Cargar modelo RL entrenado (.zip)",
+    "unload_rl_model": "❌ Desactivar RL",
+    "unload_rl_model_tooltip": "Desactivar simulación RL y volver a algoritmos normales",
+    "rl_status_no_model": "No hay modelo cargado",
+    "scenario": "Escenario:",
+    "architecture": "Arquitectura:",
+    "hybrid_architecture": "Híbrida Event-Driven",
+    "hybrid_tooltip": "Usar arquitectura híbrida con control temporal estricto",
+    "time_seconds": "Tiempo (s):",
+    "time_tooltip": "Duración en segundos (solo arquitectura híbrida)",
+    "steps": "Pasos:",
+    "steps_tooltip": "Número de pasos (solo arquitectura clásica)",
+    "simulation_group": "Simulación",
+    "manual_init": "⚙️ Inicialización Manual",
+    "manual_init_tooltip": "Usar solo si la inicialización automática falló",
+    "execute": "▶️ Ejecutar",
+    "show_popup": "Mostrar ventana emergente",
+    "detailed_logging": "Logging detallado",
+    "auto_init": "Inicialización automática",
+    "auto_init_tooltip": "Reinicializar automáticamente cuando cambien los parámetros",
+    "rl_agent_group": "Estado del Agente RL",
+    "rl_model_info": "Modelo: No cargado",
+    "rl_decisions": "Decisiones: {0}",
+    "rl_last_action": "Última acción: N/A",
+    "results_info": "Los resultados se mostrarán en una ventana emergente al terminar la simulación",
+    "status_initialized": "✅ Simulación {0} inicializada",
+    "status_insufficient_onus": "❌ Se requieren al menos 2 ONUs conectadas a OLTs",
+    "status_insufficient_topology": "⚠️ Topología insuficiente: {0} ONUs conectadas (se requieren mínimo 2)",
+    "arch_hybrid": "híbrida",
+    "arch_classic": "clásica"
+  },
+  "netponpy_sidebar": {
+    "title_simulation": "Simulación",
+    "title_rl": "Aprendizaje Reforzado",
+    "tooltip_switch_to_rl": "Cambiar a Aprendizaje Reforzado",
+    "tooltip_switch_to_simulation": "Cambiar a Simulación",
+    "info_simulation": "Simulación avanzada",
+    "info_rl": "Entrenamiento de agentes inteligentes"
   }
 }

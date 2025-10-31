@@ -304,5 +304,126 @@
         "best_effort": "🔵 Best Effort"
       }
     }
+  },
+  "simulation_results": {
+    "title": "📊 PON Simulation Results",
+    "tabs": {
+      "summary": "📋 Summary",
+      "network": "🌐 Network",
+      "onus": "🏠 ONUs",
+      "history": "📈 History",
+      "charts": "📊 Charts",
+      "log": "📝 Log"
+    },
+    "buttons": {
+      "refresh": "🔄 Refresh",
+      "sdn_dashboard": "📊 SDN Dashboard",
+      "sdn_dashboard_tip": "Calculate and display SDN metrics from simulation file",
+      "export": "📁 Export",
+      "auto_update": "⏱️ Auto-update",
+      "clear_log": "🗑️ Clear Log"
+    },
+    "summary": {
+      "status_group": "Simulation Status",
+      "status": "Status:",
+      "status_disconnected": "❓ Not connected",
+      "status_running": "▶️ Running",
+      "status_stopped": "⏹️ Stopped",
+      "current_step": "Current step:",
+      "simulated_time": "Simulated time:",
+      "dba_algorithm": "DBA Algorithm:",
+      "step": "Step: {0}",
+      "time": "Time: {0}s",
+      "algorithm": "Algorithm: {0}",
+      "metrics_group": "Main Metrics",
+      "requests_processed": "Requests processed:",
+      "data_transmitted": "Data transmitted:",
+      "average_delay": "Average delay:",
+      "average_throughput": "Average throughput:",
+      "network_utilization": "Network utilization:"
+    },
+    "network": {
+      "table_headers": {
+        "metric": "Metric",
+        "value": "Value"
+      }
+    },
+    "onus": {
+      "table_headers": {
+        "onu_id": "ONU ID",
+        "buffer": "Buffer (%)",
+        "requests": "Requests",
+        "transmitted": "Transmitted (MB)",
+        "response_rate": "Response Rate (%)",
+        "losses": "Losses",
+        "status": "Status"
+      }
+    },
+    "history": {
+      "delays_group": "Delays History",
+      "throughputs_group": "Throughput History",
+      "delays_headers": {
+        "time": "Time",
+        "onu": "ONU",
+        "delay": "Delay (s)"
+      },
+      "throughputs_headers": {
+        "time": "Time",
+        "onu": "ONU",
+        "throughput": "Throughput (MB/s)"
+      }
+    }
+  },
+  "integrated_pon_panel": {
+    "title": "Integrated PON Simulator",
+    "status_group": "System Status",
+    "status_checking": "Checking...",
+    "status_available": "✅ PON Core available",
+    "status_unavailable": "❌ PON Core unavailable",
+    "config_group": "Configuration",
+    "onus_connected": "ONUs connected:",
+    "onus_tooltip": "Number of ONUs connected to OLTs detected automatically",
+    "onus_tooltip_insufficient": "At least 2 connected ONUs are required for simulation",
+    "dba": "DBA:",
+    "rl_model": "RL Model:",
+    "load_rl_model": "📁 Load RL Model",
+    "load_rl_model_tooltip": "Load trained RL model (.zip)",
+    "unload_rl_model": "❌ Disable RL",
+    "unload_rl_model_tooltip": "Disable RL simulation and return to normal algorithms",
+    "rl_status_no_model": "No model loaded",
+    "scenario": "Scenario:",
+    "architecture": "Architecture:",
+    "hybrid_architecture": "Hybrid Event-Driven",
+    "hybrid_tooltip": "Use hybrid architecture with strict temporal control",
+    "time_seconds": "Time (s):",
+    "time_tooltip": "Duration in seconds (hybrid architecture only)",
+    "steps": "Steps:",
+    "steps_tooltip": "Number of steps (classic architecture only)",
+    "simulation_group": "Simulation",
+    "manual_init": "⚙️ Manual Initialization",
+    "manual_init_tooltip": "Use only if automatic initialization failed",
+    "execute": "▶️ Execute",
+    "show_popup": "Show popup window",
+    "detailed_logging": "Detailed logging",
+    "auto_init": "Automatic initialization",
+    "auto_init_tooltip": "Automatically reinitialize when parameters change",
+    "rl_agent_group": "RL Agent Status",
+    "rl_model_info": "Model: Not loaded",
+    "rl_decisions": "Decisions: {0}",
+    "rl_last_action": "Last action: N/A",
+    "results_info": "Results will be shown in a popup window when simulation finishes",
+    "status_initialized": "✅ {0} simulation initialized",
+    "status_insufficient_onus": "❌ At least 2 ONUs connected to OLTs are required",
+    "status_insufficient_topology": "⚠️ Insufficient topology: {0} ONUs connected (minimum 2 required)",
+    "arch_hybrid": "hybrid",
+    "arch_classic": "classic"
+  },
+  "netponpy_sidebar": {
+    "title_simulation": "Simulation",
+    "title_rl": "Reinforcement Learning",
+    "tooltip_switch_to_rl": "Switch to Reinforcement Learning",
+    "tooltip_switch_to_simulation": "Switch to Simulation",
+    "info_simulation": "Advanced simulation",
+    "info_rl": "Intelligent agent training"
   }
 }
