@@ -612,5 +612,41 @@
     "onu_stats_total": "Total: {0}",
     "onu_stats_most_used": "Most used: {0}",
     "axis_quantity": "Quantity"
+  },
+  "connection_errors": {
+    "self_connection": "A device cannot connect to itself",
+    "already_exists": "A connection already exists between {0} and {1}",
+    "onu_to_onu_title": "⚠️ PON Connection Not Allowed",
+    "onu_to_onu_header": "⚠️ Connection not allowed: ONU ↔ ONU",
+    "onu_to_onu_description": "ONUs can only connect to an OLT.",
+    "onu_to_onu_device_a": "• {0} is an ONU",
+    "onu_to_onu_device_b": "• {0} is an ONU",
+    "onu_to_onu_solution_header": "To connect these devices you need:",
+    "onu_to_onu_solution_1": "1. An OLT device in the topology",
+    "onu_to_onu_solution_2": "2. Connect each ONU to the OLT separately",
+    "olt_to_olt_title": "ℹ️ PON Connection Not Recommended",
+    "olt_to_olt_header": "ℹ️ Connection not recommended: OLT ↔ OLT",
+    "olt_to_olt_description": "Connections between OLTs are not typical in PON networks.",
+    "olt_to_olt_device_a": "• {0} is an OLT",
+    "olt_to_olt_device_b": "• {0} is an OLT",
+    "olt_to_olt_info_header": "In a standard PON topology:",
+    "olt_to_olt_info_1": "• Each OLT manages its own ONUs",
+    "olt_to_olt_info_2": "• ONUs only connect to their OLT",
+    "generic_error_title": "Connection Error"
+  },
+  "close_dialog": {
+    "title": "Confirm close",
+    "text": "You have unsaved work in the canvas.",
+    "question": "Are you sure you want to close the program?",
+    "details": "All devices and connections created will be lost.",
+    "button_yes": "Yes, close",
+    "button_cancel": "Cancel",
+    "button_save": "Save",
+    "save_title": "Save PON project",
+    "default_filename": "my_topology.pon",
+    "file_filter": "PON Files (*.pon);;All files (*.*)",
+    "save_success": "Project saved: {0}",
+    "save_error_title": "Save error",
+    "save_error_question": "Could not save the project to:\n{0}\n\nDo you want to close without saving?"
   }
 }

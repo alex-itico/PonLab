@@ -612,5 +612,41 @@
     "onu_stats_total": "Total: {0}",
     "onu_stats_most_used": "Más usado: {0}",
     "axis_quantity": "Cantidad"
+  },
+  "connection_errors": {
+    "self_connection": "Un dispositivo no puede conectarse a sí mismo",
+    "already_exists": "Ya existe una conexión entre {0} y {1}",
+    "onu_to_onu_title": "⚠️ Conexión PON no permitida",
+    "onu_to_onu_header": "⚠️ Conexión no permitida: ONU ↔ ONU",
+    "onu_to_onu_description": "Las ONUs únicamente pueden conectarse a una OLT.",
+    "onu_to_onu_device_a": "• {0} es una ONU",
+    "onu_to_onu_device_b": "• {0} es una ONU",
+    "onu_to_onu_solution_header": "Para conectar estos dispositivos necesitas:",
+    "onu_to_onu_solution_1": "1. Un dispositivo OLT en la topología",
+    "onu_to_onu_solution_2": "2. Conectar cada ONU al OLT por separado",
+    "olt_to_olt_title": "ℹ️ Conexión PON no recomendada",
+    "olt_to_olt_header": "ℹ️ Conexión no recomendada: OLT ↔ OLT",
+    "olt_to_olt_description": "Las conexiones entre OLTs no son típicas en redes PON.",
+    "olt_to_olt_device_a": "• {0} es una OLT",
+    "olt_to_olt_device_b": "• {0} es una OLT",
+    "olt_to_olt_info_header": "En una topología PON estándar:",
+    "olt_to_olt_info_1": "• Cada OLT gestiona sus propias ONUs",
+    "olt_to_olt_info_2": "• Las ONUs se conectan únicamente a su OLT",
+    "generic_error_title": "Error de Conexión"
+  },
+  "close_dialog": {
+    "title": "Confirmar cierre",
+    "text": "Tienes trabajo sin guardar en el canvas.",
+    "question": "¿Estás seguro de que quieres cerrar el programa?",
+    "details": "Se perderán todos los dispositivos y conexiones creadas.",
+    "button_yes": "Sí, cerrar",
+    "button_cancel": "Cancelar",
+    "button_save": "Guardar",
+    "save_title": "Guardar proyecto PON",
+    "default_filename": "mi_topologia.pon",
+    "file_filter": "Archivos PON (*.pon);;Todos los archivos (*.*)",
+    "save_success": "Proyecto guardado: {0}",
+    "save_error_title": "Error al guardar",
+    "save_error_question": "No se pudo guardar el proyecto en:\n{0}\n\n¿Quieres cerrar sin guardar?"
   }
 }

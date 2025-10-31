@@ -7,6 +7,10 @@ from PyQt5.QtCore import QObject, pyqtSignal
 from typing import List, Optional
 from .connection import Connection
 from ..devices.device import Device
+from utils.translation_manager import translation_manager
+
+# Obtener función de traducción
+tr = translation_manager.get_text
 
 
 class ConnectionManager(QObject):
@@ -40,35 +44,37 @@ class ConnectionManager(QObject):
         """
         # Un dispositivo no puede conectarse a sí mismo
         if device_a == device_b:
-            return False, "Un dispositivo no puede conectarse a sí mismo"
+            return False, tr('connection_errors.self_connection')
         
         # Verificar si ya existe una conexión entre estos dispositivos
         if self.get_connection_between(device_a, device_b):
-            return False, f"Ya existe una conexión entre {device_a.name} y {device_b.name}"
+            return False, tr('connection_errors.already_exists').format(device_a.name, device_b.name)
         
         # ⚠️ VALIDACIÓN PON: Las ONUs solo pueden conectarse a OLTs
         if device_a.device_type == "ONU" and device_b.device_type == "ONU":
-            return False, (
-                "⚠️ Conexión no permitida: ONU ↔ ONU\n\n"
-                "Las ONUs únicamente pueden conectarse a una OLT.\n"
-                f"• {device_a.name} es una ONU\n"
-                f"• {device_b.name} es una ONU\n\n"
-                "Para conectar estos dispositivos necesitas:\n"
-                "1. Un dispositivo OLT en la topología\n"
-                "2. Conectar cada ONU al OLT por separado"
+            message = (
+                f"{tr('connection_errors.onu_to_onu_header')}\n\n"
+                f"{tr('connection_errors.onu_to_onu_description')}\n"
+                f"{tr('connection_errors.onu_to_onu_device_a').format(device_a.name)}\n"
+                f"{tr('connection_errors.onu_to_onu_device_b').format(device_b.name)}\n\n"
+                f"{tr('connection_errors.onu_to_onu_solution_header')}\n"
+                f"{tr('connection_errors.onu_to_onu_solution_1')}\n"
+                f"{tr('connection_errors.onu_to_onu_solution_2')}"
             )
+            return False, message
         
         # ℹ️ VALIDACIÓN PON: Conexiones entre OLTs no son típicas en PON
         if device_a.device_type == "OLT" and device_b.device_type == "OLT":
-            return False, (
-                "ℹ️ Conexión no recomendada: OLT ↔ OLT\n\n"
-                "Las conexiones entre OLTs no son típicas en redes PON.\n"
-                f"• {device_a.name} es una OLT\n"
-                f"• {device_b.name} es una OLT\n\n"
-                "En una topología PON estándar:\n"
-                "• Cada OLT gestiona sus propias ONUs\n"
-                "• Las ONUs se conectan únicamente a su OLT"
+            message = (
+                f"{tr('connection_errors.olt_to_olt_header')}\n\n"
+                f"{tr('connection_errors.olt_to_olt_description')}\n"
+                f"{tr('connection_errors.olt_to_olt_device_a').format(device_a.name)}\n"
+                f"{tr('connection_errors.olt_to_olt_device_b').format(device_b.name)}\n\n"
+                f"{tr('connection_errors.olt_to_olt_info_header')}\n"
+                f"{tr('connection_errors.olt_to_olt_info_1')}\n"
+                f"{tr('connection_errors.olt_to_olt_info_2')}"
             )
+            return False, message
         
         return True, ""
     
@@ -195,13 +201,13 @@ class ConnectionManager(QObject):
         # Configurar el tipo de mensaje según el contenido
         if "⚠️" in message and "ONU ↔ ONU" in message:
             msg_box.setIcon(QMessageBox.Critical)
-            msg_box.setWindowTitle("⚠️ Conexión PON no permitida")
+            msg_box.setWindowTitle(tr('connection_errors.onu_to_onu_title'))
         elif "ℹ️" in message and "OLT ↔ OLT" in message:
             msg_box.setIcon(QMessageBox.Information)
-            msg_box.setWindowTitle("ℹ️ Conexión PON no recomendada")
+            msg_box.setWindowTitle(tr('connection_errors.olt_to_olt_title'))
         else:
             msg_box.setIcon(QMessageBox.Warning)
-            msg_box.setWindowTitle("Error de Conexión")
+            msg_box.setWindowTitle(tr('connection_errors.generic_error_title'))
         
         msg_box.setText(message)
         msg_box.setStandardButtons(QMessageBox.Ok)
