@@ -1013,15 +1013,15 @@ class MainWindow(QMainWindow, MainWindowSDNMixin):
         
         msg_box = QMessageBox(self)
         msg_box.setIcon(QMessageBox.Question)
-        msg_box.setWindowTitle('Confirmar cierre')
-        msg_box.setText('Tienes trabajo sin guardar en el canvas.')
-        msg_box.setInformativeText('¿Estás seguro de que quieres cerrar el programa?')
-        msg_box.setDetailedText('Se perderán todos los dispositivos y conexiones creadas.')
+        msg_box.setWindowTitle(tr('close_dialog.title'))
+        msg_box.setText(tr('close_dialog.text'))
+        msg_box.setInformativeText(tr('close_dialog.question'))
+        msg_box.setDetailedText(tr('close_dialog.details'))
         
         # Botones personalizados
-        yes_button = msg_box.addButton('Sí, cerrar', QMessageBox.YesRole)
-        no_button = msg_box.addButton('Cancelar', QMessageBox.NoRole)
-        save_button = msg_box.addButton('Guardar', QMessageBox.AcceptRole)
+        yes_button = msg_box.addButton(tr('close_dialog.button_yes'), QMessageBox.YesRole)
+        no_button = msg_box.addButton(tr('close_dialog.button_cancel'), QMessageBox.NoRole)
+        save_button = msg_box.addButton(tr('close_dialog.button_save'), QMessageBox.AcceptRole)
         
         msg_box.setDefaultButton(no_button)
         
@@ -1042,9 +1042,9 @@ class MainWindow(QMainWindow, MainWindowSDNMixin):
         # Mostrar diálogo de guardar archivo
         file_path, _ = QFileDialog.getSaveFileName(
             self,
-            'Guardar proyecto PON',
-            'mi_topologia.pon',  # Nombre por defecto
-            'Archivos PON (*.pon);;Todos los archivos (*.*)'
+            tr('close_dialog.save_title'),
+            tr('close_dialog.default_filename'),
+            tr('close_dialog.file_filter')
         )
         
         # Si el usuario canceló el diálogo
@@ -1057,15 +1057,15 @@ class MainWindow(QMainWindow, MainWindowSDNMixin):
         
         # Intentar guardar
         if self.canvas and self.canvas.save_project_as(file_path):
-            self.statusBar().showMessage(f'Proyecto guardado: {file_path}', 3000)
+            self.statusBar().showMessage(tr('close_dialog.save_success').format(file_path), 3000)
             print(f"Proyecto guardado en: {file_path}")
             return QMessageBox.Yes  # Proceder con el cierre
         else:
             # Si falla el guardado, preguntar qué hacer
             reply = QMessageBox.question(
                 self, 
-                'Error al guardar', 
-                f'No se pudo guardar el proyecto en:\n{file_path}\n\n¿Quieres cerrar sin guardar?',
+                tr('close_dialog.save_error_title'), 
+                tr('close_dialog.save_error_question').format(file_path),
                 QMessageBox.Yes | QMessageBox.No,
                 QMessageBox.No
             )
