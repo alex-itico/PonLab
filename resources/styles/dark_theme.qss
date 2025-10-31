@@ -596,19 +596,20 @@ QLabel[objectName="MetricTitle"] {
     color: #ffffff;
     background-color: transparent;
     font-weight: bold;
+    font-size: 16px;
 }
 
 QLabel[objectName="MetricValue"] {
     color: #4a90e2;
     background-color: transparent;
-    font-size: 16px;
+    font-size: 30px;
     font-weight: bold;
 }
 
 QLabel[objectName="MetricDescription"] {
     color: #cccccc;
     background-color: transparent;
-    font-size: 8px;
+    font-size: 14px;
 }
 
 /* Dashboard SDN - Tabla de ONUs */
