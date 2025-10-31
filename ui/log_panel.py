@@ -7,6 +7,7 @@ from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel,
                              QTextEdit, QPushButton, QFrame, QCheckBox, QScrollArea)
 from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtGui import QFont, QTextCharFormat, QColor
+from utils.translation_manager import translation_manager
 import datetime
 import re
 
@@ -33,6 +34,8 @@ class LogPanel(QWidget):
         
     def setup_ui(self):
         """Configurar interfaz del panel de log"""
+        tr = translation_manager.get_text
+        
         layout = QVBoxLayout(self)
         layout.setContentsMargins(8, 4, 8, 8)
         layout.setSpacing(4)
@@ -42,12 +45,12 @@ class LogPanel(QWidget):
         header_layout.setContentsMargins(0, 0, 0, 0)
         
         # Título
-        title_label = QLabel("📋 Log de Eventos Simulador")
+        self.title_label = QLabel(tr('log.title'))
         title_font = QFont()
         title_font.setBold(True)
         title_font.setPointSize(10)
-        title_label.setFont(title_font)
-        header_layout.addWidget(title_label)
+        self.title_label.setFont(title_font)
+        header_layout.addWidget(self.title_label)
         
         header_layout.addStretch()
         
@@ -55,9 +58,9 @@ class LogPanel(QWidget):
         # self.setup_category_filters(header_layout)
         
         # Botón limpiar
-        self.clear_button = QPushButton("🗑️ Limpiar")
-        self.clear_button.setMaximumWidth(80)
-        self.clear_button.setToolTip("Limpiar todos los eventos del log")
+        self.clear_button = QPushButton(tr('log.clear'))
+        self.clear_button.setMaximumWidth(100)
+        self.clear_button.setToolTip(tr('log.clear_tooltip'))
         self.clear_button.clicked.connect(self.clear_log)
         header_layout.addWidget(self.clear_button)
         
@@ -243,6 +246,13 @@ class LogPanel(QWidget):
         self.all_log_entries.clear()
         self.cleared.emit()
         self.add_log_entry("🧹 Log limpiado")
+    
+    def retranslate_ui(self):
+        """Actualizar traducciones de la interfaz"""
+        tr = translation_manager.get_text
+        self.title_label.setText(tr('log.title'))
+        self.clear_button.setText(tr('log.clear'))
+        self.clear_button.setToolTip(tr('log.clear_tooltip'))
     
     def get_log_content(self):
         """Obtener contenido completo del log"""

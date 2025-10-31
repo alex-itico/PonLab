@@ -105,8 +105,8 @@
   },
   "log": {
     "title": "📋 Simulator Event Log",
-    "clear": "Clear Log",
-    "export": "Export Log",
+    "clear": "🗑️ Clear",
+    "clear_tooltip": "Clear all log events",
     "system": "[SYSTEM]",
     "error": "[ERROR]",
     "warning": "[WARNING]",
@@ -230,5 +230,80 @@
     "validation_error": "Validation Error",
     "empty_name_error": "Device name cannot be empty.",
     "invalid_rate_error": "Transmission rate must be greater than 0."
+  },
+  "sdn_dashboard": {
+    "title": "📊 SDN Dashboard - Advanced Metrics",
+    "load_simulation": "📂 LOAD LAST SIMULATION",
+    "tabs": {
+      "global": "🌐 Global Summary",
+      "onu_metrics": "📡 ONU Metrics",
+      "qos_sla": "✅ QoS & SLA",
+      "controller": "🎛️ SDN Controller",
+      "bandwidth": "📊 Bandwidth"
+    },
+    "global": {
+      "reconfigurations": "Reconfigurations",
+      "reconfigurations_desc": "Automatic controller adjustments",
+      "grant_utilization": "Grant Utilization",
+      "grant_utilization_desc": "Percentage of grants used",
+      "fairness_index": "Fairness Index (Jain)",
+      "fairness_desc": "Resource distribution equity (0-1)",
+      "qos_violations": "QoS Violations",
+      "qos_violations_desc": "Quality of service violations",
+      "spectral_efficiency": "Spectral Efficiency",
+      "spectral_efficiency_desc": "Spectrum usage efficiency",
+      "total_decisions": "Controller Decisions",
+      "total_decisions_desc": "Total DBA decisions made"
+    },
+    "onu": {
+      "title": "📊 Metrics per ONU",
+      "table_headers": {
+        "onu_id": "ONU ID",
+        "avg_bw": "Avg BW",
+        "peak_bw": "Peak BW",
+        "latency": "Latency",
+        "jitter": "Jitter",
+        "packet_loss": "Packet Loss"
+      }
+    },
+    "qos": {
+      "title": "📋 SLA Compliance by T-CONT",
+      "table_headers": {
+        "onu_id": "ONU ID",
+        "tcont": "T-CONT",
+        "met": "Met",
+        "violated": "Violated",
+        "compliance": "% Compliance"
+      }
+    },
+    "controller": {
+      "response_time": "Response Time",
+      "response_time_desc": "Average controller response time",
+      "decision_latency": "Decision Latency",
+      "decision_latency_desc": "Average decision-making latency",
+      "reassignment_rate": "Reassignment Rate",
+      "reassignment_rate_desc": "Number of resource reassignments",
+      "bw_utilization": "Bandwidth Utilization",
+      "bw_utilization_desc": "Average BW usage percentage"
+    },
+    "bandwidth": {
+      "title": "📊 Bandwidth Distribution by Service Class",
+      "table_headers": {
+        "service_class": "Service Class",
+        "assigned_bw": "Assigned BW (Mbps)",
+        "total_percent": "% Total",
+        "packets": "Packets",
+        "avg_latency": "Avg Latency",
+        "priority": "Priority"
+      },
+      "service_classes": {
+        "critical": "🔴 Critical",
+        "high": "🟠 High",
+        "medium": "🟡 Medium",
+        "low": "🟢 Low",
+        "best_effort": "🔵 Best Effort"
+      }
+    }
   }
 }
+

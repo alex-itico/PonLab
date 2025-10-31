@@ -16,6 +16,10 @@ import json
 from pathlib import Path
 import os
 
+# Importar sistema de traducciones
+from utils.translation_manager import translation_manager
+tr = translation_manager.get_text
+
 # Importar PyQtChart con manejo de error
 try:
     from PyQt5.QtChart import QChart, QChartView, QLineSeries, QValueAxis, QBarSet, QBarSeries, QBarCategoryAxis
@@ -32,21 +36,25 @@ class MetricCard(QFrame):
         self.setFrameStyle(QFrame.StyledPanel | QFrame.Raised)
         self.setObjectName("MetricCard")  # Para identificación en CSS
         
+        # Guardar los textos originales (keys de traducción) - se setean después de crear la instancia
+        self.title_key = ""
+        self.description_key = ""
+        
         # Layout principal
         layout = QVBoxLayout(self)
         layout.setContentsMargins(15, 15, 15, 15)
         layout.setSpacing(8)
         
         # Título
-        title_label = QLabel(title)
-        title_label.setObjectName("MetricTitle")
+        self.title_label = QLabel(title)
+        self.title_label.setObjectName("MetricTitle")
         title_font = QFont()
         title_font.setBold(True)
         title_font.setPointSize(16)  # Título más visible
-        title_label.setFont(title_font)
-        title_label.setAlignment(Qt.AlignCenter)  # Centrado
-        title_label.setWordWrap(True)  # Permitir salto de línea si es necesario
-        layout.addWidget(title_label)
+        self.title_label.setFont(title_font)
+        self.title_label.setAlignment(Qt.AlignCenter)  # Centrado
+        self.title_label.setWordWrap(True)  # Permitir salto de línea si es necesario
+        layout.addWidget(self.title_label)
         
         # Valor
         self.value_label = QLabel(value)
@@ -60,18 +68,27 @@ class MetricCard(QFrame):
         
         # Descripción
         if description:
-            desc_label = QLabel(description)
-            desc_label.setObjectName("MetricDescription")
+            self.desc_label = QLabel(description)
+            self.desc_label.setObjectName("MetricDescription")
             desc_font = QFont()
             desc_font.setPointSize(14)  # Descripción más legible
-            desc_label.setFont(desc_font)
-            desc_label.setAlignment(Qt.AlignCenter)
-            desc_label.setWordWrap(True)  # Permitir salto de línea si es necesario
-            layout.addWidget(desc_label)
+            self.desc_label.setFont(desc_font)
+            self.desc_label.setAlignment(Qt.AlignCenter)
+            self.desc_label.setWordWrap(True)  # Permitir salto de línea si es necesario
+            layout.addWidget(self.desc_label)
+        else:
+            self.desc_label = None
     
     def update_value(self, new_value: str):
         """Actualizar el valor mostrado"""
         self.value_label.setText(new_value)
+    
+    def retranslate(self):
+        """Actualizar textos traducidos"""
+        if self.title_key:
+            self.title_label.setText(tr(self.title_key))
+        if self.desc_label and self.description_key:
+            self.desc_label.setText(tr(self.description_key))
 
 class PONSDNDashboard(QWidget):
     """Panel para mostrar métricas y estadísticas avanzadas del controlador SDN"""
@@ -98,18 +115,18 @@ class PONSDNDashboard(QWidget):
         main_layout.setSpacing(10)
         
         # Título del dashboard
-        title_label = QLabel("📊 Dashboard SDN - Métricas Avanzadas")
-        title_label.setObjectName("DashboardTitle")
+        self.title_label = QLabel(tr('sdn_dashboard.title'))
+        self.title_label.setObjectName("DashboardTitle")
         title_font = QFont()
         title_font.setBold(True)
         title_font.setPointSize(14)
-        title_label.setFont(title_font)
-        title_label.setAlignment(Qt.AlignCenter)
-        main_layout.addWidget(title_label)
+        self.title_label.setFont(title_font)
+        self.title_label.setAlignment(Qt.AlignCenter)
+        main_layout.addWidget(self.title_label)
         
         # Botón para cargar última simulación
         test_button_layout = QHBoxLayout()
-        self.test_button = QPushButton("📂 CARGAR ÚLTIMA SIMULACIÓN")
+        self.test_button = QPushButton(tr('sdn_dashboard.load_simulation'))
         self.test_button.setObjectName("TestButton")
         self.test_button.setStyleSheet("""
             QPushButton {
@@ -137,23 +154,23 @@ class PONSDNDashboard(QWidget):
         
         # Pestaña 1: Resumen Global
         self.tab_global = self._create_global_tab()
-        self.tabs.addTab(self.tab_global, "🌐 Resumen Global")
+        self.tabs.addTab(self.tab_global, tr('sdn_dashboard.tabs.global'))
         
         # Pestaña 2: Métricas por ONU
         self.tab_onu = self._create_onu_tab()
-        self.tabs.addTab(self.tab_onu, "📡 Métricas por ONU")
+        self.tabs.addTab(self.tab_onu, tr('sdn_dashboard.tabs.onu_metrics'))
         
         # Pestaña 3: QoS y SLA
         self.tab_qos = self._create_qos_tab()
-        self.tabs.addTab(self.tab_qos, "✅ QoS y SLA")
+        self.tabs.addTab(self.tab_qos, tr('sdn_dashboard.tabs.qos_sla'))
         
         # Pestaña 4: Controlador SDN
         self.tab_controller = self._create_controller_tab()
-        self.tabs.addTab(self.tab_controller, "🎛️ Controlador SDN")
+        self.tabs.addTab(self.tab_controller, tr('sdn_dashboard.tabs.controller'))
         
         # Pestaña 5: Ancho de Banda
         self.tab_bandwidth = self._create_bandwidth_tab()
-        self.tabs.addTab(self.tab_bandwidth, "📊 Ancho de Banda")
+        self.tabs.addTab(self.tab_bandwidth, tr('sdn_dashboard.tabs.bandwidth'))
         
         main_layout.addWidget(self.tabs)
     
@@ -172,45 +189,57 @@ class PONSDNDashboard(QWidget):
         
         # Métricas globales principales
         self.reconfig_card = MetricCard(
-            "Reconfiguraciones",
+            tr("sdn_dashboard.global.reconfigurations"),
             "0",
-            "Ajustes automáticos del controlador"
+            tr("sdn_dashboard.global.reconfigurations_desc")
         )
+        self.reconfig_card.title_key = "sdn_dashboard.global.reconfigurations"
+        self.reconfig_card.description_key = "sdn_dashboard.global.reconfigurations_desc"
         content_layout.addWidget(self.reconfig_card, 0, 0)
         
         self.grant_util_card = MetricCard(
-            "Utilización de Grants",
+            tr("sdn_dashboard.global.grant_utilization"),
             "0%",
-            "Porcentaje de grants utilizados"
+            tr("sdn_dashboard.global.grant_utilization_desc")
         )
+        self.grant_util_card.title_key = "sdn_dashboard.global.grant_utilization"
+        self.grant_util_card.description_key = "sdn_dashboard.global.grant_utilization_desc"
         content_layout.addWidget(self.grant_util_card, 0, 1)
         
         self.fairness_card = MetricCard(
-            "Índice de Fairness (Jain)",
+            tr("sdn_dashboard.global.fairness_index"),
             "0.0",
-            "Equidad en distribución de recursos (0-1)"
+            tr("sdn_dashboard.global.fairness_desc")
         )
+        self.fairness_card.title_key = "sdn_dashboard.global.fairness_index"
+        self.fairness_card.description_key = "sdn_dashboard.global.fairness_desc"
         content_layout.addWidget(self.fairness_card, 1, 0)
         
         self.qos_card = MetricCard(
-            "Violaciones QoS",
+            tr("sdn_dashboard.global.qos_violations"),
             "0",
-            "Violaciones de calidad de servicio"
+            tr("sdn_dashboard.global.qos_violations_desc")
         )
+        self.qos_card.title_key = "sdn_dashboard.global.qos_violations"
+        self.qos_card.description_key = "sdn_dashboard.global.qos_violations_desc"
         content_layout.addWidget(self.qos_card, 1, 1)
         
         self.spectral_eff_card = MetricCard(
-            "Eficiencia Espectral",
+            tr("sdn_dashboard.global.spectral_efficiency"),
             "0.0 bits/Hz",
-            "Eficiencia en uso del espectro"
+            tr("sdn_dashboard.global.spectral_efficiency_desc")
         )
+        self.spectral_eff_card.title_key = "sdn_dashboard.global.spectral_efficiency"
+        self.spectral_eff_card.description_key = "sdn_dashboard.global.spectral_efficiency_desc"
         content_layout.addWidget(self.spectral_eff_card, 2, 0)
         
         self.total_decisions_card = MetricCard(
-            "Decisiones del Controlador",
+            tr("sdn_dashboard.global.total_decisions"),
             "0",
-            "Total de decisiones DBA tomadas"
+            tr("sdn_dashboard.global.total_decisions_desc")
         )
+        self.total_decisions_card.title_key = "sdn_dashboard.global.total_decisions"
+        self.total_decisions_card.description_key = "sdn_dashboard.global.total_decisions_desc"
         content_layout.addWidget(self.total_decisions_card, 2, 1)
         
         # Gráfica de fairness histórico
@@ -242,18 +271,22 @@ class PONSDNDashboard(QWidget):
         tab = QWidget()
         layout = QVBoxLayout(tab)
         
+        # Título
+        self.onu_title_label = QLabel(tr('sdn_dashboard.onu.title'))
+        self.onu_title_label.setFont(QFont("Arial", 12, QFont.Bold))
+        layout.addWidget(self.onu_title_label)
+        
         # Tabla de métricas por ONU
         self.onu_table = QTableWidget()
         self.onu_table.setObjectName("ONUMetricsTable")
-        self.onu_table.setColumnCount(7)
+        self.onu_table.setColumnCount(6)
         self.onu_table.setHorizontalHeaderLabels([
-            "ONU ID",
-            "Latencia Prom.",
-            "Jitter",
-            "Pérdidas",
-            "Throughput",
-            "Eficiencia Grant",
-            "Congestión"
+            tr('sdn_dashboard.onu.table_headers.onu_id'),
+            tr('sdn_dashboard.onu.table_headers.avg_bw'),
+            tr('sdn_dashboard.onu.table_headers.peak_bw'),
+            tr('sdn_dashboard.onu.table_headers.latency'),
+            tr('sdn_dashboard.onu.table_headers.jitter'),
+            tr('sdn_dashboard.onu.table_headers.packet_loss')
         ])
         header = self.onu_table.horizontalHeader()
         header.setSectionResizeMode(QHeaderView.Stretch)
@@ -275,19 +308,19 @@ class PONSDNDashboard(QWidget):
         content_layout = QVBoxLayout(content)
         
         # Tabla de cumplimiento SLA por T-CONT
-        sla_label = QLabel("📋 Cumplimiento SLA por T-CONT")
-        sla_label.setFont(QFont("Arial", 12, QFont.Bold))
-        content_layout.addWidget(sla_label)
+        self.sla_label = QLabel(tr('sdn_dashboard.qos.title'))
+        self.sla_label.setFont(QFont("Arial", 12, QFont.Bold))
+        content_layout.addWidget(self.sla_label)
         
         self.sla_table = QTableWidget()
         self.sla_table.setObjectName("SLATable")
         self.sla_table.setColumnCount(5)
         self.sla_table.setHorizontalHeaderLabels([
-            "ONU ID",
-            "T-CONT",
-            "Cumplidos",
-            "Violados",
-            "% Cumplimiento"
+            tr('sdn_dashboard.qos.table_headers.onu_id'),
+            tr('sdn_dashboard.qos.table_headers.tcont'),
+            tr('sdn_dashboard.qos.table_headers.met'),
+            tr('sdn_dashboard.qos.table_headers.violated'),
+            tr('sdn_dashboard.qos.table_headers.compliance')
         ])
         header = self.sla_table.horizontalHeader()
         header.setSectionResizeMode(QHeaderView.Stretch)
@@ -312,31 +345,39 @@ class PONSDNDashboard(QWidget):
         
         # Métricas del controlador
         self.controller_response_card = MetricCard(
-            "Tiempo de Respuesta",
+            tr("sdn_dashboard.controller.response_time"),
             "0.0 ms",
-            "Tiempo medio de respuesta del controlador"
+            tr("sdn_dashboard.controller.response_time_desc")
         )
+        self.controller_response_card.title_key = "sdn_dashboard.controller.response_time"
+        self.controller_response_card.description_key = "sdn_dashboard.controller.response_time_desc"
         content_layout.addWidget(self.controller_response_card, 0, 0)
         
         self.decision_latency_card = MetricCard(
-            "Latencia de Decisión",
+            tr("sdn_dashboard.controller.decision_latency"),
             "0.0 ms",
-            "Latencia promedio en toma de decisiones"
+            tr("sdn_dashboard.controller.decision_latency_desc")
         )
+        self.decision_latency_card.title_key = "sdn_dashboard.controller.decision_latency"
+        self.decision_latency_card.description_key = "sdn_dashboard.controller.decision_latency_desc"
         content_layout.addWidget(self.decision_latency_card, 0, 1)
         
         self.reassignment_rate_card = MetricCard(
-            "Tasa de Reasignación",
+            tr("sdn_dashboard.controller.reassignment_rate"),
             "0",
-            "Número de reasignaciones de recursos"
+            tr("sdn_dashboard.controller.reassignment_rate_desc")
         )
+        self.reassignment_rate_card.title_key = "sdn_dashboard.controller.reassignment_rate"
+        self.reassignment_rate_card.description_key = "sdn_dashboard.controller.reassignment_rate_desc"
         content_layout.addWidget(self.reassignment_rate_card, 1, 0)
         
         self.bw_utilization_card = MetricCard(
-            "Utilización de Ancho de Banda",
+            tr("sdn_dashboard.controller.bw_utilization"),
             "0.0%",
-            "Porcentaje promedio de uso de BW"
+            tr("sdn_dashboard.controller.bw_utilization_desc")
         )
+        self.bw_utilization_card.title_key = "sdn_dashboard.controller.bw_utilization"
+        self.bw_utilization_card.description_key = "sdn_dashboard.controller.bw_utilization_desc"
         content_layout.addWidget(self.bw_utilization_card, 1, 1)
         
         scroll.setWidget(content)
@@ -355,37 +396,37 @@ class PONSDNDashboard(QWidget):
         content_layout = QVBoxLayout(content)
         
         # Tabla de distribución por clase de servicio
-        service_label = QLabel("📊 Distribución de Ancho de Banda por Clase de Servicio")
-        service_label.setFont(QFont("Arial", 12, QFont.Bold))
-        content_layout.addWidget(service_label)
+        self.service_label = QLabel(tr('sdn_dashboard.bandwidth.title'))
+        self.service_label.setFont(QFont("Arial", 12, QFont.Bold))
+        content_layout.addWidget(self.service_label)
         
         self.service_table = QTableWidget()
         self.service_table.setObjectName("ServiceTable")
         self.service_table.setColumnCount(6)
         self.service_table.setHorizontalHeaderLabels([
-            "Clase de Servicio",
-            "BW Asignado (Mbps)",
-            "% Total",
-            "Paquetes",
-            "Latencia Prom.",
-            "Prioridad"
+            tr('sdn_dashboard.bandwidth.table_headers.service_class'),
+            tr('sdn_dashboard.bandwidth.table_headers.assigned_bw'),
+            tr('sdn_dashboard.bandwidth.table_headers.total_percent'),
+            tr('sdn_dashboard.bandwidth.table_headers.packets'),
+            tr('sdn_dashboard.bandwidth.table_headers.avg_latency'),
+            tr('sdn_dashboard.bandwidth.table_headers.priority')
         ])
         header = self.service_table.horizontalHeader()
         header.setSectionResizeMode(QHeaderView.Stretch)
         self.service_table.setAlternatingRowColors(True)
         self.service_table.setRowCount(5)
         
-        # Definir clases de servicio
-        service_classes = [
-            ("Highest", "🔴 Crítico"),
-            ("High", "🟠 Alto"),
-            ("Medium", "🟡 Medio"),
-            ("Low", "🟢 Bajo"),
-            ("Lowest", "🔵 Best Effort")
+        # Definir clases de servicio (guardadas para retranslate)
+        self.service_classes_keys = [
+            "sdn_dashboard.bandwidth.service_classes.critical",
+            "sdn_dashboard.bandwidth.service_classes.high",
+            "sdn_dashboard.bandwidth.service_classes.medium",
+            "sdn_dashboard.bandwidth.service_classes.low",
+            "sdn_dashboard.bandwidth.service_classes.best_effort"
         ]
         
-        for row, (service_class, display_name) in enumerate(service_classes):
-            item = QTableWidgetItem(display_name)
+        for row, service_key in enumerate(self.service_classes_keys):
+            item = QTableWidgetItem(tr(service_key))
             item.setTextAlignment(Qt.AlignCenter)
             self.service_table.setItem(row, 0, item)
         
@@ -714,6 +755,78 @@ class PONSDNDashboard(QWidget):
                 priority_item = QTableWidgetItem(priority)
                 priority_item.setTextAlignment(Qt.AlignCenter)
                 self.service_table.setItem(row, 5, priority_item)
+    
+    def retranslate_ui(self):
+        """Actualizar todos los textos traducibles del dashboard"""
+        # Título principal
+        self.title_label.setText(tr('sdn_dashboard.title'))
+        
+        # Botón de carga
+        self.test_button.setText(tr('sdn_dashboard.load_simulation'))
+        
+        # Nombres de pestañas
+        self.tabs.setTabText(0, tr('sdn_dashboard.tabs.global'))
+        self.tabs.setTabText(1, tr('sdn_dashboard.tabs.onu_metrics'))
+        self.tabs.setTabText(2, tr('sdn_dashboard.tabs.qos_sla'))
+        self.tabs.setTabText(3, tr('sdn_dashboard.tabs.controller'))
+        self.tabs.setTabText(4, tr('sdn_dashboard.tabs.bandwidth'))
+        
+        # Tarjetas de métricas globales
+        self.reconfig_card.retranslate()
+        self.grant_util_card.retranslate()
+        self.fairness_card.retranslate()
+        self.qos_card.retranslate()
+        self.spectral_eff_card.retranslate()
+        self.total_decisions_card.retranslate()
+        
+        # Tabla ONU
+        if hasattr(self, 'onu_title_label'):
+            self.onu_title_label.setText(tr('sdn_dashboard.onu.title'))
+        self.onu_table.setHorizontalHeaderLabels([
+            tr('sdn_dashboard.onu.table_headers.onu_id'),
+            tr('sdn_dashboard.onu.table_headers.avg_bw'),
+            tr('sdn_dashboard.onu.table_headers.peak_bw'),
+            tr('sdn_dashboard.onu.table_headers.latency'),
+            tr('sdn_dashboard.onu.table_headers.jitter'),
+            tr('sdn_dashboard.onu.table_headers.packet_loss')
+        ])
+        
+        # Tabla QoS
+        if hasattr(self, 'sla_label'):
+            self.sla_label.setText(tr('sdn_dashboard.qos.title'))
+        self.sla_table.setHorizontalHeaderLabels([
+            tr('sdn_dashboard.qos.table_headers.onu_id'),
+            tr('sdn_dashboard.qos.table_headers.tcont'),
+            tr('sdn_dashboard.qos.table_headers.met'),
+            tr('sdn_dashboard.qos.table_headers.violated'),
+            tr('sdn_dashboard.qos.table_headers.compliance')
+        ])
+        
+        # Tarjetas del controlador
+        self.controller_response_card.retranslate()
+        self.decision_latency_card.retranslate()
+        self.reassignment_rate_card.retranslate()
+        self.bw_utilization_card.retranslate()
+        
+        # Tabla Bandwidth
+        if hasattr(self, 'service_label'):
+            self.service_label.setText(tr('sdn_dashboard.bandwidth.title'))
+        self.service_table.setHorizontalHeaderLabels([
+            tr('sdn_dashboard.bandwidth.table_headers.service_class'),
+            tr('sdn_dashboard.bandwidth.table_headers.assigned_bw'),
+            tr('sdn_dashboard.bandwidth.table_headers.total_percent'),
+            tr('sdn_dashboard.bandwidth.table_headers.packets'),
+            tr('sdn_dashboard.bandwidth.table_headers.avg_latency'),
+            tr('sdn_dashboard.bandwidth.table_headers.priority')
+        ])
+        
+        # Actualizar clases de servicio en la tabla
+        if hasattr(self, 'service_classes_keys'):
+            for row, service_key in enumerate(self.service_classes_keys):
+                item = self.service_table.item(row, 0)
+                if item:
+                    item.setText(tr(service_key))
+
     
     def load_latest_simulation(self):
         """Cargar datos desde el último archivo de simulación guardado"""

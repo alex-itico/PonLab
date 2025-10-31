@@ -105,8 +105,8 @@
   },
   "log": {
     "title": "📋 Log de Eventos Simulador",
-    "clear": "Limpiar Log",
-    "export": "Exportar Log",
+    "clear": "🗑️ Limpiar",
+    "clear_tooltip": "Limpiar todos los eventos del log",
     "system": "[SISTEMA]",
     "error": "[ERROR]",
     "warning": "[ADVERTENCIA]",
@@ -230,5 +230,80 @@
     "validation_error": "Error de Validación",
     "empty_name_error": "El nombre del dispositivo no puede estar vacío.",
     "invalid_rate_error": "La tasa de transmisión debe ser mayor a 0."
+  },
+  "sdn_dashboard": {
+    "title": "📊 Dashboard SDN - Métricas Avanzadas",
+    "load_simulation": "📂 CARGAR ÚLTIMA SIMULACIÓN",
+    "tabs": {
+      "global": "🌐 Resumen Global",
+      "onu_metrics": "📡 Métricas por ONU",
+      "qos_sla": "✅ QoS y SLA",
+      "controller": "🎛️ Controlador SDN",
+      "bandwidth": "📊 Ancho de Banda"
+    },
+    "global": {
+      "reconfigurations": "Reconfiguraciones",
+      "reconfigurations_desc": "Ajustes automáticos del controlador",
+      "grant_utilization": "Utilización de Grants",
+      "grant_utilization_desc": "Porcentaje de grants utilizados",
+      "fairness_index": "Índice de Fairness (Jain)",
+      "fairness_desc": "Equidad en distribución de recursos (0-1)",
+      "qos_violations": "Violaciones QoS",
+      "qos_violations_desc": "Violaciones de calidad de servicio",
+      "spectral_efficiency": "Eficiencia Espectral",
+      "spectral_efficiency_desc": "Eficiencia en uso del espectro",
+      "total_decisions": "Decisiones del Controlador",
+      "total_decisions_desc": "Total de decisiones DBA tomadas"
+    },
+    "onu": {
+      "title": "📊 Métricas por ONU",
+      "table_headers": {
+        "onu_id": "ONU ID",
+        "avg_bw": "BW Promedio",
+        "peak_bw": "BW Pico",
+        "latency": "Latencia",
+        "jitter": "Jitter",
+        "packet_loss": "Pérdida Paquetes"
+      }
+    },
+    "qos": {
+      "title": "📋 Cumplimiento SLA por T-CONT",
+      "table_headers": {
+        "onu_id": "ONU ID",
+        "tcont": "T-CONT",
+        "met": "Cumplidos",
+        "violated": "Violados",
+        "compliance": "% Cumplimiento"
+      }
+    },
+    "controller": {
+      "response_time": "Tiempo de Respuesta",
+      "response_time_desc": "Tiempo medio de respuesta del controlador",
+      "decision_latency": "Latencia de Decisión",
+      "decision_latency_desc": "Latencia promedio en toma de decisiones",
+      "reassignment_rate": "Tasa de Reasignación",
+      "reassignment_rate_desc": "Número de reasignaciones de recursos",
+      "bw_utilization": "Utilización de Ancho de Banda",
+      "bw_utilization_desc": "Porcentaje promedio de uso de BW"
+    },
+    "bandwidth": {
+      "title": "📊 Distribución de Ancho de Banda por Clase de Servicio",
+      "table_headers": {
+        "service_class": "Clase de Servicio",
+        "assigned_bw": "BW Asignado (Mbps)",
+        "total_percent": "% Total",
+        "packets": "Paquetes",
+        "avg_latency": "Latencia Prom.",
+        "priority": "Prioridad"
+      },
+      "service_classes": {
+        "critical": "🔴 Crítico",
+        "high": "🟠 Alto",
+        "medium": "🟡 Medio",
+        "low": "🟢 Bajo",
+        "best_effort": "🔵 Best Effort"
+      }
+    }
   }
 }
+

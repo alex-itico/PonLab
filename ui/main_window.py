@@ -373,6 +373,14 @@ class MainWindow(QMainWindow, MainWindowSDNMixin):
         if hasattr(self, 'canvas') and self.canvas:
             self.canvas.retranslate_ui()
         
+        # Actualizar log panel si existe
+        if hasattr(self, 'log_panel') and self.log_panel:
+            self.log_panel.retranslate_ui()
+        
+        # Actualizar SDN dashboard si existe
+        if hasattr(self, 'sdn_dashboard') and self.sdn_dashboard:
+            self.sdn_dashboard.retranslate_ui()
+        
         # Actualizar título de la ventana si es necesario
         # self.setWindowTitle(tr('app.name'))
         
