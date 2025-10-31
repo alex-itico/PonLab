@@ -113,7 +113,7 @@ class SplashScreen(QSplashScreen):
         version_font = QFont("Segoe UI", 12)
         painter.setFont(version_font)
         
-        version_text = "Versión 2.0.0"
+        version_text = "Versión 2.1.0"
         version_x = text_start_x
         version_y = desc_y + 30
         
