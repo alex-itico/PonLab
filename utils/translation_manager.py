@@ -61,6 +61,12 @@ class TranslationManager:
                 "native_name": "English",
                 "flag": "🇺🇸",
                 "file": "en_US.json"
+            },
+            "fr_FR": {
+                "name": "French",
+                "native_name": "Français",
+                "flag": "🇫🇷",
+                "file": "fr_FR.json"
             }
         }
     

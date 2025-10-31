@@ -47,7 +47,9 @@
       "spanish": "🇪🇸 &Español",
       "spanish_tip": "Cambiar idioma a Español",
       "english": "🇺🇸 &English",
-      "english_tip": "Change language to English"
+      "english_tip": "Change language to English",
+      "french": "🇫🇷 &Français",
+      "french_tip": "Changer la langue en français"
     }
   },
   "sidebar": {
@@ -150,9 +152,30 @@
   "dialog": {
     "about": {
       "title": "About PonLab",
-      "description": "Passive Optical Network (PON) Simulator with Machine Learning capabilities",
-      "version": "Version: {version}",
-      "close": "Close"
+      "app_title": "PonLab Simulator",
+      "subtitle": "Passive Optical Network Simulator",
+      "version": "Version 2.0.0",
+      "description": "An advanced application to simulate and design passive optical networks (PON).",
+      "features_title": "Key Features:",
+      "feature_1": "• Interactive visual design of PON topologies via drag & drop",
+      "feature_2": "• Support for OLT, OLT_SDN devices and multiple ONU types",
+      "feature_3": "• Automatic connection system between optical fiber devices",
+      "feature_4": "• Complete simulation with NetPONPy for performance analysis",
+      "feature_5": "• Optical power, attenuation and link budget calculations",
+      "feature_6": "• Automatic generation of simulation graphs and reports",
+      "feature_7": "• Save and load projects in .pon format",
+      "feature_8": "• Interface with customizable light and dark themes",
+      "feature_9": "• Editable properties panel for device configuration",
+      "feature_10": "• Integrated logging system for operation tracking",
+      "developers_title": "Developed by:",
+      "developer_1": "• Alex Aravena Tapia",
+      "developer_2": "• Jesús Chaffe González",
+      "developer_3": "• Eduardo Maldonado Zamora",
+      "developer_4": "• Jorge Barrios Núñez",
+      "repository_title": "GitHub Repository:",
+      "repository_link": "https://github.com/alex-itico/PonLab",
+      "copyright": "© 2025 - Developed with PyQt5 and Python",
+      "button_ok": "Accept"
     },
     "unsaved": {
       "title": "Unsaved work",
