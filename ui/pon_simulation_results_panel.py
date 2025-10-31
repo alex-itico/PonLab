@@ -13,6 +13,10 @@ from PyQt5.QtGui import QFont, QColor
 from core import PONAdapter
 from .pon_metrics_charts import PONMetricsChartsPanel
 
+# Importar sistema de traducciones
+from utils.translation_manager import translation_manager
+tr = translation_manager.get_text
+
 
 class PONResultsPanel(QWidget):
     """Panel de visualización de resultados de simulación PON"""
@@ -46,14 +50,14 @@ class PONResultsPanel(QWidget):
         layout = QVBoxLayout(self)
         
         # Título
-        title = QLabel("📊 Resultados de Simulación PON")
-        title.setObjectName("pon_results_title")  # Identificador para QSS
+        self.title_label = QLabel(tr("simulation_results.title"))
+        self.title_label.setObjectName("pon_results_title")  # Identificador para QSS
         title_font = QFont()
         title_font.setPointSize(12)
         title_font.setBold(True)
-        title.setFont(title_font)
-        title.setAlignment(Qt.AlignCenter)
-        layout.addWidget(title)
+        self.title_label.setFont(title_font)
+        self.title_label.setAlignment(Qt.AlignCenter)
+        layout.addWidget(self.title_label)
         
         # Crear tabs para diferentes tipos de resultados
         self.tabs = QTabWidget()
@@ -80,25 +84,25 @@ class PONResultsPanel(QWidget):
         # Botones de control
         controls_layout = QHBoxLayout()
         
-        self.refresh_btn = QPushButton("🔄 Actualizar")
+        self.refresh_btn = QPushButton(tr("simulation_results.buttons.refresh"))
         self.refresh_btn.setObjectName("pon_results_button")  # Identificador para QSS
         self.refresh_btn.clicked.connect(self.refresh_results)
         controls_layout.addWidget(self.refresh_btn)
         
         # Botón para actualizar Dashboard SDN desde datos guardados
-        self.update_sdn_dashboard_btn = QPushButton("📊 Dashboard SDN")
+        self.update_sdn_dashboard_btn = QPushButton(tr("simulation_results.buttons.sdn_dashboard"))
         self.update_sdn_dashboard_btn.setObjectName("pon_results_button")
-        self.update_sdn_dashboard_btn.setToolTip("Calcular y mostrar métricas SDN desde archivo de simulación")
+        self.update_sdn_dashboard_btn.setToolTip(tr("simulation_results.buttons.sdn_dashboard_tip"))
         self.update_sdn_dashboard_btn.clicked.connect(self.update_sdn_dashboard_from_data)
         # Ahora siempre visible - el método validará si hay datos disponibles
         controls_layout.addWidget(self.update_sdn_dashboard_btn)
         
-        self.export_btn = QPushButton("📁 Exportar")
+        self.export_btn = QPushButton(tr("simulation_results.buttons.export"))
         self.export_btn.setObjectName("pon_results_button")  # Identificador para QSS
         self.export_btn.clicked.connect(self.export_results)
         controls_layout.addWidget(self.export_btn)
         
-        self.auto_update_btn = QPushButton("⏱️ Auto-actualizar")
+        self.auto_update_btn = QPushButton(tr("simulation_results.buttons.auto_update"))
         self.auto_update_btn.setObjectName("pon_results_button")  # Identificador para QSS
         self.auto_update_btn.setCheckable(True)
         self.auto_update_btn.toggled.connect(self.toggle_auto_update)
@@ -106,37 +110,42 @@ class PONResultsPanel(QWidget):
         
         controls_layout.addStretch()
         layout.addLayout(controls_layout)
-        
+    
     def setup_summary_tab(self):
         """Configurar tab de resumen general"""
         tab = QWidget()
         layout = QVBoxLayout(tab)
         
         # Estado de la simulación
-        status_group = QGroupBox("Estado de la Simulación")
-        status_group.setObjectName("pon_results_group")
-        status_layout = QGridLayout(status_group)
+        self.status_group = QGroupBox(tr("simulation_results.summary.status_group"))
+        self.status_group.setObjectName("pon_results_group")
+        status_layout = QGridLayout(self.status_group)
         
-        self.status_label = QLabel("❓ No conectado")
-        self.step_label = QLabel("Paso: 0")
-        self.time_label = QLabel("Tiempo: 0.000s")
-        self.algorithm_label = QLabel("Algoritmo: N/A")
+        self.status_label = QLabel(tr("simulation_results.summary.status_disconnected"))
+        self.step_label = QLabel(tr("simulation_results.summary.step").format(0))
+        self.time_label = QLabel(tr("simulation_results.summary.time").format("0.000"))
+        self.algorithm_label = QLabel(tr("simulation_results.summary.algorithm").format("N/A"))
         
-        status_layout.addWidget(QLabel("Estado:"), 0, 0)
+        self.status_text_label = QLabel(tr("simulation_results.summary.status"))
+        self.current_step_label = QLabel(tr("simulation_results.summary.current_step"))
+        self.simulated_time_label = QLabel(tr("simulation_results.summary.simulated_time"))
+        self.dba_algorithm_label = QLabel(tr("simulation_results.summary.dba_algorithm"))
+        
+        status_layout.addWidget(self.status_text_label, 0, 0)
         status_layout.addWidget(self.status_label, 0, 1)
-        status_layout.addWidget(QLabel("Paso actual:"), 1, 0)
+        status_layout.addWidget(self.current_step_label, 1, 0)
         status_layout.addWidget(self.step_label, 1, 1)
-        status_layout.addWidget(QLabel("Tiempo simulado:"), 2, 0)
+        status_layout.addWidget(self.simulated_time_label, 2, 0)
         status_layout.addWidget(self.time_label, 2, 1)
-        status_layout.addWidget(QLabel("Algoritmo DBA:"), 3, 0)
+        status_layout.addWidget(self.dba_algorithm_label, 3, 0)
         status_layout.addWidget(self.algorithm_label, 3, 1)
         
-        layout.addWidget(status_group)
+        layout.addWidget(self.status_group)
         
         # Métricas principales
-        metrics_group = QGroupBox("Métricas Principales")
-        metrics_group.setObjectName("pon_results_group")
-        metrics_layout = QGridLayout(metrics_group)
+        self.metrics_group = QGroupBox(tr("simulation_results.summary.metrics_group"))
+        self.metrics_group.setObjectName("pon_results_group")
+        metrics_layout = QGridLayout(self.metrics_group)
         
         self.requests_label = QLabel("0")
         self.transmitted_label = QLabel("0.000 MB")
@@ -149,22 +158,28 @@ class PONResultsPanel(QWidget):
         self.utilization_bar.setRange(0, 100)
         self.utilization_bar.setValue(0)
         
-        metrics_layout.addWidget(QLabel("Solicitudes procesadas:"), 0, 0)
+        self.requests_processed_label = QLabel(tr("simulation_results.summary.requests_processed"))
+        self.data_transmitted_label = QLabel(tr("simulation_results.summary.data_transmitted"))
+        self.average_delay_label = QLabel(tr("simulation_results.summary.average_delay"))
+        self.average_throughput_label = QLabel(tr("simulation_results.summary.average_throughput"))
+        self.network_utilization_label = QLabel(tr("simulation_results.summary.network_utilization"))
+        
+        metrics_layout.addWidget(self.requests_processed_label, 0, 0)
         metrics_layout.addWidget(self.requests_label, 0, 1)
-        metrics_layout.addWidget(QLabel("Datos transmitidos:"), 1, 0)
+        metrics_layout.addWidget(self.data_transmitted_label, 1, 0)
         metrics_layout.addWidget(self.transmitted_label, 1, 1)
-        metrics_layout.addWidget(QLabel("Delay promedio:"), 2, 0)
+        metrics_layout.addWidget(self.average_delay_label, 2, 0)
         metrics_layout.addWidget(self.delay_label, 2, 1)
-        metrics_layout.addWidget(QLabel("Throughput promedio:"), 3, 0)
+        metrics_layout.addWidget(self.average_throughput_label, 3, 0)
         metrics_layout.addWidget(self.throughput_label, 3, 1)
-        metrics_layout.addWidget(QLabel("Utilización de red:"), 4, 0)
+        metrics_layout.addWidget(self.network_utilization_label, 4, 0)
         metrics_layout.addWidget(self.utilization_label, 4, 1)
         metrics_layout.addWidget(self.utilization_bar, 5, 0, 1, 2)
         
-        layout.addWidget(metrics_group)
+        layout.addWidget(self.metrics_group)
         layout.addStretch()
         
-        self.tabs.addTab(tab, "📋 Resumen")
+        self.tabs.addTab(tab, tr("simulation_results.tabs.summary"))
         
     def setup_network_metrics_tab(self):
         """Configurar tab de métricas de red"""
@@ -174,13 +189,16 @@ class PONResultsPanel(QWidget):
         # Tabla de métricas
         self.network_table = QTableWidget()
         self.network_table.setColumnCount(2)
-        self.network_table.setHorizontalHeaderLabels(["Métrica", "Valor"])
+        self.network_table.setHorizontalHeaderLabels([
+            tr("simulation_results.network.table_headers.metric"),
+            tr("simulation_results.network.table_headers.value")
+        ])
         self.network_table.horizontalHeader().setStretchLastSection(True)
         
         layout.addWidget(self.network_table)
         
-        self.tabs.addTab(tab, "🌐 Red")
-        
+        self.tabs.addTab(tab, tr("simulation_results.tabs.network"))
+    
     def setup_onu_stats_tab(self):
         """Configurar tab de estadísticas por ONU"""
         tab = QWidget()
@@ -190,15 +208,20 @@ class PONResultsPanel(QWidget):
         self.onu_table = QTableWidget()
         self.onu_table.setColumnCount(7)
         self.onu_table.setHorizontalHeaderLabels([
-            "ONU ID", "Buffer (%)", "Solicitudes", "Transmitido (MB)", 
-            "Tasa Respuesta (%)", "Pérdidas", "Estado"
+            tr("simulation_results.onus.table_headers.onu_id"),
+            tr("simulation_results.onus.table_headers.buffer"),
+            tr("simulation_results.onus.table_headers.requests"),
+            tr("simulation_results.onus.table_headers.transmitted"),
+            tr("simulation_results.onus.table_headers.response_rate"),
+            tr("simulation_results.onus.table_headers.losses"),
+            tr("simulation_results.onus.table_headers.status")
         ])
         self.onu_table.horizontalHeader().setStretchLastSection(True)
         
         layout.addWidget(self.onu_table)
         
-        self.tabs.addTab(tab, "🏠 ONUs")
-        
+        self.tabs.addTab(tab, tr("simulation_results.tabs.onus"))
+    
     def setup_history_tab(self):
         """Configurar tab de historial detallado"""
         tab = QWidget()
@@ -208,32 +231,40 @@ class PONResultsPanel(QWidget):
         splitter = QSplitter(Qt.Horizontal)
         
         # Panel izquierdo: Delays
-        delays_group = QGroupBox("Historial de Delays")
-        delays_group.setObjectName("pon_results_group")
-        delays_layout = QVBoxLayout(delays_group)
+        self.delays_group = QGroupBox(tr("simulation_results.history.delays_group"))
+        self.delays_group.setObjectName("pon_results_group")
+        delays_layout = QVBoxLayout(self.delays_group)
         
         self.delays_table = QTableWidget()
         self.delays_table.setColumnCount(3)
-        self.delays_table.setHorizontalHeaderLabels(["Tiempo", "ONU", "Delay (s)"])
+        self.delays_table.setHorizontalHeaderLabels([
+            tr("simulation_results.history.delays_headers.time"),
+            tr("simulation_results.history.delays_headers.onu"),
+            tr("simulation_results.history.delays_headers.delay")
+        ])
         delays_layout.addWidget(self.delays_table)
         
-        splitter.addWidget(delays_group)
+        splitter.addWidget(self.delays_group)
         
         # Panel derecho: Throughputs
-        throughputs_group = QGroupBox("Historial de Throughput")
-        throughputs_group.setObjectName("pon_results_group")
-        throughputs_layout = QVBoxLayout(throughputs_group)
+        self.throughputs_group = QGroupBox(tr("simulation_results.history.throughputs_group"))
+        self.throughputs_group.setObjectName("pon_results_group")
+        throughputs_layout = QVBoxLayout(self.throughputs_group)
         
         self.throughputs_table = QTableWidget()
         self.throughputs_table.setColumnCount(3)
-        self.throughputs_table.setHorizontalHeaderLabels(["Tiempo", "ONU", "Throughput (MB/s)"])
+        self.throughputs_table.setHorizontalHeaderLabels([
+            tr("simulation_results.history.throughputs_headers.time"),
+            tr("simulation_results.history.throughputs_headers.onu"),
+            tr("simulation_results.history.throughputs_headers.throughput")
+        ])
         throughputs_layout.addWidget(self.throughputs_table)
         
-        splitter.addWidget(throughputs_group)
+        splitter.addWidget(self.throughputs_group)
         
         layout.addWidget(splitter)
         
-        self.tabs.addTab(tab, "📈 Historial")
+        self.tabs.addTab(tab, tr("simulation_results.tabs.history"))
         
     def setup_charts_tab(self):
         """Configurar tab de gráficos de métricas"""
@@ -243,8 +274,8 @@ class PONResultsPanel(QWidget):
         # Conectar señales
         self.charts_panel.chart_updated.connect(self.on_chart_updated)
         
-        self.tabs.addTab(self.charts_panel, "📊 Gráficos")
-        
+        self.tabs.addTab(self.charts_panel, tr("simulation_results.tabs.charts"))
+    
     def setup_log_tab(self):
         """Configurar tab de log de eventos"""
         tab = QWidget()
@@ -259,14 +290,14 @@ class PONResultsPanel(QWidget):
         # Botones de control del log
         log_controls = QHBoxLayout()
         
-        clear_log_btn = QPushButton("🗑️ Limpiar Log")
-        clear_log_btn.clicked.connect(self.clear_log)
-        log_controls.addWidget(clear_log_btn)
+        self.clear_log_btn = QPushButton(tr("simulation_results.buttons.clear_log"))
+        self.clear_log_btn.clicked.connect(self.clear_log)
+        log_controls.addWidget(self.clear_log_btn)
         
         log_controls.addStretch()
         layout.addLayout(log_controls)
         
-        self.tabs.addTab(tab, "📝 Log")
+        self.tabs.addTab(tab, tr("simulation_results.tabs.log"))
         
     def set_adapter_reference(self, adapter):
         """Establecer referencia al adaptador PON"""
@@ -617,3 +648,94 @@ class PONResultsPanel(QWidget):
             print("Panel de resultados PON limpiado")
         except Exception as e:
             print(f"Warning en cleanup de resultados PON: {e}")
+    
+    def retranslate_ui(self):
+        """Actualizar todos los textos traducibles del panel"""
+        # Título principal
+        self.title_label.setText(tr("simulation_results.title"))
+        
+        # Botones
+        self.refresh_btn.setText(tr("simulation_results.buttons.refresh"))
+        self.update_sdn_dashboard_btn.setText(tr("simulation_results.buttons.sdn_dashboard"))
+        self.update_sdn_dashboard_btn.setToolTip(tr("simulation_results.buttons.sdn_dashboard_tip"))
+        self.export_btn.setText(tr("simulation_results.buttons.export"))
+        self.auto_update_btn.setText(tr("simulation_results.buttons.auto_update"))
+        
+        # Nombres de pestañas
+        self.tabs.setTabText(0, tr("simulation_results.tabs.summary"))
+        self.tabs.setTabText(1, tr("simulation_results.tabs.network"))
+        self.tabs.setTabText(2, tr("simulation_results.tabs.onus"))
+        self.tabs.setTabText(3, tr("simulation_results.tabs.history"))
+        self.tabs.setTabText(4, tr("simulation_results.tabs.charts"))
+        self.tabs.setTabText(5, tr("simulation_results.tabs.log"))
+        
+        # Tab Resumen - GroupBox titles
+        if hasattr(self, 'status_group'):
+            self.status_group.setTitle(tr("simulation_results.summary.status_group"))
+        if hasattr(self, 'metrics_group'):
+            self.metrics_group.setTitle(tr("simulation_results.summary.metrics_group"))
+        
+        # Tab Resumen - Labels de estado
+        if hasattr(self, 'status_text_label'):
+            self.status_text_label.setText(tr("simulation_results.summary.status"))
+        if hasattr(self, 'current_step_label'):
+            self.current_step_label.setText(tr("simulation_results.summary.current_step"))
+        if hasattr(self, 'simulated_time_label'):
+            self.simulated_time_label.setText(tr("simulation_results.summary.simulated_time"))
+        if hasattr(self, 'dba_algorithm_label'):
+            self.dba_algorithm_label.setText(tr("simulation_results.summary.dba_algorithm"))
+        
+        # Tab Resumen - Labels de métricas
+        if hasattr(self, 'requests_processed_label'):
+            self.requests_processed_label.setText(tr("simulation_results.summary.requests_processed"))
+        if hasattr(self, 'data_transmitted_label'):
+            self.data_transmitted_label.setText(tr("simulation_results.summary.data_transmitted"))
+        if hasattr(self, 'average_delay_label'):
+            self.average_delay_label.setText(tr("simulation_results.summary.average_delay"))
+        if hasattr(self, 'average_throughput_label'):
+            self.average_throughput_label.setText(tr("simulation_results.summary.average_throughput"))
+        if hasattr(self, 'network_utilization_label'):
+            self.network_utilization_label.setText(tr("simulation_results.summary.network_utilization"))
+        
+        # Tab Red - Headers
+        if hasattr(self, 'network_table'):
+            self.network_table.setHorizontalHeaderLabels([
+                tr("simulation_results.network.table_headers.metric"),
+                tr("simulation_results.network.table_headers.value")
+            ])
+        
+        # Tab ONUs - Headers
+        if hasattr(self, 'onu_table'):
+            self.onu_table.setHorizontalHeaderLabels([
+                tr("simulation_results.onus.table_headers.onu_id"),
+                tr("simulation_results.onus.table_headers.buffer"),
+                tr("simulation_results.onus.table_headers.requests"),
+                tr("simulation_results.onus.table_headers.transmitted"),
+                tr("simulation_results.onus.table_headers.response_rate"),
+                tr("simulation_results.onus.table_headers.losses"),
+                tr("simulation_results.onus.table_headers.status")
+            ])
+        
+        # Tab Historial - GroupBox titles y Headers
+        if hasattr(self, 'delays_group'):
+            self.delays_group.setTitle(tr("simulation_results.history.delays_group"))
+        if hasattr(self, 'throughputs_group'):
+            self.throughputs_group.setTitle(tr("simulation_results.history.throughputs_group"))
+        
+        if hasattr(self, 'delays_table'):
+            self.delays_table.setHorizontalHeaderLabels([
+                tr("simulation_results.history.delays_headers.time"),
+                tr("simulation_results.history.delays_headers.onu"),
+                tr("simulation_results.history.delays_headers.delay")
+            ])
+        
+        if hasattr(self, 'throughputs_table'):
+            self.throughputs_table.setHorizontalHeaderLabels([
+                tr("simulation_results.history.throughputs_headers.time"),
+                tr("simulation_results.history.throughputs_headers.onu"),
+                tr("simulation_results.history.throughputs_headers.throughput")
+            ])
+        
+        # Tab Log - Botón
+        if hasattr(self, 'clear_log_btn'):
+            self.clear_log_btn.setText(tr("simulation_results.buttons.clear_log"))

@@ -8,6 +8,7 @@ from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, QScrollA
 from PyQt5.QtCore import Qt, QTimer, pyqtSignal
 from PyQt5.QtGui import QFont
 from utils.constants import DEFAULT_SIDEBAR_WIDTH
+from utils.translation_manager import tr
 from .integrated_pon_test_panel import IntegratedPONTestPanel
 from .rl_config_panel import RLConfigPanel
 
@@ -59,7 +60,7 @@ class NetPONPySidebar(QWidget):
         header_layout.setSpacing(4)
         
         # Título dinámico del panel
-        self.title_label = QLabel("Simulación")
+        self.title_label = QLabel(tr('netponpy_sidebar.title_simulation'))
         title_font = QFont()
         title_font.setBold(True)
         title_font.setPointSize(11)
@@ -71,7 +72,7 @@ class NetPONPySidebar(QWidget):
         self.mode_toggle_button = QPushButton("🤖")
         self.mode_toggle_button.setMaximumWidth(40)
         self.mode_toggle_button.setMaximumHeight(30)
-        self.mode_toggle_button.setToolTip("Cambiar a Aprendizaje Reforzado")
+        self.mode_toggle_button.setToolTip(tr('netponpy_sidebar.tooltip_switch_to_rl'))
         self.mode_toggle_button.clicked.connect(self.toggle_mode)
         header_layout.addWidget(self.mode_toggle_button)
         
@@ -114,7 +115,7 @@ class NetPONPySidebar(QWidget):
         main_layout.addWidget(self.panel_stack)
         
         # Información adicional dinámica
-        self.info_label = QLabel("Simulación avanzada")
+        self.info_label = QLabel(tr('netponpy_sidebar.info_simulation'))
         self.info_label.setAlignment(Qt.AlignCenter)
         self.info_label.setWordWrap(True)
         info_font = QFont()
@@ -150,10 +151,10 @@ class NetPONPySidebar(QWidget):
         self.current_mode = 'reinforcement_learning'
         
         # Actualizar UI
-        self.title_label.setText("Aprendizaje Reforzado")
+        self.title_label.setText(tr('netponpy_sidebar.title_rl'))
         self.mode_toggle_button.setText("📊")
-        self.mode_toggle_button.setToolTip("Cambiar a Simulación")
-        self.info_label.setText("Entrenamiento de agentes inteligentes")
+        self.mode_toggle_button.setToolTip(tr('netponpy_sidebar.tooltip_switch_to_simulation'))
+        self.info_label.setText(tr('netponpy_sidebar.info_rl'))
         
         # Cambiar panel activo
         self.panel_stack.setCurrentIndex(1)  # RL panel
@@ -171,10 +172,10 @@ class NetPONPySidebar(QWidget):
         self.current_mode = 'simulation'
         
         # Actualizar UI
-        self.title_label.setText("Simulación")
+        self.title_label.setText(tr('netponpy_sidebar.title_simulation'))
         self.mode_toggle_button.setText("🤖")
-        self.mode_toggle_button.setToolTip("Cambiar a Aprendizaje Reforzado")
-        self.info_label.setText("Simulación avanzada")
+        self.mode_toggle_button.setToolTip(tr('netponpy_sidebar.tooltip_switch_to_rl'))
+        self.info_label.setText(tr('netponpy_sidebar.info_simulation'))
         
         # Cambiar panel activo
         self.panel_stack.setCurrentIndex(0)  # Simulation panel
@@ -336,6 +337,22 @@ class NetPONPySidebar(QWidget):
                 
         except Exception as e:
             print(f"Warning ajustando ancho del sidebar: {e}")
+    
+    def retranslate_ui(self):
+        """Actualizar todos los textos traducibles"""
+        # Actualizar textos según el modo actual
+        if self.current_mode == 'simulation':
+            self.title_label.setText(tr('netponpy_sidebar.title_simulation'))
+            self.mode_toggle_button.setToolTip(tr('netponpy_sidebar.tooltip_switch_to_rl'))
+            self.info_label.setText(tr('netponpy_sidebar.info_simulation'))
+        else:
+            self.title_label.setText(tr('netponpy_sidebar.title_rl'))
+            self.mode_toggle_button.setToolTip(tr('netponpy_sidebar.tooltip_switch_to_simulation'))
+            self.info_label.setText(tr('netponpy_sidebar.info_rl'))
+        
+        # Propagar retranslate_ui a los paneles internos
+        if hasattr(self, 'simulation_panel') and self.simulation_panel:
+            self.simulation_panel.retranslate_ui()
     
     def cleanup(self):
         """Limpiar recursos del sidebar"""
