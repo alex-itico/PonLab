@@ -1,12 +1,13 @@
 """
 SidebarPanel (Panel Lateral)
 Panel lateral que contiene dispositivos y controles para el simulador de redes pasivas ópticas
+Con pestañas colapsables por categorías (OLT, ONU, Herramientas)
 """
 
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, 
                              QScrollArea, QFrame, QPushButton, QSizePolicy, QApplication, 
                              QGroupBox, QFormLayout, QLineEdit, QDoubleSpinBox)
-from PyQt5.QtCore import Qt, pyqtSignal, QMimeData, QPoint
+from PyQt5.QtCore import Qt, pyqtSignal, QMimeData, QPoint, QPropertyAnimation, QEasingCurve
 from PyQt5.QtGui import QFont, QPixmap, QPainter, QColor, QPen, QBrush, QDrag
 from PyQt5.QtSvg import QSvgRenderer
 from utils.constants import DEFAULT_SIDEBAR_WIDTH
@@ -516,6 +517,158 @@ class ConnectionItem(QFrame):
         # Actualizar icono según el tema
         self.setup_connection_icon()
 
+
+class CollapsibleSection(QWidget):
+    """Widget de sección colapsable (acordeón) para agrupar dispositivos"""
+    
+    def __init__(self, title="Section", parent=None):
+        super().__init__(parent)
+        self.is_expanded = True
+        self.dark_theme = False
+        self.title = title
+        self.setup_ui()
+    
+    def setup_ui(self):
+        """Configurar la interfaz de la sección colapsable"""
+        self.main_layout = QVBoxLayout(self)
+        self.main_layout.setContentsMargins(0, 0, 0, 0)
+        self.main_layout.setSpacing(0)
+        
+        # Botón de encabezado simple (solo texto + flecha)
+        self.header_button = QPushButton()
+        self.header_button.setFixedHeight(28)
+        self.header_button.setCursor(Qt.PointingHandCursor)
+        self.header_button.clicked.connect(self.toggle_collapse)
+        self.header_button.setFlat(True)
+        
+        # Layout del encabezado
+        header_layout = QHBoxLayout(self.header_button)
+        header_layout.setContentsMargins(5, 0, 5, 0)
+        header_layout.setSpacing(6)
+        
+        # Indicador de expansión (▼ o ▶)
+        self.arrow_label = QLabel("▼")
+        arrow_font = QFont()
+        arrow_font.setPointSize(9)
+        self.arrow_label.setFont(arrow_font)
+        header_layout.addWidget(self.arrow_label)
+        
+        # Título de la sección (texto más ligero)
+        self.title_label = QLabel(self.title)
+        title_font = QFont()
+        title_font.setPointSize(10)
+        self.title_label.setFont(title_font)
+        header_layout.addWidget(self.title_label)
+        
+        header_layout.addStretch()
+        
+        self.main_layout.addWidget(self.header_button)
+        
+        # Separador sutil
+        separator = QFrame()
+        separator.setFrameShape(QFrame.HLine)
+        separator.setFixedHeight(1)
+        self.main_layout.addWidget(separator)
+        self.separator = separator
+        
+        # Contenedor para el contenido (dispositivos)
+        self.content_widget = QWidget()
+        self.content_layout = QVBoxLayout(self.content_widget)
+        self.content_layout.setContentsMargins(8, 4, 8, 4)
+        self.content_layout.setSpacing(4)
+        
+        self.main_layout.addWidget(self.content_widget)
+        
+        # Aplicar tema inicial
+        self.update_theme()
+    
+    def add_item(self, widget):
+        """Agregar un widget (dispositivo) a la sección"""
+        self.content_layout.addWidget(widget)
+    
+    def toggle_collapse(self):
+        """Expandir/colapsar la sección"""
+        self.is_expanded = not self.is_expanded
+        
+        if self.is_expanded:
+            self.content_widget.show()
+            self.arrow_label.setText("▼")
+            self.separator.show()
+        else:
+            self.content_widget.hide()
+            self.arrow_label.setText("▶")
+            self.separator.hide()
+        
+        self.update_theme()
+    
+    def set_expanded(self, expanded):
+        """Establecer estado de expansión programáticamente"""
+        if self.is_expanded != expanded:
+            self.toggle_collapse()
+    
+    def set_theme(self, dark_theme):
+        """Actualizar tema de la sección"""
+        self.dark_theme = dark_theme
+        self.update_theme()
+    
+    def update_theme(self):
+        """Aplicar estilos según el tema - diseño minimalista"""
+        if self.dark_theme:
+            text_color = "#cccccc"
+            arrow_color = "#888888"
+            separator_color = "#444444"
+            hover_bg = "rgba(255, 255, 255, 0.05)"
+            
+            self.header_button.setStyleSheet(f"""
+                QPushButton {{
+                    background-color: transparent;
+                    border: none;
+                    text-align: left;
+                    padding: 2px;
+                }}
+                QPushButton:hover {{
+                    background-color: {hover_bg};
+                }}
+            """)
+            
+            self.title_label.setStyleSheet(f"color: {text_color}; background: transparent;")
+            self.arrow_label.setStyleSheet(f"color: {arrow_color}; background: transparent;")
+            self.separator.setStyleSheet(f"background-color: {separator_color}; border: none;")
+            
+            self.content_widget.setStyleSheet("""
+                QWidget {
+                    background-color: transparent;
+                    border: none;
+                }
+            """)
+        else:
+            text_color = "#555555"
+            arrow_color = "#888888"
+            separator_color = "#dddddd"
+            hover_bg = "rgba(0, 0, 0, 0.03)"
+            
+            self.header_button.setStyleSheet(f"""
+                QPushButton {{
+                    background-color: transparent;
+                    border: none;
+                    text-align: left;
+                    padding: 2px;
+                }}
+                QPushButton:hover {{
+                    background-color: {hover_bg};
+                }}
+            """)
+            
+            self.title_label.setStyleSheet(f"color: {text_color}; background: transparent;")
+            self.arrow_label.setStyleSheet(f"color: {arrow_color}; background: transparent;")
+            self.separator.setStyleSheet(f"background-color: {separator_color}; border: none;")
+            
+            self.content_widget.setStyleSheet("""
+                QWidget {
+                    background-color: transparent;
+                    border: none;
+                }
+            """)
 
 
 class DevicePropertiesPanel(QFrame):
@@ -1058,18 +1211,21 @@ class SidebarPanel(QWidget):
         # Aplicar tema inicial
         self.set_theme(self.dark_theme)
     
-    def setup_connection_tool(self):
-        """Configurar la herramienta de conexión"""
-        # Crear el item de conexión con las mismas dimensiones que los dispositivos
+    def setup_connection_tool_in_section(self):
+        """Configurar la herramienta de conexión dentro de la sección de herramientas"""
+        # Crear el item de conexión
         self.connection_item = ConnectionItem()
         self.connection_item.connection_mode_toggled.connect(self.on_connection_mode_toggled)
         self.connection_item.set_theme(self.dark_theme)
         
-        # Agregar al layout antes del stretch
-        self.devices_layout.insertWidget(
-            self.devices_layout.count() - 1, 
-            self.connection_item
-        )
+        # Agregar a la sección de herramientas
+        self.tools_section.add_item(self.connection_item)
+    
+    def setup_connection_tool(self):
+        """Configurar la herramienta de conexión (método legacy)"""
+        # Mantener para compatibilidad pero ahora usa la sección
+        if not hasattr(self, 'connection_item'):
+            self.setup_connection_tool_in_section()
     
     def on_connection_mode_toggled(self, enabled):
         """Manejar cambio en el modo conexión"""
@@ -1088,33 +1244,56 @@ class SidebarPanel(QWidget):
             self.connection_item.set_connection_mode(False)
     
     def populate_devices(self):
-        """Poblar el panel con dispositivos predefinidos y herramientas"""
-        # Lista de dispositivos disponibles con sus claves de traducción
-        devices = [
+        """Poblar el panel con dispositivos predefinidos y herramientas usando secciones colapsables"""
+        
+        # ====== SECCIÓN OLT ======
+        self.olt_section = CollapsibleSection(tr('sidebar.sections.olt'), self)
+        self.olt_section.set_theme(self.dark_theme)
+        self.devices_layout.insertWidget(self.devices_layout.count() - 1, self.olt_section)
+        
+        # Dispositivos OLT
+        olt_devices = [
             ("sidebar.device_names.olt", "OLT"),
             ("sidebar.device_names.olt_sdn", "OLT_SDN"),
-            ("sidebar.device_names.onu", "ONU"),
         ]
         
-        # Crear widgets de dispositivos
-        for device_name_key, device_type in devices:
+        for device_name_key, device_type in olt_devices:
             device_name = tr(device_name_key)
             device_item = DeviceItem(device_name, device_type)
             device_item.device_clicked.connect(self.on_device_clicked)
             device_item.set_theme(self.dark_theme)
-            
-            # Guardar la clave de traducción para poder actualizar después
             device_item.name_translation_key = device_name_key
             
-            # Insertar antes del stretch
-            self.devices_layout.insertWidget(
-                self.devices_layout.count() - 1, 
-                device_item
-            )
+            self.olt_section.add_item(device_item)
             self.device_items.append(device_item)
         
-        # Agregar herramienta de conexión después de los dispositivos
-        self.setup_connection_tool()
+        # ====== SECCIÓN ONU ======
+        self.onu_section = CollapsibleSection(tr('sidebar.sections.onu'), self)
+        self.onu_section.set_theme(self.dark_theme)
+        self.devices_layout.insertWidget(self.devices_layout.count() - 1, self.onu_section)
+        
+        # Dispositivos ONU
+        onu_devices = [
+            ("sidebar.device_names.onu", "ONU"),
+        ]
+        
+        for device_name_key, device_type in onu_devices:
+            device_name = tr(device_name_key)
+            device_item = DeviceItem(device_name, device_type)
+            device_item.device_clicked.connect(self.on_device_clicked)
+            device_item.set_theme(self.dark_theme)
+            device_item.name_translation_key = device_name_key
+            
+            self.onu_section.add_item(device_item)
+            self.device_items.append(device_item)
+        
+        # ====== SECCIÓN HERRAMIENTAS ======
+        self.tools_section = CollapsibleSection(tr('sidebar.sections.tools'), self)
+        self.tools_section.set_theme(self.dark_theme)
+        self.devices_layout.insertWidget(self.devices_layout.count() - 1, self.tools_section)
+        
+        # Agregar herramienta de conexión a la sección de herramientas
+        self.setup_connection_tool_in_section()
     
     def on_device_clicked(self, device_name):
         """Manejar click en dispositivo"""
@@ -1187,6 +1366,14 @@ class SidebarPanel(QWidget):
         # Actualizar tema de todos los dispositivos
         for device_item in self.device_items:
             device_item.set_theme(dark_theme)
+        
+        # Actualizar tema de las secciones colapsables
+        if hasattr(self, 'olt_section'):
+            self.olt_section.set_theme(dark_theme)
+        if hasattr(self, 'onu_section'):
+            self.onu_section.set_theme(dark_theme)
+        if hasattr(self, 'tools_section'):
+            self.tools_section.set_theme(dark_theme)
         
         # Actualizar tema del item de conexión
         if hasattr(self, 'connection_item') and self.connection_item:
@@ -1280,6 +1467,17 @@ class SidebarPanel(QWidget):
         
         # Actualizar info de arrastrar
         self.info_label.setText(tr('sidebar.drag_info'))
+        
+        # Actualizar títulos de las secciones colapsables
+        if hasattr(self, 'olt_section'):
+            self.olt_section.title = tr('sidebar.sections.olt')
+            self.olt_section.title_label.setText(self.olt_section.title)
+        if hasattr(self, 'onu_section'):
+            self.onu_section.title = tr('sidebar.sections.onu')
+            self.onu_section.title_label.setText(self.onu_section.title)
+        if hasattr(self, 'tools_section'):
+            self.tools_section.title = tr('sidebar.sections.tools')
+            self.tools_section.title_label.setText(self.tools_section.title)
         
         # Actualizar nombres de dispositivos
         for device_item in self.device_items:
