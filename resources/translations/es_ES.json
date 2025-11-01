@@ -75,6 +75,11 @@
       "onu": "ONU",
       "connection": "Conexión"
     },
+    "sections": {
+      "olt": "OLT",
+      "onu": "ONU",
+      "tools": "Herramientas"
+    },
     "properties": {
       "title": "📱 Propiedades",
       "no_selection": "Sin selección",
