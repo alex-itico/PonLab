@@ -5,7 +5,7 @@ Diálogo para crear/editar dispositivos OLT personalizados
 from PyQt5.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, 
     QSpinBox, QPushButton, QFrame, QMessageBox, QGridLayout,
-    QSlider
+    QSlider, QRadioButton, QGroupBox, QButtonGroup
 )
 from PyQt5.QtCore import Qt, pyqtSignal, QSize, QByteArray
 from PyQt5.QtGui import QFont, QColor, QPalette, QPixmap
@@ -53,6 +53,7 @@ class CustomOLTDialog(QDialog):
         self.dark_theme = dark_theme
         self.is_edit_mode = device_data is not None
         self.selected_color = QColor("#4a90e2")  # Color por defecto (azul)
+        self.selected_standard = None  # Estándar PON seleccionado (None = manual)
         
         self.setup_ui()
         self.set_theme(dark_theme)
@@ -122,6 +123,59 @@ class CustomOLTDialog(QDialog):
         rate_layout.addWidget(rate_label)
         rate_layout.addWidget(self.rate_input)
         properties_layout.addLayout(rate_layout)
+        
+        # Separador
+        separator = QFrame()
+        separator.setFrameShape(QFrame.HLine)
+        separator.setFixedHeight(1)
+        properties_layout.addWidget(separator)
+        
+        # === Estándares Predefinidos ===
+        standards_label = QLabel(tr('custom_device.predefined_standards'))
+        standards_label_font = QFont()
+        standards_label_font.setBold(True)
+        standards_label_font.setPointSize(9)
+        standards_label.setFont(standards_label_font)
+        properties_layout.addWidget(standards_label)
+        
+        # Grupo de radio buttons
+        self.standards_group = QGroupBox()
+        self.standards_group.setFlat(True)
+        standards_group_layout = QVBoxLayout()
+        standards_group_layout.setSpacing(6)
+        standards_group_layout.setContentsMargins(10, 5, 10, 5)
+        
+        # Definir estándares PON con sus tasas
+        self.pon_standards = {
+            'EPON': 1250,      # 1.25 Gbps = 1250 Mbps
+            'GPON': 1250,      # 1.25 Gbps = 1250 Mbps
+            'XG-PON': 2500,    # 2.5 Gbps = 2500 Mbps
+            'NG-PON2': 10000   # 10 Gbps = 10000 Mbps
+        }
+        
+        # Crear QButtonGroup para poder deseleccionar radio buttons
+        self.standards_button_group = QButtonGroup(self)
+        self.standards_button_group.setExclusive(True)  # Solo uno seleccionado a la vez
+        
+        # Crear radio buttons para cada estándar
+        self.standard_radios = {}
+        for standard, rate in self.pon_standards.items():
+            radio = QRadioButton(f"{standard} ({rate} Mbps)")
+            radio.toggled.connect(lambda checked, s=standard, r=rate: self.on_standard_selected(checked, s, r))
+            standards_group_layout.addWidget(radio)
+            self.standard_radios[standard] = radio
+            self.standards_button_group.addButton(radio)  # Agregar al grupo
+        
+        self.standards_group.setLayout(standards_group_layout)
+        properties_layout.addWidget(self.standards_group)
+        
+        # Botón para deseleccionar
+        deselect_button = QPushButton(tr('custom_device.deselect_standard'))
+        deselect_button.setFixedHeight(30)
+        deselect_button.clicked.connect(self.on_deselect_standard)
+        properties_layout.addWidget(deselect_button)
+        
+        properties_layout.addStretch()
         
         form_layout.addLayout(properties_layout, 3)  # 60% del espacio
         
@@ -352,6 +406,43 @@ class CustomOLTDialog(QDialog):
             # Si el formato es inválido, restaurar el color actual
             self.hex_input.setText(self.selected_color.name().upper())
     
+    def on_standard_selected(self, checked, standard, rate):
+        """Manejar selección de estándar PON"""
+        if checked:
+            # Actualizar estándar seleccionado
+            self.selected_standard = standard
+            
+            # Establecer tasa de transmisión automáticamente
+            self.rate_input.setValue(rate)
+            
+            # Bloquear el campo de tasa para evitar cambios manuales
+            self.rate_input.setEnabled(False)
+            
+            # Cambiar estilo visual para indicar que está bloqueado
+            self.rate_input.setStyleSheet("background-color: #f0f0f0;")
+    
+    def on_deselect_standard(self):
+        """Deseleccionar estándar PON y permitir configuración manual"""
+        # Deseleccionar el botón activo del grupo
+        # setExclusive(False) temporalmente para poder deseleccionar
+        self.standards_button_group.setExclusive(False)
+        
+        # Deseleccionar todos los radio buttons
+        for radio in self.standard_radios.values():
+            radio.setChecked(False)
+        
+        # Restaurar exclusividad
+        self.standards_button_group.setExclusive(True)
+        
+        # Limpiar estándar seleccionado
+        self.selected_standard = None
+        
+        # Desbloquear campo de tasa para edición manual
+        self.rate_input.setEnabled(True)
+        
+        # Restaurar estilo normal
+        self.rate_input.setStyleSheet("")
+    
     def update_rgb_sliders(self):
         """Actualizar sliders RGB con el color seleccionado"""
         # Bloquear señales temporalmente para evitar bucles
@@ -433,6 +524,13 @@ class CustomOLTDialog(QDialog):
         self.selected_color = QColor(color_hex)
         self.update_rgb_sliders()
         self.update_color_preview()
+        
+        # Cargar estándar PON si existe
+        standard = self.device_data.get('standard', None)
+        if standard and standard in self.standard_radios:
+            # Seleccionar el radio button correspondiente
+            self.standard_radios[standard].setChecked(True)
+            # El campo de tasa ya está bloqueado por la señal toggled
     
     def validate_inputs(self) -> bool:
         """Validar campos del formulario"""
@@ -478,7 +576,8 @@ class CustomOLTDialog(QDialog):
         device_data = {
             'name': self.name_input.text().strip(),
             'transmission_rate': self.rate_input.value(),
-            'color': self.selected_color.name()  # Guardar color en formato #RRGGBB
+            'color': self.selected_color.name(),  # Guardar color en formato #RRGGBB
+            'standard': self.selected_standard  # Guardar estándar PON seleccionado (None si manual)
         }
         
         try:
