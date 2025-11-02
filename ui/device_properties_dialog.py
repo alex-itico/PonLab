@@ -233,20 +233,20 @@ class DevicePropertiesDialog(QDialog):
     
     def calculate_connected_onus(self):
         """Calcular número de ONUs conectadas a esta OLT"""
-        if not self.connection_manager or self.device.device_type not in ["OLT", "OLT_SDN"]:
+        if not self.connection_manager or self.device.device_type not in ["OLT", "OLT_SDN", "CUSTOM_OLT"]:
             return 0
         
         connected_count = 0
         for connection in self.connection_manager.connections:
-            if (connection.device_a.id == self.device.id and connection.device_b.device_type == "ONU") or \
-               (connection.device_b.id == self.device.id and connection.device_a.device_type == "ONU"):
+            if (connection.device_a.id == self.device.id and connection.device_b.device_type in ["ONU", "CUSTOM_ONU"]) or \
+               (connection.device_b.id == self.device.id and connection.device_a.device_type in ["ONU", "CUSTOM_ONU"]):
                 connected_count += 1
         
         return connected_count
     
     def calculate_olt_distance(self):
         """Calcular distancia a la OLT conectada"""
-        if not self.connection_manager or self.device.device_type != "ONU":
+        if not self.connection_manager or self.device.device_type not in ["ONU", "CUSTOM_ONU"]:
             return None
         
         for connection in self.connection_manager.connections:

@@ -1,1 +1,10 @@
-[]
+[
+  {
+    "name": "Pinky",
+    "color": "#ff69b4",
+    "id": "CUSTOM_ONU_20251102_140407",
+    "type": "CUSTOM_ONU",
+    "created_at": "2025-11-02T14:04:07.799685",
+    "modified_at": "2025-11-02T14:04:07.799695"
+  }
+]

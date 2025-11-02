@@ -391,9 +391,13 @@ class DeviceManager(QObject):
     def get_devices_by_type(self, device_type):
         """Obtener dispositivos por tipo"""
         if device_type == "OLT":
-            # Para OLT, incluir tanto OLT como OLT_SDN
+            # Para OLT, incluir OLT, OLT_SDN y CUSTOM_OLT
             return [device for device in self.devices.values() 
-                    if device.device_type in ["OLT", "OLT_SDN"]]
+                    if device.device_type in ["OLT", "OLT_SDN", "CUSTOM_OLT"]]
+        elif device_type == "ONU":
+            # Para ONU, incluir ONU y CUSTOM_ONU
+            return [device for device in self.devices.values() 
+                    if device.device_type in ["ONU", "CUSTOM_ONU"]]
         else:
             return [device for device in self.devices.values() 
                     if device.device_type == device_type]
