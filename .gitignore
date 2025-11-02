@@ -58,3 +58,7 @@ ui/buttons.py
 ui/panel_design_view.py
 simulation_results
 models
+
+# Dispositivos personalizados (datos locales del usuario)
+resources/custom_devices/custom_olt.json
+resources/custom_devices/custom_onu.json
