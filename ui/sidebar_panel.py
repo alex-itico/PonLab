@@ -657,8 +657,13 @@ class CustomDeviceItem(QFrame):
         self.name_label.setFont(name_font)
         info_layout.addWidget(self.name_label)
         
-        # Tipo (Custom)
-        type_text = tr('custom_device.custom_label')
+        # Tipo (mostrar estándar PON si está definido, sino "Personalizado")
+        standard = self.device_data.get('standard', None)
+        if standard:
+            type_text = f"{standard}"  # Mostrar EPON, GPON, XG-PON o NG-PON2
+        else:
+            type_text = tr('custom_device.custom_label')  # Mostrar "Personalizado"
+        
         self.type_label = QLabel(type_text)
         type_font = QFont()
         type_font.setPointSize(8)
@@ -801,8 +806,13 @@ class CustomDeviceItem(QFrame):
     
     def update_translations(self):
         """Actualizar textos con el idioma actual"""
-        # Actualizar label de "Custom"
-        type_text = tr('custom_device.custom_label')
+        # Actualizar label de tipo (mostrar estándar PON si está definido, sino "Personalizado")
+        standard = self.device_data.get('standard', None)
+        if standard:
+            type_text = f"{standard}"  # Mostrar EPON, GPON, XG-PON o NG-PON2
+        else:
+            type_text = tr('custom_device.custom_label')  # Mostrar "Personalizado"
+        
         self.type_label.setText(type_text)
         
         # Actualizar tooltips de los botones
@@ -1776,6 +1786,14 @@ class SidebarPanel(QWidget):
                     item.device_data = device_data
                     item.device_name = device_data['name']
                     item.name_label.setText(device_data['name'])
+                    
+                    # Actualizar etiqueta de tipo (estándar PON o "Personalizado")
+                    standard = device_data.get('standard', None)
+                    if standard:
+                        item.type_label.setText(f"{standard}")
+                    else:
+                        item.type_label.setText(tr('custom_device.custom_label'))
+                    
                     # Refrescar el icono con el nuevo color
                     item.setup_device_icon()
                     existing = True

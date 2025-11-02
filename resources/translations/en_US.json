@@ -107,6 +107,8 @@
     "name_label": "Name:",
     "name_placeholder_olt": "e.g.: My Custom OLT",
     "transmission_rate_label": "Transmission Rate:",
+    "predefined_standards": "Predefined Standards",
+    "deselect_standard": "Deselect",
     "device_color": "Device Color",
     "select_color_label": "Select:",
     "rgb_adjusters": "Adjust RGB:",
