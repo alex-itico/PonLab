@@ -701,6 +701,92 @@ class CustomOLT(OLT):
             return super().get_icon_pixmap(size)
 
 
+class CustomONU(ONU):
+    """ONU Personalizado - Extiende ONU con propiedades personalizadas"""
+    
+    def __init__(self, name=None, x=0, y=0, custom_data=None):
+        super().__init__(name, x, y)
+        
+        # Datos personalizados del dispositivo
+        self.custom_data = custom_data or {}
+        self.is_custom = True
+        
+        # Sobrescribir tipo para identificarlo como custom
+        self.type = "CUSTOM_ONU"
+        
+        # Guardar color personalizado
+        self.custom_color = self.custom_data.get('color', '#ff9800')
+    
+    def get_display_name(self):
+        """Obtener nombre para mostrar con indicador Custom"""
+        return f"{self.name} ⚙"  # Añadir emoji de engranaje para indicar custom
+    
+    def get_icon_pixmap(self, size=None):
+        """Obtener pixmap del icono con color personalizado"""
+        from PyQt5.QtSvg import QSvgRenderer
+        from PyQt5.QtGui import QPixmap, QPainter, QColor
+        from PyQt5.QtCore import Qt, QByteArray
+        import os
+        
+        if size is None:
+            size = self.icon_size
+        
+        icon_path = os.path.join('resources', 'devices', 'onu_icon_custom.svg')
+        if not os.path.exists(icon_path):
+            return super().get_icon_pixmap(size)
+        
+        try:
+            # Leer el archivo SVG
+            with open(icon_path, 'r', encoding='utf-8') as f:
+                svg_content = f.read()
+            
+            # Aplicar color personalizado
+            device_color = QColor(self.custom_color)
+            
+            # Color oscuro (80% del brillo)
+            dark_color = QColor(
+                int(device_color.red() * 0.8),
+                int(device_color.green() * 0.8),
+                int(device_color.blue() * 0.8)
+            )
+            
+            # Reemplazar colores en el SVG (ONU usa naranja por defecto)
+            svg_content = svg_content.replace('#E65100', dark_color.name())
+            svg_content = svg_content.replace('#FF9800', device_color.name())
+            
+            # Renderizar el SVG modificado
+            svg_bytes = QByteArray(svg_content.encode('utf-8'))
+            renderer = QSvgRenderer(svg_bytes)
+            
+            # Crear pixmap con mayor resolución para mejor calidad
+            scale_factor = 2.0
+            high_res_size = int(size * scale_factor)
+            
+            pixmap = QPixmap(high_res_size, high_res_size)
+            pixmap.fill(Qt.transparent)
+            
+            painter = QPainter(pixmap)
+            painter.setRenderHint(QPainter.Antialiasing, True)
+            painter.setRenderHint(QPainter.SmoothPixmapTransform, True)
+            painter.setRenderHint(QPainter.HighQualityAntialiasing, True)
+            
+            renderer.render(painter)
+            painter.end()
+            
+            # Escalar de vuelta al tamaño deseado
+            final_pixmap = pixmap.scaled(
+                size, size,
+                Qt.KeepAspectRatio,
+                Qt.SmoothTransformation
+            )
+            
+            return final_pixmap
+            
+        except Exception as e:
+            print(f"Error renderizando icono personalizado ONU: {e}")
+            return super().get_icon_pixmap(size)
+
+
 # Factory function para crear dispositivos
 def create_device(device_type, name=None, x=0, y=0):
     """Factory para crear dispositivos según tipo"""
@@ -724,5 +810,19 @@ def create_device(device_type, name=None, x=0, y=0):
                 break
         
         return CustomOLT(name, x, y, custom_data)
+    elif device_type.startswith("CUSTOM_ONU"):
+        # Para dispositivos ONU personalizados, cargar los datos del JSON
+        from utils.custom_device_manager import custom_device_manager
+        custom_devices = custom_device_manager.load_custom_onus()
+        
+        # Buscar el dispositivo por nombre
+        custom_data = None
+        for device in custom_devices:
+            if device['name'] == name or device['id'] == device_type:
+                custom_data = device
+                break
+        
+        return CustomONU(name, x, y, custom_data)
     else:
         raise ValueError(f"Tipo de dispositivo no soportado: {device_type}")
+
