@@ -506,18 +506,50 @@ class DeviceManager(QObject):
         # Crear dispositivos desde datos
         for device_id, device_data in devices_data.items():
             try:
-                device = create_device(
-                    device_data['device_type'],
-                    device_data['name'],
-                    device_data['x'],
-                    device_data['y']
-                )
+                # Extraer custom_data si existe
+                custom_data = device_data.get('custom_data', None)
+                device_type = device_data['device_type']
                 
-                # Restaurar propiedades
+                # Detectar si es un dispositivo custom (por device_type o por presencia de custom_data)
+                is_custom_olt = (device_type == 'CUSTOM_OLT') or (device_type == 'OLT' and custom_data and custom_data.get('type') == 'CUSTOM_OLT')
+                is_custom_onu = (device_type == 'CUSTOM_ONU') or (device_type == 'ONU' and custom_data and custom_data.get('type') == 'CUSTOM_ONU')
+                
+                if is_custom_olt:
+                    # Dispositivo OLT personalizado
+                    from core.devices.device_types import CustomOLT
+                    device = CustomOLT(
+                        device_data['name'],
+                        device_data['x'],
+                        device_data['y'],
+                        custom_data
+                    )
+                elif is_custom_onu:
+                    # Dispositivo ONU personalizado
+                    from core.devices.device_types import CustomONU
+                    device = CustomONU(
+                        device_data['name'],
+                        device_data['x'],
+                        device_data['y'],
+                        custom_data
+                    )
+                else:
+                    # Dispositivos normales
+                    device = create_device(
+                        device_type,
+                        device_data['name'],
+                        device_data['x'],
+                        device_data['y']
+                    )
+                
+                # Restaurar propiedades comunes
                 device.id = device_id
                 device.icon_size = device_data.get('icon_size', 64)
                 device.visible = device_data.get('visible', True)
                 device.properties = device_data.get('properties', {})
+                
+                # Restaurar custom_color si existe (para dispositivos custom)
+                if 'custom_color' in device_data:
+                    device.custom_color = device_data['custom_color']
                 
                 # Crear item gráfico
                 graphics_item = DeviceGraphicsItem(device)
@@ -534,8 +566,12 @@ class DeviceManager(QObject):
                 self.graphics_items[device_id] = graphics_item
                 self.canvas_scene.addItem(graphics_item)
                 
+                print(f"✅ Dispositivo cargado: {device.name} (Tipo: {device.device_type}, Custom: {hasattr(device, 'is_custom')})")
+                
             except Exception as e:
-                print(f"Error importando dispositivo {device_id}: {e}")
+                print(f"❌ Error importando dispositivo {device_id}: {e}")
+                import traceback
+                traceback.print_exc()
         
         # Emitir señal de cambio
         self.devices_changed.emit()

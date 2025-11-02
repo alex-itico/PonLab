@@ -622,6 +622,7 @@ class CustomOLT(OLT):
         self.is_custom = True
         
         # Sobrescribir tipo para identificarlo como custom
+        self.device_type = "CUSTOM_OLT"  # Cambiar device_type para que se guarde correctamente
         self.type = "CUSTOM_OLT"
         
         # Aplicar tasa de transmisión personalizada si existe
@@ -630,6 +631,14 @@ class CustomOLT(OLT):
         
         # Guardar color personalizado
         self.custom_color = self.custom_data.get('color', '#4a90e2')
+    
+    def to_dict(self):
+        """Serializar dispositivo custom a diccionario incluyendo datos personalizados"""
+        base_dict = super().to_dict()
+        base_dict['device_type'] = 'CUSTOM_OLT'  # Asegurar que se guarde como CUSTOM_OLT
+        base_dict['custom_data'] = self.custom_data
+        base_dict['custom_color'] = self.custom_color
+        return base_dict
     
     def get_display_name(self):
         """Obtener nombre para mostrar con indicador Custom"""
@@ -712,10 +721,19 @@ class CustomONU(ONU):
         self.is_custom = True
         
         # Sobrescribir tipo para identificarlo como custom
+        self.device_type = "CUSTOM_ONU"  # Cambiar device_type para que se guarde correctamente
         self.type = "CUSTOM_ONU"
         
         # Guardar color personalizado
         self.custom_color = self.custom_data.get('color', '#ff9800')
+    
+    def to_dict(self):
+        """Serializar dispositivo custom a diccionario incluyendo datos personalizados"""
+        base_dict = super().to_dict()
+        base_dict['device_type'] = 'CUSTOM_ONU'  # Asegurar que se guarde como CUSTOM_ONU
+        base_dict['custom_data'] = self.custom_data
+        base_dict['custom_color'] = self.custom_color
+        return base_dict
     
     def get_display_name(self):
         """Obtener nombre para mostrar con indicador Custom"""
