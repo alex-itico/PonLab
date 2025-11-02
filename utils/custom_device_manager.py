@@ -174,13 +174,114 @@ class CustomDeviceManager:
                 return olt
         return None
     
-    # ===== OPERACIONES ONU (Para fase 2) =====
+    # ===== OPERACIONES ONU =====
     
     def load_custom_onus(self) -> List[Dict]:
         """Cargar todos los ONU personalizados"""
         return self._load_json(self.onu_file)
     
-    # TODO: Implementar save_custom_onu, update_custom_onu, delete_custom_onu en Fase 2
+    def save_custom_onu(self, device_data: Dict) -> Dict:
+        """
+        Guardar nuevo ONU personalizado
+        
+        Args:
+            device_data: Diccionario con datos del dispositivo
+                {
+                    'name': str,
+                    'color': str
+                }
+        
+        Returns:
+            Diccionario con el dispositivo guardado (incluye ID y fecha)
+        """
+        onus = self.load_custom_onus()
+        
+        # Validar nombre duplicado
+        if any(onu['name'] == device_data['name'] for onu in onus):
+            raise ValueError(f"Ya existe un ONU con el nombre '{device_data['name']}'")
+        
+        # Generar ID y agregar metadata
+        device_data['id'] = self._generate_id('ONU')
+        device_data['type'] = 'CUSTOM_ONU'
+        device_data['created_at'] = datetime.now().isoformat()
+        device_data['modified_at'] = datetime.now().isoformat()
+        
+        # Agregar a la lista
+        onus.append(device_data)
+        
+        # Guardar
+        self._save_json(self.onu_file, onus)
+        
+        print(f"✅ ONU personalizado creado: {device_data['name']} (ID: {device_data['id']})")
+        return device_data
+    
+    def update_custom_onu(self, device_id: str, device_data: Dict) -> Optional[Dict]:
+        """
+        Actualizar ONU personalizado existente
+        
+        Args:
+            device_id: ID del dispositivo a actualizar
+            device_data: Nuevos datos del dispositivo
+        
+        Returns:
+            Diccionario actualizado o None si no se encuentra
+        """
+        onus = self.load_custom_onus()
+        
+        # Buscar el dispositivo
+        for i, onu in enumerate(onus):
+            if onu['id'] == device_id:
+                # Validar nombre duplicado (excepto si es el mismo)
+                if any(o['name'] == device_data['name'] and o['id'] != device_id for o in onus):
+                    raise ValueError(f"Ya existe un ONU con el nombre '{device_data['name']}'")
+                
+                # Mantener metadata original
+                device_data['id'] = onu['id']
+                device_data['type'] = onu['type']
+                device_data['created_at'] = onu['created_at']
+                device_data['modified_at'] = datetime.now().isoformat()
+                
+                # Actualizar
+                onus[i] = device_data
+                self._save_json(self.onu_file, onus)
+                
+                print(f"✅ ONU actualizado: {device_data['name']} (ID: {device_id})")
+                return device_data
+        
+        print(f"❌ ONU no encontrado: {device_id}")
+        return None
+    
+    def delete_custom_onu(self, device_id: str) -> bool:
+        """
+        Eliminar ONU personalizado
+        
+        Args:
+            device_id: ID del dispositivo a eliminar
+        
+        Returns:
+            True si se eliminó correctamente, False si no se encontró
+        """
+        onus = self.load_custom_onus()
+        
+        # Filtrar el dispositivo
+        original_count = len(onus)
+        onus = [onu for onu in onus if onu['id'] != device_id]
+        
+        if len(onus) < original_count:
+            self._save_json(self.onu_file, onus)
+            print(f"✅ ONU eliminado: {device_id}")
+            return True
+        
+        print(f"❌ ONU no encontrado: {device_id}")
+        return False
+    
+    def get_custom_onu_by_id(self, device_id: str) -> Optional[Dict]:
+        """Obtener ONU personalizado por ID"""
+        onus = self.load_custom_onus()
+        for onu in onus:
+            if onu['id'] == device_id:
+                return onu
+        return None
 
 
 # Instancia global del gestor

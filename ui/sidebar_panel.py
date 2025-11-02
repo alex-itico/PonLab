@@ -570,18 +570,18 @@ class CreateDeviceButton(QFrame):
         self.text_label.setText(tr(text_key))
     
     def set_theme(self, dark_theme):
-        """Aplicar tema con borde punteado y opacidad"""
+        """Aplicar tema con borde punteado y sin relleno"""
         self.dark_theme = dark_theme
         
         if dark_theme:
             self.setStyleSheet("""
                 CreateDeviceButton {
-                    background-color: rgba(43, 43, 43, 0.5);
+                    background-color: transparent;
                     border: 2px dashed #666666;
                     border-radius: 5px;
                 }
                 CreateDeviceButton:hover {
-                    background-color: rgba(60, 60, 60, 0.7);
+                    background-color: rgba(60, 60, 60, 0.3);
                     border-color: #888888;
                 }
                 QLabel {
@@ -592,12 +592,12 @@ class CreateDeviceButton(QFrame):
         else:
             self.setStyleSheet("""
                 CreateDeviceButton {
-                    background-color: rgba(248, 249, 250, 0.5);
+                    background-color: transparent;
                     border: 2px dashed #cccccc;
                     border-radius: 5px;
                 }
                 CreateDeviceButton:hover {
-                    background-color: rgba(230, 230, 230, 0.7);
+                    background-color: rgba(0, 0, 0, 0.05);
                     border-color: #999999;
                 }
                 QLabel {
@@ -711,10 +711,16 @@ class CustomDeviceItem(QFrame):
             # Determinar ruta del SVG según el tipo de dispositivo
             if "OLT" in self.device_type:
                 svg_path = os.path.join('resources', 'devices', 'olt_icon_custom.svg')
+                dark_color_original = '#C62828'  # Color oscuro original de OLT
+                light_color_original = '#F44336'  # Color claro original de OLT
             elif "ONU" in self.device_type:
-                svg_path = os.path.join('resources', 'devices', 'onu_icon.svg')
+                svg_path = os.path.join('resources', 'devices', 'onu_icon_custom.svg')
+                dark_color_original = '#E65100'  # Color oscuro original de ONU
+                light_color_original = '#FF9800'  # Color claro original de ONU
             else:
                 svg_path = None
+                dark_color_original = None
+                light_color_original = None
             
             if svg_path and os.path.exists(svg_path):
                 # Leer el archivo SVG
@@ -731,9 +737,9 @@ class CustomDeviceItem(QFrame):
                     int(device_color.blue() * 0.8)
                 )
                 
-                # Reemplazar colores en el SVG
-                svg_content = svg_content.replace('#C62828', dark_color.name())
-                svg_content = svg_content.replace('#F44336', device_color.name())
+                # Reemplazar colores en el SVG con los colores correctos según el tipo
+                svg_content = svg_content.replace(dark_color_original, dark_color.name())
+                svg_content = svg_content.replace(light_color_original, device_color.name())
                 
                 # Renderizar el SVG modificado
                 from PyQt5.QtCore import QByteArray
@@ -1708,7 +1714,14 @@ class SidebarPanel(QWidget):
             self.onu_section.add_item(device_item)
             self.device_items.append(device_item)
         
-        # TODO: Cargar ONU personalizados (Fase 2)
+        # Cargar ONU personalizados (después de los predefinidos)
+        self.load_custom_onus()
+        
+        # Botón "Crear ONU" (siempre al final)
+        self.create_onu_button = CreateDeviceButton("ONU", self)
+        self.create_onu_button.create_clicked.connect(self.on_create_device_clicked)
+        self.create_onu_button.set_theme(self.dark_theme)
+        self.onu_section.add_item(self.create_onu_button)
         
         # ====== SECCIÓN HERRAMIENTAS ======
         self.tools_section = CollapsibleSection(tr('sidebar.sections.tools'), self)
@@ -1734,6 +1747,20 @@ class SidebarPanel(QWidget):
             self.olt_section.add_item(custom_item)
             self.device_items.append(custom_item)
     
+    def load_custom_onus(self):
+        """Cargar ONU personalizados desde el almacenamiento"""
+        custom_onus = custom_device_manager.load_custom_onus()
+        
+        for onu_data in custom_onus:
+            custom_item = CustomDeviceItem(onu_data, self)
+            custom_item.device_clicked.connect(self.on_device_clicked)
+            custom_item.edit_requested.connect(self.on_edit_custom_device)
+            custom_item.delete_requested.connect(self.on_delete_custom_device)
+            custom_item.set_theme(self.dark_theme)
+            
+            self.onu_section.add_item(custom_item)
+            self.device_items.append(custom_item)
+    
     def add_custom_olt_item(self, device_data):
         """Agregar un item de OLT personalizado a la sección (usado cuando se crea uno nuevo)"""
         custom_item = CustomDeviceItem(device_data, self)
@@ -1750,6 +1777,22 @@ class SidebarPanel(QWidget):
         
         self.device_items.append(custom_item)
     
+    def add_custom_onu_item(self, device_data):
+        """Agregar un item de ONU personalizado a la sección (usado cuando se crea uno nuevo)"""
+        custom_item = CustomDeviceItem(device_data, self)
+        custom_item.device_clicked.connect(self.on_device_clicked)
+        custom_item.edit_requested.connect(self.on_edit_custom_device)
+        custom_item.delete_requested.connect(self.on_delete_custom_device)
+        custom_item.set_theme(self.dark_theme)
+        
+        # El botón "Crear ONU" siempre es el último widget en content_layout
+        # Insertar el nuevo dispositivo justo antes del botón
+        layout = self.onu_section.content_layout
+        insert_position = layout.count() - 1  # Antes del último (botón Crear)
+        layout.insertWidget(insert_position, custom_item)
+        
+        self.device_items.append(custom_item)
+    
     def on_create_device_clicked(self, device_type):
         """Manejar click en botón 'Crear dispositivo'"""
         print(f"🔧 Crear dispositivo: {device_type}")
@@ -1757,18 +1800,21 @@ class SidebarPanel(QWidget):
         if device_type == "OLT":
             self.show_create_olt_dialog()
         elif device_type == "ONU":
-            # TODO: Implementar en Fase 2
-            QMessageBox.information(
-                self,
-                tr('custom_device.coming_soon'),
-                tr('custom_device.onu_coming_soon')
-            )
+            self.show_create_onu_dialog()
     
     def show_create_olt_dialog(self, device_data=None):
         """Mostrar diálogo para crear/editar OLT"""
         from ui.custom_device_dialog import CustomOLTDialog
         
         dialog = CustomOLTDialog(self, device_data, self.dark_theme)
+        dialog.device_saved.connect(self.on_custom_device_saved)
+        dialog.exec_()
+    
+    def show_create_onu_dialog(self, device_data=None):
+        """Mostrar diálogo para crear/editar ONU"""
+        from ui.custom_device_dialog import CustomONUDialog
+        
+        dialog = CustomONUDialog(self, device_data, self.dark_theme)
         dialog.device_saved.connect(self.on_custom_device_saved)
         dialog.exec_()
     
@@ -1802,6 +1848,26 @@ class SidebarPanel(QWidget):
             # Si no existe, agregarlo
             if not existing:
                 self.add_custom_olt_item(device_data)
+        
+        elif device_data['type'] == 'CUSTOM_ONU':
+            # Verificar si ya existe (modo edición)
+            existing = False
+            for item in self.device_items:
+                if isinstance(item, CustomDeviceItem) and item.device_id == device_data['id']:
+                    # Actualizar item existente
+                    item.device_data = device_data
+                    item.device_name = device_data['name']
+                    item.name_label.setText(device_data['name'])
+                    item.type_label.setText(tr('custom_device.custom_label'))
+                    
+                    # Refrescar el icono con el nuevo color
+                    item.setup_device_icon()
+                    existing = True
+                    break
+            
+            # Si no existe, agregarlo
+            if not existing:
+                self.add_custom_onu_item(device_data)
     
     def on_edit_custom_device(self, device_data):
         """Manejar edición de dispositivo personalizado"""
@@ -1809,6 +1875,8 @@ class SidebarPanel(QWidget):
         
         if device_data['type'] == 'CUSTOM_OLT':
             self.show_create_olt_dialog(device_data)
+        elif device_data['type'] == 'CUSTOM_ONU':
+            self.show_create_onu_dialog(device_data)
     
     def on_delete_custom_device(self, device_id):
         """Manejar eliminación de dispositivo personalizado"""
@@ -1822,8 +1890,19 @@ class SidebarPanel(QWidget):
         )
         
         if reply == QMessageBox.Yes:
-            # Eliminar del almacenamiento
-            success = custom_device_manager.delete_custom_olt(device_id)
+            # Determinar tipo de dispositivo para usar el método correcto
+            device_type = None
+            for item in self.device_items:
+                if isinstance(item, CustomDeviceItem) and item.device_id == device_id:
+                    device_type = item.device_data.get('type')
+                    break
+            
+            # Eliminar del almacenamiento según el tipo
+            success = False
+            if device_type == 'CUSTOM_OLT':
+                success = custom_device_manager.delete_custom_olt(device_id)
+            elif device_type == 'CUSTOM_ONU':
+                success = custom_device_manager.delete_custom_onu(device_id)
             
             if success:
                 # Eliminar del UI
@@ -1920,6 +1999,10 @@ class SidebarPanel(QWidget):
         # Actualizar tema del botón "Crear OLT"
         if hasattr(self, 'create_olt_button'):
             self.create_olt_button.set_theme(dark_theme)
+        
+        # Actualizar tema del botón "Crear ONU"
+        if hasattr(self, 'create_onu_button'):
+            self.create_onu_button.set_theme(dark_theme)
         
         # Actualizar tema del item de conexión
         if hasattr(self, 'connection_item') and self.connection_item:
@@ -2028,6 +2111,10 @@ class SidebarPanel(QWidget):
         # Actualizar botón "Crear OLT"
         if hasattr(self, 'create_olt_button'):
             self.create_olt_button.update_text()
+        
+        # Actualizar botón "Crear ONU"
+        if hasattr(self, 'create_onu_button'):
+            self.create_onu_button.update_text()
         
         # Actualizar nombres de dispositivos
         for device_item in self.device_items:
