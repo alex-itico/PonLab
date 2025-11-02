@@ -51,7 +51,7 @@ class ConnectionManager(QObject):
             return False, tr('connection_errors.already_exists').format(device_a.name, device_b.name)
         
         # ⚠️ VALIDACIÓN PON: Las ONUs solo pueden conectarse a OLTs
-        if device_a.device_type == "ONU" and device_b.device_type == "ONU":
+        if device_a.device_type in ["ONU", "CUSTOM_ONU"] and device_b.device_type in ["ONU", "CUSTOM_ONU"]:
             message = (
                 f"{tr('connection_errors.onu_to_onu_header')}\n\n"
                 f"{tr('connection_errors.onu_to_onu_description')}\n"
@@ -64,7 +64,7 @@ class ConnectionManager(QObject):
             return False, message
         
         # ℹ️ VALIDACIÓN PON: Conexiones entre OLTs no son típicas en PON
-        if device_a.device_type == "OLT" and device_b.device_type == "OLT":
+        if device_a.device_type in ["OLT", "OLT_SDN", "CUSTOM_OLT"] and device_b.device_type in ["OLT", "OLT_SDN", "CUSTOM_OLT"]:
             message = (
                 f"{tr('connection_errors.olt_to_olt_header')}\n\n"
                 f"{tr('connection_errors.olt_to_olt_description')}\n"

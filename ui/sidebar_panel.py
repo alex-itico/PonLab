@@ -1335,8 +1335,8 @@ class DevicePropertiesPanel(QFrame):
         
         count = 0
         for connection in self.connection_manager.connections:
-            if (connection.device_a.id == olt_device.id and connection.device_b.device_type == "ONU") or \
-               (connection.device_b.id == olt_device.id and connection.device_a.device_type == "ONU"):
+            if (connection.device_a.id == olt_device.id and connection.device_b.device_type in ["ONU", "CUSTOM_ONU"]) or \
+               (connection.device_b.id == olt_device.id and connection.device_a.device_type in ["ONU", "CUSTOM_ONU"]):
                 count += 1
         return count
     
@@ -1346,7 +1346,7 @@ class DevicePropertiesPanel(QFrame):
             return None
         
         for connection in self.connection_manager.connections:
-            if connection.device_a.id == onu_device.id and connection.device_b.device_type in ["OLT", "OLT_SDN"]:
+            if connection.device_a.id == onu_device.id and connection.device_b.device_type in ["OLT", "OLT_SDN", "CUSTOM_OLT"]:
                 return connection.calculate_distance()
             elif connection.device_b.id == onu_device.id and connection.device_a.device_type in ["OLT", "OLT_SDN"]:
                 return connection.calculate_distance()
