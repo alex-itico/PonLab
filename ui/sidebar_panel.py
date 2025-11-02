@@ -6,12 +6,13 @@ Con pestañas colapsables por categorías (OLT, ONU, Herramientas)
 
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, 
                              QScrollArea, QFrame, QPushButton, QSizePolicy, QApplication, 
-                             QGroupBox, QFormLayout, QLineEdit, QDoubleSpinBox)
-from PyQt5.QtCore import Qt, pyqtSignal, QMimeData, QPoint, QPropertyAnimation, QEasingCurve
+                             QGroupBox, QFormLayout, QLineEdit, QDoubleSpinBox, QMessageBox)
+from PyQt5.QtCore import Qt, pyqtSignal, QMimeData, QPoint, QPropertyAnimation, QEasingCurve, QByteArray
 from PyQt5.QtGui import QFont, QPixmap, QPainter, QColor, QPen, QBrush, QDrag
 from PyQt5.QtSvg import QSvgRenderer
 from utils.constants import DEFAULT_SIDEBAR_WIDTH
 from utils.translation_manager import tr
+from utils.custom_device_manager import custom_device_manager
 from core import SimulationManager
 import os
 
@@ -516,6 +517,406 @@ class ConnectionItem(QFrame):
         
         # Actualizar icono según el tema
         self.setup_connection_icon()
+
+
+class CreateDeviceButton(QFrame):
+    """Botón para crear nuevo dispositivo personalizado"""
+    
+    create_clicked = pyqtSignal(str)  # device_type (OLT, ONU, etc.)
+    
+    def __init__(self, device_type, parent=None):
+        super().__init__(parent)
+        self.device_type = device_type
+        self.dark_theme = False
+        self.setup_ui()
+    
+    def setup_ui(self):
+        """Configurar interfaz del botón crear"""
+        self.setFixedHeight(50)
+        self.setFrameStyle(QFrame.Box)
+        self.setLineWidth(1)
+        self.setCursor(Qt.PointingHandCursor)
+        
+        # Layout principal
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(10, 10, 10, 10)
+        layout.setSpacing(8)
+        
+        # Icono "+"
+        icon_label = QLabel("➕")
+        icon_font = QFont()
+        icon_font.setPointSize(14)
+        icon_label.setFont(icon_font)
+        layout.addWidget(icon_label)
+        
+        # Texto
+        text_key = f'custom_device.create_{self.device_type.lower()}'
+        self.text_label = QLabel(tr(text_key))
+        text_font = QFont()
+        text_font.setPointSize(10)
+        self.text_label.setFont(text_font)
+        layout.addWidget(self.text_label)
+        
+        layout.addStretch()
+    
+    def mousePressEvent(self, event):
+        """Detectar click"""
+        if event.button() == Qt.LeftButton:
+            self.create_clicked.emit(self.device_type)
+    
+    def update_text(self):
+        """Actualizar texto del botón con el idioma actual"""
+        text_key = f'custom_device.create_{self.device_type.lower()}'
+        self.text_label.setText(tr(text_key))
+    
+    def set_theme(self, dark_theme):
+        """Aplicar tema con borde punteado y opacidad"""
+        self.dark_theme = dark_theme
+        
+        if dark_theme:
+            self.setStyleSheet("""
+                CreateDeviceButton {
+                    background-color: rgba(43, 43, 43, 0.5);
+                    border: 2px dashed #666666;
+                    border-radius: 5px;
+                }
+                CreateDeviceButton:hover {
+                    background-color: rgba(60, 60, 60, 0.7);
+                    border-color: #888888;
+                }
+                QLabel {
+                    color: #999999;
+                    background: transparent;
+                }
+            """)
+        else:
+            self.setStyleSheet("""
+                CreateDeviceButton {
+                    background-color: rgba(248, 249, 250, 0.5);
+                    border: 2px dashed #cccccc;
+                    border-radius: 5px;
+                }
+                CreateDeviceButton:hover {
+                    background-color: rgba(230, 230, 230, 0.7);
+                    border-color: #999999;
+                }
+                QLabel {
+                    color: #999999;
+                    background: transparent;
+                }
+            """)
+
+
+class CustomDeviceItem(QFrame):
+    """Widget para dispositivo personalizado con opciones de editar/eliminar"""
+    
+    device_clicked = pyqtSignal(str)  # device_name
+    drag_started = pyqtSignal(str, str)  # device_name, device_type
+    edit_requested = pyqtSignal(dict)  # device_data
+    delete_requested = pyqtSignal(str)  # device_id
+    
+    def __init__(self, device_data, parent=None):
+        super().__init__(parent)
+        self.device_data = device_data
+        self.device_name = device_data['name']
+        self.device_type = device_data['type']
+        self.device_id = device_data['id']
+        self.drag_start_position = QPoint()
+        self.dark_theme = False
+        self.setup_ui()
+    
+    def setup_ui(self):
+        """Configurar interfaz del dispositivo personalizado"""
+        self.setFixedHeight(60)
+        self.setFrameStyle(QFrame.Box)
+        self.setLineWidth(1)
+        self.setCursor(Qt.PointingHandCursor)
+        
+        # Layout principal
+        main_layout = QHBoxLayout(self)
+        main_layout.setContentsMargins(8, 8, 8, 8)
+        main_layout.setSpacing(8)
+        
+        # Icono del dispositivo
+        self.icon_label = QLabel()
+        self.icon_label.setFixedSize(40, 40)
+        self.icon_label.setAlignment(Qt.AlignCenter)
+        self.setup_device_icon()
+        main_layout.addWidget(self.icon_label)
+        
+        # Información del dispositivo
+        info_layout = QVBoxLayout()
+        info_layout.setContentsMargins(0, 0, 0, 0)
+        info_layout.setSpacing(2)
+        
+        # Nombre
+        self.name_label = QLabel(self.device_name)
+        name_font = QFont()
+        name_font.setBold(True)
+        name_font.setPointSize(10)
+        self.name_label.setFont(name_font)
+        info_layout.addWidget(self.name_label)
+        
+        # Tipo (Custom)
+        type_text = tr('custom_device.custom_label')
+        self.type_label = QLabel(type_text)
+        type_font = QFont()
+        type_font.setPointSize(8)
+        self.type_label.setFont(type_font)
+        self.type_label.setStyleSheet("color: #4a90e2;")
+        info_layout.addWidget(self.type_label)
+        
+        main_layout.addLayout(info_layout)
+        main_layout.addStretch()
+        
+        # Botones de acción (esquina superior derecha)
+        actions_layout = QVBoxLayout()
+        actions_layout.setContentsMargins(0, 0, 0, 0)
+        actions_layout.setSpacing(2)
+        
+        # Botón editar
+        self.edit_button = QPushButton("✎")  # Símbolo de lápiz más visible
+        self.edit_button.setFixedSize(20, 20)
+        self.edit_button.setCursor(Qt.PointingHandCursor)
+        self.edit_button.setToolTip(tr('custom_device.edit'))
+        self.edit_button.clicked.connect(self.on_edit_clicked)
+        edit_font = QFont()
+        edit_font.setPointSize(12)
+        edit_font.setBold(True)
+        self.edit_button.setFont(edit_font)
+        actions_layout.addWidget(self.edit_button)
+        
+        # Botón eliminar
+        self.delete_button = QPushButton("✖")  # Símbolo de X más visible
+        self.delete_button.setFixedSize(20, 20)
+        self.delete_button.setCursor(Qt.PointingHandCursor)
+        self.delete_button.setToolTip(tr('custom_device.delete'))
+        self.delete_button.clicked.connect(self.on_delete_clicked)
+        delete_font = QFont()
+        delete_font.setPointSize(12)
+        delete_font.setBold(True)
+        self.delete_button.setFont(delete_font)
+        actions_layout.addWidget(self.delete_button)
+        
+        main_layout.addLayout(actions_layout)
+    
+    def setup_device_icon(self):
+        """Configurar icono del dispositivo personalizado con SVG coloreado"""
+        try:
+            # Determinar ruta del SVG según el tipo de dispositivo
+            if "OLT" in self.device_type:
+                svg_path = os.path.join('resources', 'devices', 'olt_icon_custom.svg')
+            elif "ONU" in self.device_type:
+                svg_path = os.path.join('resources', 'devices', 'onu_icon.svg')
+            else:
+                svg_path = None
+            
+            if svg_path and os.path.exists(svg_path):
+                # Leer el archivo SVG
+                with open(svg_path, 'r', encoding='utf-8') as f:
+                    svg_content = f.read()
+                
+                # Obtener el color personalizado del dispositivo
+                device_color = QColor(self.device_data.get('color', '#4a90e2'))
+                
+                # Color oscuro (80% del brillo)
+                dark_color = QColor(
+                    int(device_color.red() * 0.8),
+                    int(device_color.green() * 0.8),
+                    int(device_color.blue() * 0.8)
+                )
+                
+                # Reemplazar colores en el SVG
+                svg_content = svg_content.replace('#C62828', dark_color.name())
+                svg_content = svg_content.replace('#F44336', device_color.name())
+                
+                # Renderizar el SVG modificado
+                from PyQt5.QtCore import QByteArray
+                svg_bytes = QByteArray(svg_content.encode('utf-8'))
+                renderer = QSvgRenderer(svg_bytes)
+                
+                # Crear pixmap y renderizar
+                pixmap = QPixmap(40, 40)
+                pixmap.fill(Qt.transparent)
+                
+                painter = QPainter(pixmap)
+                renderer.render(painter)
+                painter.end()
+                
+                self.icon_label.setPixmap(pixmap)
+            else:
+                # Fallback a emoji si no hay SVG
+                icon_text = "📦"
+                if "OLT" in self.device_type:
+                    icon_text = "🔷"
+                elif "ONU" in self.device_type:
+                    icon_text = "📱"
+                
+                self.icon_label.setText(icon_text)
+                font = QFont()
+                font.setPointSize(20)
+                self.icon_label.setFont(font)
+                
+        except Exception as e:
+            print(f"Error cargando icono SVG: {e}")
+            # Fallback a emoji
+            icon_text = "🔷" if "OLT" in self.device_type else "📱"
+            self.icon_label.setText(icon_text)
+            font = QFont()
+            font.setPointSize(20)
+            self.icon_label.setFont(font)
+    
+    def on_edit_clicked(self):
+        """Manejar click en editar"""
+        self.edit_requested.emit(self.device_data)
+    
+    def on_delete_clicked(self):
+        """Manejar click en eliminar"""
+        self.delete_requested.emit(self.device_id)
+    
+    def mousePressEvent(self, event):
+        """Detectar inicio de drag o click"""
+        if event.button() == Qt.LeftButton:
+            self.drag_start_position = event.pos()
+    
+    def mouseMoveEvent(self, event):
+        """Iniciar drag and drop"""
+        if not (event.buttons() & Qt.LeftButton):
+            return
+        
+        if (event.pos() - self.drag_start_position).manhattanLength() < 10:
+            return
+        
+        # Iniciar drag
+        drag = QDrag(self)
+        mime_data = QMimeData()
+        mime_data.setText(f"{self.device_name}|{self.device_type}")
+        drag.setMimeData(mime_data)
+        
+        # Emitir señal
+        self.drag_started.emit(self.device_name, self.device_type)
+        
+        # Ejecutar drag
+        drag.exec_(Qt.CopyAction)
+    
+    def update_translations(self):
+        """Actualizar textos con el idioma actual"""
+        # Actualizar label de "Custom"
+        type_text = tr('custom_device.custom_label')
+        self.type_label.setText(type_text)
+        
+        # Actualizar tooltips de los botones
+        self.edit_button.setToolTip(tr('custom_device.edit'))
+        self.delete_button.setToolTip(tr('custom_device.delete'))
+    
+    def set_theme(self, dark_theme):
+        """Aplicar tema con borde punteado y opacidad reducida"""
+        self.dark_theme = dark_theme
+        
+        if dark_theme:
+            self.setStyleSheet("""
+                CustomDeviceItem {
+                    background-color: rgba(43, 43, 43, 0.6);
+                    border: 2px dashed #555555;
+                    border-radius: 5px;
+                }
+                CustomDeviceItem:hover {
+                    background-color: rgba(60, 60, 60, 0.8);
+                    border-color: #777777;
+                }
+                QLabel {
+                    color: #cccccc;
+                    background: transparent;
+                }
+                QPushButton {
+                    background-color: transparent;
+                    border: none;
+                    padding: 0px;
+                    color: #cccccc;
+                }
+                QPushButton:hover {
+                    background-color: rgba(255, 255, 255, 0.1);
+                    border-radius: 3px;
+                }
+            """)
+            # Color específico para botón de eliminar en tema oscuro
+            self.delete_button.setStyleSheet("""
+                QPushButton {
+                    color: #ff6b6b;
+                    background-color: transparent;
+                    border: none;
+                }
+                QPushButton:hover {
+                    color: #ff4444;
+                    background-color: rgba(255, 107, 107, 0.2);
+                    border-radius: 3px;
+                }
+            """)
+            # Color específico para botón de editar en tema oscuro
+            self.edit_button.setStyleSheet("""
+                QPushButton {
+                    color: #4a90e2;
+                    background-color: transparent;
+                    border: none;
+                }
+                QPushButton:hover {
+                    color: #5aa3f5;
+                    background-color: rgba(74, 144, 226, 0.2);
+                    border-radius: 3px;
+                }
+            """)
+        else:
+            self.setStyleSheet("""
+                CustomDeviceItem {
+                    background-color: rgba(248, 249, 250, 0.6);
+                    border: 2px dashed #cccccc;
+                    border-radius: 5px;
+                }
+                CustomDeviceItem:hover {
+                    background-color: rgba(230, 230, 230, 0.8);
+                    border-color: #999999;
+                }
+                QLabel {
+                    color: #555555;
+                    background: transparent;
+                }
+                QPushButton {
+                    background-color: transparent;
+                    border: none;
+                    padding: 0px;
+                    color: #333333;
+                }
+                QPushButton:hover {
+                    background-color: rgba(0, 0, 0, 0.05);
+                    border-radius: 3px;
+                }
+            """)
+            # Color específico para botón de eliminar en tema claro
+            self.delete_button.setStyleSheet("""
+                QPushButton {
+                    color: #d32f2f;
+                    background-color: transparent;
+                    border: none;
+                }
+                QPushButton:hover {
+                    color: #b71c1c;
+                    background-color: rgba(211, 47, 47, 0.1);
+                    border-radius: 3px;
+                }
+            """)
+            # Color específico para botón de editar en tema claro
+            self.edit_button.setStyleSheet("""
+                QPushButton {
+                    color: #1976d2;
+                    background-color: transparent;
+                    border: none;
+                }
+                QPushButton:hover {
+                    color: #0d47a1;
+                    background-color: rgba(25, 118, 210, 0.1);
+                    border-radius: 3px;
+                }
+            """)
 
 
 class CollapsibleSection(QWidget):
@@ -1244,14 +1645,14 @@ class SidebarPanel(QWidget):
             self.connection_item.set_connection_mode(False)
     
     def populate_devices(self):
-        """Poblar el panel con dispositivos predefinidos y herramientas usando secciones colapsables"""
+        """Poblar el panel con dispositivos predefinidos, personalizados y herramientas usando secciones colapsables"""
         
         # ====== SECCIÓN OLT ======
         self.olt_section = CollapsibleSection(tr('sidebar.sections.olt'), self)
         self.olt_section.set_theme(self.dark_theme)
         self.devices_layout.insertWidget(self.devices_layout.count() - 1, self.olt_section)
         
-        # Dispositivos OLT
+        # Dispositivos OLT predefinidos (siempre primero)
         olt_devices = [
             ("sidebar.device_names.olt", "OLT"),
             ("sidebar.device_names.olt_sdn", "OLT_SDN"),
@@ -1267,12 +1668,22 @@ class SidebarPanel(QWidget):
             self.olt_section.add_item(device_item)
             self.device_items.append(device_item)
         
+        # Cargar OLT personalizados (después de los predefinidos)
+        self.load_custom_olts()
+        
+        # Botón "Crear OLT" (siempre al final)
+        self.create_olt_button = CreateDeviceButton("OLT", self)
+        self.create_olt_button.create_clicked.connect(self.on_create_device_clicked)
+        self.create_olt_button.set_theme(self.dark_theme)
+        self.olt_section.add_item(self.create_olt_button)
+        # No agregar a device_items para que no se cuente en el orden
+        
         # ====== SECCIÓN ONU ======
         self.onu_section = CollapsibleSection(tr('sidebar.sections.onu'), self)
         self.onu_section.set_theme(self.dark_theme)
         self.devices_layout.insertWidget(self.devices_layout.count() - 1, self.onu_section)
         
-        # Dispositivos ONU
+        # Dispositivos ONU predefinidos
         onu_devices = [
             ("sidebar.device_names.onu", "ONU"),
         ]
@@ -1287,6 +1698,8 @@ class SidebarPanel(QWidget):
             self.onu_section.add_item(device_item)
             self.device_items.append(device_item)
         
+        # TODO: Cargar ONU personalizados (Fase 2)
+        
         # ====== SECCIÓN HERRAMIENTAS ======
         self.tools_section = CollapsibleSection(tr('sidebar.sections.tools'), self)
         self.tools_section.set_theme(self.dark_theme)
@@ -1295,12 +1708,123 @@ class SidebarPanel(QWidget):
         # Agregar herramienta de conexión a la sección de herramientas
         self.setup_connection_tool_in_section()
     
+    def load_custom_olts(self):
+        """Cargar OLT personalizados desde el almacenamiento"""
+        custom_olts = custom_device_manager.load_custom_olts()
+        
+        for olt_data in custom_olts:
+            # Agregar directamente a la sección (se agregará al final, antes del botón Crear)
+            custom_item = CustomDeviceItem(olt_data, self)
+            custom_item.device_clicked.connect(self.on_device_clicked)
+            custom_item.edit_requested.connect(self.on_edit_custom_device)
+            custom_item.delete_requested.connect(self.on_delete_custom_device)
+            custom_item.set_theme(self.dark_theme)
+            
+            # Agregar usando add_item (se agrega al final del layout)
+            self.olt_section.add_item(custom_item)
+            self.device_items.append(custom_item)
+    
+    def add_custom_olt_item(self, device_data):
+        """Agregar un item de OLT personalizado a la sección (usado cuando se crea uno nuevo)"""
+        custom_item = CustomDeviceItem(device_data, self)
+        custom_item.device_clicked.connect(self.on_device_clicked)
+        custom_item.edit_requested.connect(self.on_edit_custom_device)
+        custom_item.delete_requested.connect(self.on_delete_custom_device)
+        custom_item.set_theme(self.dark_theme)
+        
+        # El botón "Crear OLT" siempre es el último widget en content_layout
+        # Insertar el nuevo dispositivo justo antes del botón
+        layout = self.olt_section.content_layout
+        insert_position = layout.count() - 1  # Antes del último (botón Crear)
+        layout.insertWidget(insert_position, custom_item)
+        
+        self.device_items.append(custom_item)
+    
+    def on_create_device_clicked(self, device_type):
+        """Manejar click en botón 'Crear dispositivo'"""
+        print(f"🔧 Crear dispositivo: {device_type}")
+        
+        if device_type == "OLT":
+            self.show_create_olt_dialog()
+        elif device_type == "ONU":
+            # TODO: Implementar en Fase 2
+            QMessageBox.information(
+                self,
+                tr('custom_device.coming_soon'),
+                tr('custom_device.onu_coming_soon')
+            )
+    
+    def show_create_olt_dialog(self, device_data=None):
+        """Mostrar diálogo para crear/editar OLT"""
+        from ui.custom_device_dialog import CustomOLTDialog
+        
+        dialog = CustomOLTDialog(self, device_data, self.dark_theme)
+        dialog.device_saved.connect(self.on_custom_device_saved)
+        dialog.exec_()
+    
+    def on_custom_device_saved(self, device_data):
+        """Manejar dispositivo personalizado guardado"""
+        print(f"✅ Dispositivo guardado: {device_data['name']}")
+        
+        # Si es nuevo (no tiene widget), agregarlo
+        if device_data['type'] == 'CUSTOM_OLT':
+            # Verificar si ya existe (modo edición)
+            existing = False
+            for item in self.device_items:
+                if isinstance(item, CustomDeviceItem) and item.device_id == device_data['id']:
+                    # Actualizar item existente
+                    item.device_data = device_data
+                    item.device_name = device_data['name']
+                    item.name_label.setText(device_data['name'])
+                    # Refrescar el icono con el nuevo color
+                    item.setup_device_icon()
+                    existing = True
+                    break
+            
+            # Si no existe, agregarlo
+            if not existing:
+                self.add_custom_olt_item(device_data)
+    
+    def on_edit_custom_device(self, device_data):
+        """Manejar edición de dispositivo personalizado"""
+        print(f"✏️ Editar dispositivo: {device_data['name']}")
+        
+        if device_data['type'] == 'CUSTOM_OLT':
+            self.show_create_olt_dialog(device_data)
+    
+    def on_delete_custom_device(self, device_id):
+        """Manejar eliminación de dispositivo personalizado"""
+        # Confirmar eliminación
+        reply = QMessageBox.question(
+            self,
+            tr('custom_device.confirm_delete_title'),
+            tr('custom_device.confirm_delete_message'),
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No
+        )
+        
+        if reply == QMessageBox.Yes:
+            # Eliminar del almacenamiento
+            success = custom_device_manager.delete_custom_olt(device_id)
+            
+            if success:
+                # Eliminar del UI
+                for i, item in enumerate(self.device_items):
+                    if isinstance(item, CustomDeviceItem) and item.device_id == device_id:
+                        # Remover del layout
+                        item.setParent(None)
+                        item.deleteLater()
+                        # Remover de la lista
+                        self.device_items.pop(i)
+                        print(f"🗑️ Dispositivo eliminado: {device_id}")
+                        break
+    
     def on_device_clicked(self, device_name):
         """Manejar click en dispositivo"""
         # Encontrar el tipo de dispositivo
         device_type = None
         for item in self.device_items:
-            if item.device_name == device_name:
+            if hasattr(item, 'device_name') and item.device_name == device_name:
                 device_type = item.device_type
                 break
         
@@ -1374,6 +1898,10 @@ class SidebarPanel(QWidget):
             self.onu_section.set_theme(dark_theme)
         if hasattr(self, 'tools_section'):
             self.tools_section.set_theme(dark_theme)
+        
+        # Actualizar tema del botón "Crear OLT"
+        if hasattr(self, 'create_olt_button'):
+            self.create_olt_button.set_theme(dark_theme)
         
         # Actualizar tema del item de conexión
         if hasattr(self, 'connection_item') and self.connection_item:
@@ -1479,12 +2007,22 @@ class SidebarPanel(QWidget):
             self.tools_section.title = tr('sidebar.sections.tools')
             self.tools_section.title_label.setText(self.tools_section.title)
         
+        # Actualizar botón "Crear OLT"
+        if hasattr(self, 'create_olt_button'):
+            self.create_olt_button.update_text()
+        
         # Actualizar nombres de dispositivos
         for device_item in self.device_items:
             if hasattr(device_item, 'name_translation_key'):
                 translated_name = tr(device_item.name_translation_key)
                 device_item.device_name = translated_name
                 device_item.name_label.setText(translated_name)
+            # Actualizar botones de crear dispositivo personalizado
+            elif isinstance(device_item, CreateDeviceButton):
+                device_item.update_text()
+            # Actualizar dispositivos personalizados
+            elif isinstance(device_item, CustomDeviceItem):
+                device_item.update_translations()
         
         # Actualizar connection item
         if hasattr(self, 'connection_item'):

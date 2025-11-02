@@ -53,7 +53,12 @@ class DeviceGraphicsItem(QGraphicsPixmapItem):
     def create_label(self):
         """Crear etiqueta de texto para el dispositivo"""
         if self.label_item is None:
-            self.label_item = QGraphicsTextItem(self.device.name, self)
+            # Verificar si el dispositivo es personalizado
+            display_name = self.device.name
+            if hasattr(self.device, 'is_custom') and self.device.is_custom:
+                display_name = f"{self.device.name} ⚙"  # Añadir indicador custom
+            
+            self.label_item = QGraphicsTextItem(display_name, self)
             
             # Configurar fuente
             font = QFont("Arial", 8)
@@ -137,7 +142,12 @@ class DeviceGraphicsItem(QGraphicsPixmapItem):
         
         # Actualizar etiqueta
         if self.label_item:
-            self.label_item.setPlainText(self.device.name)
+            # Verificar si el dispositivo es personalizado
+            display_name = self.device.name
+            if hasattr(self.device, 'is_custom') and self.device.is_custom:
+                display_name = f"{self.device.name} ⚙"  # Añadir indicador custom
+            
+            self.label_item.setPlainText(display_name)
             self.update_label_color()  # Actualizar color también
             self.update_label_position()
         
@@ -279,18 +289,30 @@ class DeviceManager(QObject):
         """Establecer referencia al canvas"""
         self.canvas = canvas
     
-    def add_device(self, device_type, x, y, name=None):
-        """Agregar nuevo dispositivo al canvas"""
+    def add_device(self, device_type, x, y, name=None, device_name=None):
+        """Agregar nuevo dispositivo al canvas
+        
+        Args:
+            device_type: Tipo de dispositivo (OLT, ONU, CUSTOM_OLT, etc.)
+            x, y: Coordenadas de posición
+            name: Nombre automático generado
+            device_name: Nombre personalizado del dispositivo (para custom devices)
+        """
         try:
-            # Generar nombre automático si no se proporciona
-            if name is None:
+            # Para dispositivos personalizados, usar el device_name si se proporciona
+            if device_type.startswith('CUSTOM_') and device_name:
+                final_name = device_name
+            elif name is None:
+                # Generar nombre automático si no se proporciona
                 # Para OLT_SDN, usar el contador de OLT
                 counter_type = "OLT" if device_type == "OLT_SDN" else device_type
                 self.device_counters[counter_type] += 1
-                name = f"{device_type}_{self.device_counters[counter_type]}"
+                final_name = f"{device_type}_{self.device_counters[counter_type]}"
+            else:
+                final_name = name
             
             # Crear dispositivo
-            device = create_device(device_type, name, x, y)
+            device = create_device(device_type, final_name, x, y)
             
             # Crear item gráfico
             graphics_item = DeviceGraphicsItem(device)
@@ -315,6 +337,8 @@ class DeviceManager(QObject):
             
         except Exception as e:
             print(f"Error agregando dispositivo: {e}")
+            import traceback
+            traceback.print_exc()
             return None
     
     def remove_device(self, device_id):
