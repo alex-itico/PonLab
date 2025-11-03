@@ -118,8 +118,8 @@ class IntegratedPONTestPanel(QWidget):
             user_algo_path = os.path.join(algo_dir, "algo_DBA_Nuevo.txt")
 
             if not os.path.exists(template_path):
-                QMessageBox.warning(self, "Archivo no encontrado",
-                                    f"No se encontró el archivo de guía:\n{template_path}")
+                QMessageBox.warning(self, tr("integrated_pon_panel.algo_editor.msg_file_not_found_title"),
+                                    tr("integrated_pon_panel.algo_editor.msg_file_not_found_text").format(template_path))
                 return
             if not os.path.exists(user_algo_path):
                 # si no existe, crear uno vacío basado en la guía
@@ -136,12 +136,16 @@ class IntegratedPONTestPanel(QWidget):
             # --- Geometría base (área útil) ---
             probe = QDialog(self)
             work = probe.screen().availableGeometry()
+            
+            # Ajustar altura al 90% para dejar espacio para botones y evitar que queden ocultos
+            window_height = int(work.height() * 0.9)
+            window_width = work.width() // 2
 
             # =========================
             #  Ventana IZQUIERDA (RO)
             # =========================
             left = QDialog(None)
-            left.setWindowTitle("Template de Algoritmo DBA (Guía)")
+            left.setWindowTitle(tr("integrated_pon_panel.algo_editor.window_template_title"))
             left.setModal(False)
             left.setWindowFlags(Qt.Window | Qt.WindowTitleHint |
                                 Qt.WindowMinMaxButtonsHint | Qt.WindowCloseButtonHint)
@@ -160,7 +164,7 @@ class IntegratedPONTestPanel(QWidget):
                 QPushButton:pressed { background-color: #2a3341; }
             """)
             # mitad izquierda
-            left.setGeometry(work.x(), work.y(), work.width() // 2, work.height())
+            left.setGeometry(work.x(), work.y(), window_width, window_height)
 
             l_root = QVBoxLayout(left); l_root.setContentsMargins(8, 8, 8, 8); l_root.setSpacing(8)
             l_view = QTextEdit(); l_view.setReadOnly(True); l_view.setLineWrapMode(QTextEdit.NoWrap)
@@ -168,9 +172,10 @@ class IntegratedPONTestPanel(QWidget):
             l_root.addWidget(l_view)
 
             l_btns = QHBoxLayout(); l_btns.addStretch(1)
-            l_copy = QPushButton("Copiar todo")
+            l_copy = QPushButton(tr("integrated_pon_panel.algo_editor.btn_copy_all"))
             l_copy.clicked.connect(lambda: (l_view.selectAll(), l_view.copy(),
-                                            QMessageBox.information(left, "Copiado", "Template copiado al portapapeles.")))
+                                            QMessageBox.information(left, tr("integrated_pon_panel.algo_editor.msg_copied_title"), 
+                                                                   tr("integrated_pon_panel.algo_editor.msg_copied_text"))))
             l_btns.addWidget(l_copy); l_root.addLayout(l_btns)
 
             # ajuste fino para que el frame quede pegado al borde superior/izq
@@ -183,15 +188,15 @@ class IntegratedPONTestPanel(QWidget):
             #  Ventana DERECHA (RW)
             # =========================
             right = QDialog(None)
-            right.setWindowTitle("Nuevo Algoritmo DBA (Editable)")
+            right.setWindowTitle(tr("integrated_pon_panel.algo_editor.window_new_algo_title"))
             right.setModal(False)
             right.setWindowFlags(Qt.Window | Qt.WindowTitleHint |
                                 Qt.WindowMinMaxButtonsHint | Qt.WindowCloseButtonHint)
             right.setAttribute(Qt.WA_DeleteOnClose, True)
             right.setStyleSheet(left.styleSheet())
             # mitad derecha
-            right.setGeometry(work.x() + work.width() // 2, work.y(),
-                            work.width() // 2, work.height())
+            right.setGeometry(work.x() + window_width, work.y(),
+                            window_width, window_height)
 
             r_root = QVBoxLayout(right); r_root.setContentsMargins(8, 8, 8, 8); r_root.setSpacing(8)
             r_edit = QTextEdit(); r_edit.setLineWrapMode(QTextEdit.NoWrap)
@@ -199,7 +204,7 @@ class IntegratedPONTestPanel(QWidget):
             r_root.addWidget(r_edit)
 
             r_btns = QHBoxLayout(); r_btns.addStretch(1)
-            r_save = QPushButton("Guardar")
+            r_save = QPushButton(tr("integrated_pon_panel.algo_editor.btn_save"))
 
             def _save():
                 import re, ast, os
@@ -216,8 +221,8 @@ class IntegratedPONTestPanel(QWidget):
                         code_text
                     )
                     if not m_name:
-                        QMessageBox.warning(right, "No se detectó el nombre",
-                                            "No se encontró 'return' en get_algorithm_name().")
+                        QMessageBox.warning(right, tr("integrated_pon_panel.algo_editor.msg_name_not_detected_title"),
+                                            tr("integrated_pon_panel.algo_editor.msg_name_not_detected_text"))
                         return
                     algo_name = m_name.group(1).strip()
 
@@ -227,8 +232,8 @@ class IntegratedPONTestPanel(QWidget):
                         code_text
                     )
                     if not m_class:
-                        QMessageBox.warning(right, "No se detectó la clase",
-                                            "No se encontró una clase que herede de DBAAlgorithmInterface.")
+                        QMessageBox.warning(right, tr("integrated_pon_panel.algo_editor.msg_class_not_detected_title"),
+                                            tr("integrated_pon_panel.algo_editor.msg_class_not_detected_text"))
                         return
                     class_name = m_class.group(1).strip()
 
@@ -236,8 +241,8 @@ class IntegratedPONTestPanel(QWidget):
                     adapter_path = os.path.join(algo_dir, "..", "pon", "pon_adapter.py")
                     adapter_path = os.path.abspath(adapter_path)
                     if not os.path.exists(adapter_path):
-                        QMessageBox.critical(right, "Error",
-                                            f"No se encontró pon_adapter.py en:\n{adapter_path}")
+                        QMessageBox.critical(right, tr("integrated_pon_panel.algo_editor.msg_adapter_not_found_title"),
+                                            tr("integrated_pon_panel.algo_editor.msg_adapter_not_found_text").format(adapter_path))
                         return
 
                     with open(adapter_path, "r", encoding="utf-8") as f:
@@ -368,8 +373,8 @@ class IntegratedPONTestPanel(QWidget):
                         m_block = block_pat.search(code_text)
                         if not m_block:
                             QMessageBox.warning(
-                                right, "Bloque de código no encontrado",
-                                "No se encontró el bloque entre los marcadores BEGIN/END en el archivo editable."
+                                right, tr("integrated_pon_panel.algo_editor.msg_block_not_found_title"),
+                                tr("integrated_pon_panel.algo_editor.msg_block_not_found_text")
                             )
                         else:
                             user_impl = m_block.group(1).strip("\n")
@@ -379,8 +384,8 @@ class IntegratedPONTestPanel(QWidget):
 
                             if not os.path.exists(pon_dba_path):
                                 QMessageBox.critical(
-                                    right, "Archivo destino no encontrado",
-                                    f"No se encontró core/algorithms/pon_dba.py en:\n{pon_dba_path}"
+                                    right, tr("integrated_pon_panel.algo_editor.msg_dest_not_found_title"),
+                                    tr("integrated_pon_panel.algo_editor.msg_dest_not_found_text").format(pon_dba_path)
                                 )
                             else:
                                 with open(pon_dba_path, "r", encoding="utf-8") as f:
@@ -399,21 +404,16 @@ class IntegratedPONTestPanel(QWidget):
                                     with open(pon_dba_path, "w", encoding="utf-8") as fw:
                                         fw.write(new_pon)
                     except Exception as ee:
-                        QMessageBox.critical(right, "Error al copiar implementación", str(ee))
+                        QMessageBox.critical(right, tr("integrated_pon_panel.algo_editor.msg_copy_error_title"), str(ee))
 
                     # 11) Mensaje final
                     QMessageBox.information(
-                        right, "Guardado",
-                        f"Archivo guardado correctamente.\n\n"
-                        f"Clase agregada a import: {class_name}\n"
-                        f"Algoritmo agregado (lista y diccionario): {algo_name}\n"
-                        f"Fallback en except ImportError: {class_name} = None\n"
-                        f"Implementación añadida a pon_dba.py (si no existía).\n\n"
-                        "Vuelve a ejecutar la simulación para aplicar los cambios."
+                        right, tr("integrated_pon_panel.algo_editor.msg_saved_title"),
+                        tr("integrated_pon_panel.algo_editor.msg_saved_text").format(class_name, algo_name)
                     )
 
                 except Exception as e:
-                    QMessageBox.critical(right, "Error al guardar", str(e))
+                    QMessageBox.critical(right, tr("integrated_pon_panel.algo_editor.msg_save_error_title"), str(e))
             # --- FIN DE FUNCIÓN _save() ---
 
 
@@ -424,7 +424,7 @@ class IntegratedPONTestPanel(QWidget):
             def snap_right():
                 frame_tl = right.frameGeometry().topLeft(); geom_tl = right.geometry().topLeft()
                 dx = frame_tl.x() - geom_tl.x(); dy = frame_tl.y() - geom_tl.y()
-                right.move(work.x() + work.width() // 2 - dx, work.y() - dy)
+                right.move(work.x() + window_width - dx, work.y() - dy)
 
             # === CIERRE COORDINADO (una sola confirmación) ===
             # Usamos un flag compartido para evitar doble diálogo al cerrar la otra ventana.
@@ -433,8 +433,8 @@ class IntegratedPONTestPanel(QWidget):
             def _confirm_close():
                 resp = QMessageBox.question(
                     None,
-                    "Cerrar sin guardar",
-                    "Estás cerrando sin guardar cambios.\n\n¿Seguro que deseas salir?",
+                    tr("integrated_pon_panel.algo_editor.msg_close_title"),
+                    tr("integrated_pon_panel.algo_editor.msg_close_text"),
                     QMessageBox.Yes | QMessageBox.No,
                     QMessageBox.No
                 )
@@ -484,8 +484,8 @@ class IntegratedPONTestPanel(QWidget):
 
         except Exception as e:
             from PyQt5.QtWidgets import QMessageBox
-            QMessageBox.critical(self, "Error",
-                                f"Ocurrió un error al abrir/mostrar los editores:\n{e}")
+            QMessageBox.critical(self, tr("integrated_pon_panel.algo_editor.msg_error_title"),
+                                tr("integrated_pon_panel.algo_editor.msg_error_text").format(str(e)))
 
         
     def create_controls_panel(self):
@@ -550,14 +550,15 @@ class IntegratedPONTestPanel(QWidget):
         config_layout.addWidget(self.algorithm_combo, 1, 1)
         
         # --- Nuevo bloque: Botón "Agregar Algoritmo DBA" ---
-        config_layout.addWidget(QLabel("Agregar Algoritmo:"), 2, 0)
+        self.add_algorithm_label = QLabel(tr("integrated_pon_panel.add_algorithm"))
+        config_layout.addWidget(self.add_algorithm_label, 2, 0)
 
         # --- Botón "Agregar Algoritmo DBA" (mismo estilo que el bloque RL) ---
         algo_btns_layout = QVBoxLayout()
         algo_btns_layout.setSpacing(8)
 
-        self.add_algorithm_btn = QPushButton("📄 Agregar Algoritmo DBA")
-        self.add_algorithm_btn.setToolTip("Crear un nuevo algoritmo DBA (plugin)")
+        self.add_algorithm_btn = QPushButton(tr("integrated_pon_panel.add_algorithm_btn"))
+        self.add_algorithm_btn.setToolTip(tr("integrated_pon_panel.add_algorithm_tooltip"))
         self.add_algorithm_btn.setMinimumHeight(30)
         self.add_algorithm_btn.clicked.connect(self.on_add_algorithm_clicked)  # handler abajo
         algo_btns_layout.addWidget(self.add_algorithm_btn)
@@ -1715,6 +1716,8 @@ class IntegratedPONTestPanel(QWidget):
             self.onu_count_label.setToolTip(tr("integrated_pon_panel.onus_tooltip"))
         if hasattr(self, 'dba_label'):
             self.dba_label.setText(tr("integrated_pon_panel.dba"))
+        if hasattr(self, 'add_algorithm_label'):
+            self.add_algorithm_label.setText(tr("integrated_pon_panel.add_algorithm"))
         if hasattr(self, 'rl_model_label'):
             self.rl_model_label.setText(tr("integrated_pon_panel.rl_model"))
         if hasattr(self, 'scenario_label'):
@@ -1727,6 +1730,9 @@ class IntegratedPONTestPanel(QWidget):
             self.steps_label.setText(tr("integrated_pon_panel.steps"))
         
         # Botones
+        if hasattr(self, 'add_algorithm_btn'):
+            self.add_algorithm_btn.setText(tr("integrated_pon_panel.add_algorithm_btn"))
+            self.add_algorithm_btn.setToolTip(tr("integrated_pon_panel.add_algorithm_tooltip"))
         if hasattr(self, 'load_rl_model_btn'):
             self.load_rl_model_btn.setText(tr("integrated_pon_panel.load_rl_model"))
             self.load_rl_model_btn.setToolTip(tr("integrated_pon_panel.load_rl_model_tooltip"))

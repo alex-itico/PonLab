@@ -13,7 +13,6 @@ try:
         PriorityDBAAlgorithm,
         RLDBAAlgorithm,
         StrictPriorityMinShareDBA,
-        StrictPriorityMinShareDBA2,
         TEST,
         TESTB,
 )
@@ -33,7 +32,6 @@ except ImportError as e:
     PriorityDBAAlgorithm = None
     RLDBAAlgorithm = None
     StrictPriorityMinShareDBA = None
-    StrictPriorityMinShareDBA2 = None
     TEST = None
     TESTB = None
     get_available_scenarios = lambda: []
@@ -512,7 +510,6 @@ class PONAdapter:
             "Priority": PriorityDBAAlgorithm,
             "SDN": FCFSDBAAlgorithm,  # Usar FCFS como base para SDN
             "SP-MINSHARE": StrictPriorityMinShareDBA,
-            "SP-MINSHARE2": StrictPriorityMinShareDBA,
             "TEST_A": TEST,
             "TEST_B": TESTB,
         }
@@ -540,7 +537,7 @@ class PONAdapter:
     
     def get_available_algorithms(self):
         """Obtener lista de algoritmos DBA disponibles"""
-        algorithms = ["FCFS", "Priority", "SDN", "SP-MINSHARE", "SP-MINSHARE2", "TEST_A", "TEST_B"]
+        algorithms = ["FCFS", "Priority", "SDN", "SP-MINSHARE", "TEST_A", "TEST_B"]
 
         # Agregar Smart RL DBA si hay modelo cargado
         if self.smart_rl_algorithm:
