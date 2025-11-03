@@ -1,12 +1,1 @@
-[
-  {
-    "name": "OLT NG PON2",
-    "transmission_rate": 10000,
-    "color": "#00fa9a",
-    "standard": "NG-PON2",
-    "id": "CUSTOM_OLT_20251102_140355",
-    "type": "CUSTOM_OLT",
-    "created_at": "2025-11-02T14:03:55.244705",
-    "modified_at": "2025-11-02T14:03:55.244716"
-  }
-]
+[]
