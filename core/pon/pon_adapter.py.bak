@@ -15,7 +15,6 @@ try:
         StrictPriorityMinShareDBA,
         StrictPriorityMinShareDBA2,
         TEST,
-        TESTB,
 )
     from ..smart_rl_dba import SmartRLDBAAlgorithm
     from ..simulation.pon_simulator import PONSimulator, EventEvaluator
@@ -35,7 +34,6 @@ except ImportError as e:
     StrictPriorityMinShareDBA = None
     StrictPriorityMinShareDBA2 = None
     TEST = None
-    TESTB = None
     get_available_scenarios = lambda: []
     print_scenario_info = lambda x: None
 
@@ -510,11 +508,11 @@ class PONAdapter:
         algorithms = {
             "FCFS": FCFSDBAAlgorithm,
             "Priority": PriorityDBAAlgorithm,
+            "RL-DBA": RLDBAAlgorithm,
             "SDN": FCFSDBAAlgorithm,  # Usar FCFS como base para SDN
             "SP-MINSHARE": StrictPriorityMinShareDBA,
             "SP-MINSHARE2": StrictPriorityMinShareDBA,
             "TEST_A": TEST,
-            "TEST_B": TESTB,
         }
 
         if algorithm_name not in algorithms:
@@ -540,7 +538,7 @@ class PONAdapter:
     
     def get_available_algorithms(self):
         """Obtener lista de algoritmos DBA disponibles"""
-        algorithms = ["FCFS", "Priority", "SDN", "SP-MINSHARE", "SP-MINSHARE2", "TEST_A", "TEST_B"]
+        algorithms = ["FCFS", "Priority", "RL-DBA", "SDN", "SP-MINSHARE", "SP-MINSHARE2", "TEST_A"]
 
         # Agregar Smart RL DBA si hay modelo cargado
         if self.smart_rl_algorithm:
@@ -550,10 +548,11 @@ class PONAdapter:
     
     def is_predictive_algorithm(self, name: str = None) -> bool:
         """
-        Indica si el algoritmo es de tipo predictivo.
-        Actualmente ningún algoritmo es considerado predictivo.
+        Indica si el algoritmo es de tipo predictivo (p.ej., RL-DBA).
+        True solo para RL-DBA por ahora.
         """
-        return False
+        algo = (name or getattr(self, "current_algorithm", "") or "").strip().upper()
+        return algo == "RL-DBA"
     
     # ===== TRAFFIC SCENARIOS =====
     
