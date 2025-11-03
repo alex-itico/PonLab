@@ -15,7 +15,6 @@ try:
         StrictPriorityMinShareDBA,
         StrictPriorityMinShareDBA2,
         TEST,
-        TESTB,
 )
     from ..smart_rl_dba import SmartRLDBAAlgorithm
     from ..simulation.pon_simulator import PONSimulator, EventEvaluator
@@ -35,7 +34,6 @@ except ImportError as e:
     StrictPriorityMinShareDBA = None
     StrictPriorityMinShareDBA2 = None
     TEST = None
-    TESTB = None
     get_available_scenarios = lambda: []
     print_scenario_info = lambda x: None
 
@@ -515,7 +513,6 @@ class PONAdapter:
             "SP-MINSHARE": StrictPriorityMinShareDBA,
             "SP-MINSHARE2": StrictPriorityMinShareDBA,
             "TEST_A": TEST,
-            "TEST_B": TESTB,
         }
 
         if algorithm_name not in algorithms:
@@ -541,7 +538,7 @@ class PONAdapter:
     
     def get_available_algorithms(self):
         """Obtener lista de algoritmos DBA disponibles"""
-        algorithms = ["FCFS", "Priority", "RL-DBA", "SDN", "SP-MINSHARE", "SP-MINSHARE2", "TEST_A", "TEST_B"]
+        algorithms = ["FCFS", "Priority", "RL-DBA", "SDN", "SP-MINSHARE", "SP-MINSHARE2", "TEST_A"]
 
         # Agregar Smart RL DBA si hay modelo cargado
         if self.smart_rl_algorithm:
