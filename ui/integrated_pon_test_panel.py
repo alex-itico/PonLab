@@ -1048,30 +1048,44 @@ class IntegratedPONTestPanel(QWidget):
                 'detailed_logging': self.detailed_log_checkbox.isChecked()
             }
             
-            # SIEMPRE guardar los archivos de simulación (JSON, TXT, metadata)
-            session_directory = ""
-            if hasattr(self.results_panel, 'charts_panel'):
-                self.results_panel.add_log_message("💾 Guardando datos de simulación...")
-                
-                session_directory = self.graphics_saver.save_simulation_graphics_and_data(
-                    self.results_panel.charts_panel,
-                    simulation_data,
-                    session_info
-                )
-                
-                if session_directory:
-                    self.results_panel.add_log_message(f"✅ Datos guardados en: {session_directory}")
-                else:
-                    self.results_panel.add_log_message("❌ Error guardando datos de simulación")
-            
-            # Mostrar ventana emergente si está habilitado
+            # Mostrar ventana emergente PRIMERO (sin bloquear)
             should_popup = self.popup_window_checkbox.isChecked()
             if should_popup:
-                self.show_graphics_popup_window(simulation_data, session_directory, session_info)
+                self.show_graphics_popup_window(simulation_data, "", session_info)
+            
+            # DESPUÉS guardar los archivos en HILO SEPARADO (no bloquea UI)
+            if hasattr(self.results_panel, 'charts_panel'):
+                self.results_panel.add_log_message("💾 Guardando datos de simulación en segundo plano...")
+                
+                # Guardar asíncronamente
+                from PyQt5.QtCore import QTimer
+                QTimer.singleShot(100, lambda: self._save_simulation_async(simulation_data, session_info))
             
         except Exception as e:
             self.results_panel.add_log_message(f"❌ Error en procesamiento automático: {e}")
             print(f"❌ Error en handle_automatic_graphics_processing: {e}")
+    
+    def _save_simulation_async(self, simulation_data: dict, session_info: dict):
+        """Guardar datos de simulación de forma asíncrona (no bloquea UI)"""
+        try:
+            session_directory = self.graphics_saver.save_simulation_graphics_and_data(
+                self.results_panel.charts_panel,
+                simulation_data,
+                session_info
+            )
+            
+            if session_directory:
+                self.results_panel.add_log_message(f"✅ Datos guardados en: {session_directory}")
+                
+                # Actualizar ventana emergente con el directorio
+                if self.popup_window:
+                    self.popup_window.update_session_directory(session_directory)
+            else:
+                self.results_panel.add_log_message("❌ Error guardando datos de simulación")
+                
+        except Exception as e:
+            self.results_panel.add_log_message(f"❌ Error guardando datos: {e}")
+            print(f"❌ Error en _save_simulation_async: {e}")
     
     def show_graphics_popup_window(self, 
                                  simulation_data: dict, 

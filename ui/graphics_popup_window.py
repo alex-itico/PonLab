@@ -222,25 +222,38 @@ class GraphicsPopupWindow(QDialog):
         self.session_directory = session_directory
         self.session_info = session_info  # Guardar para retranslate_ui
         
-        # Actualizar header
-        self.session_info_label.setText(tr('graphics_popup.saved_in').format(session_directory))
-        
-        # Actualizar gráficos interactivos
-        if self.charts_panel:
-            self.charts_panel.update_charts_with_data(simulation_data)
-        
-        # Actualizar resumen
-        self.update_summary_display(simulation_data, session_info)
-        
-        # Actualizar información de archivos
-        self.update_files_display(session_directory)
-        
-        # Mostrar ventana
+        # Mostrar ventana PRIMERO (sin gráficos aún)
         self.show()
         self.raise_()
         self.activateWindow()
         
-        print(f"🎉 Ventana de resultados mostrada con gráficos desde: {session_directory}")
+        # Actualizar header
+        if session_directory:
+            self.session_info_label.setText(tr('graphics_popup.saved_in').format(session_directory))
+        else:
+            self.session_info_label.setText(tr('graphics_popup.generating_data'))
+        
+        # Actualizar resumen (rápido)
+        self.update_summary_display(simulation_data, session_info)
+        
+        # Actualizar información de archivos (rápido)
+        if session_directory:
+            self.update_files_display(session_directory)
+        
+        # Actualizar gráficos DESPUÉS con un pequeño delay (permite que la ventana se dibuje primero)
+        if self.charts_panel:
+            from PyQt5.QtCore import QTimer
+            QTimer.singleShot(50, lambda: self._update_charts_async(simulation_data))
+        
+        print(f"🎉 Ventana de resultados mostrada, cargando gráficos...")
+    
+    def _update_charts_async(self, simulation_data: Dict[str, Any]):
+        """Actualizar gráficos de forma asíncrona (no bloquea UI)"""
+        try:
+            self.charts_panel.update_charts_with_data(simulation_data)
+            print(f"✅ Gráficos actualizados correctamente")
+        except Exception as e:
+            print(f"❌ Error actualizando gráficos: {e}")
     
     def update_summary_display(self, simulation_data: Dict[str, Any], session_info: Optional[Dict[str, Any]]):
         """Actualizar display de resumen"""
@@ -350,6 +363,10 @@ class GraphicsPopupWindow(QDialog):
     
     def update_files_display(self, session_directory: str):
         """Actualizar display de archivos generados"""
+        if not session_directory:
+            self.files_text.setPlainText("⏳ Generando archivos de simulación...")
+            return
+        
         if not os.path.exists(session_directory):
             self.files_text.setPlainText("❌ Directorio no encontrado")
             return
@@ -375,6 +392,17 @@ class GraphicsPopupWindow(QDialog):
                 files_info.append(f"  🖼️ {filename}/ ({graphics_count} gráficos PNG)")
         
         self.files_text.setPlainText("\n".join(files_info))
+    
+    def update_session_directory(self, session_directory: str):
+        """Actualizar directorio de sesión y refrescar UI"""
+        self.session_directory = session_directory
+        
+        # Actualizar label del header
+        if session_directory:
+            self.session_info_label.setText(tr('graphics_popup.saved_in').format(session_directory))
+        
+        # Actualizar información de archivos
+        self.update_files_display(session_directory)
     
     def open_session_folder(self):
         """Abrir carpeta de sesión en el explorador"""
