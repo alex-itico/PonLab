@@ -569,6 +569,7 @@
     "title_completed": "🎉 ¡Simulación Completada Exitosamente!",
     "saved_in": "📁 Guardado en: {0}",
     "saved_pending": "📁 Guardado en: [pendiente]",
+    "generating_data": "⏳ Generando datos de simulación...",
     "tab_graphics": "📊 Gráficos Interactivos",
     "tab_summary": "📋 Resumen",
     "tab_files": "📁 Archivos",
