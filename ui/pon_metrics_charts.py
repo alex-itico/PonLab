@@ -9,8 +9,19 @@ from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel,
                              QTabWidget, QGroupBox, QGridLayout, QScrollArea,
                              QSplitter, QPushButton, QComboBox, QCheckBox)
 from PyQt5.QtCore import Qt, pyqtSignal
-from PyQt5.QtGui import QFont, QPixmap
+from PyQt5.QtGui import QFont, QPixmap, QCursor
 from utils.translation_manager import tr
+
+# Intentar importar PyQtGraph para visualización de grants
+try:
+    import pyqtgraph as pg
+    from pyqtgraph.Qt import QtWidgets as pg_QtWidgets
+    PYQTGRAPH_AVAILABLE = True
+    print("OK PyQtGraph disponible para visualización de grants OLT")
+except ImportError as e:
+    PYQTGRAPH_AVAILABLE = False
+    print(f"WARNING PyQtGraph no disponible: {e}")
+    print("   Para resolver: pip install pyqtgraph>=0.12.0")
 
 try:
     # Configurar matplotlib antes de cualquier importación
@@ -1068,8 +1079,45 @@ class PONMetricsChartsPanel(QWidget):
         # Actualizar colores de matplotlib si está disponible
         if MATPLOTLIB_AVAILABLE:
             self.update_matplotlib_theme(dark_theme)
+        
+        # Actualizar colores de PyQtGraph si está disponible
+        if PYQTGRAPH_AVAILABLE and hasattr(self, 'grants_plot'):
+            self.update_pyqtgraph_theme(dark_theme)
             
         # El estilo QSS se aplicará automáticamente desde la ventana principal
+    
+    def update_pyqtgraph_theme(self, dark_theme):
+        """Actualizar tema de PyQtGraph para el gráfico de grants"""
+        if not PYQTGRAPH_AVAILABLE or not hasattr(self, 'grants_plot'):
+            return
+        
+        # Colores para tema oscuro y claro
+        if dark_theme:
+            bg_color = '#2b2b2b'
+            text_color = '#ffffff'
+            grid_color = (85, 85, 85)
+        else:
+            bg_color = '#ffffff'
+            text_color = '#333333'
+            grid_color = (204, 204, 204)
+        
+        # Actualizar fondo del widget
+        self.grants_plot_widget.setBackground(bg_color)
+        
+        # Actualizar colores del plot
+        self.grants_plot.getAxis('bottom').setPen(text_color)
+        self.grants_plot.getAxis('left').setPen(text_color)
+        self.grants_plot.getAxis('bottom').setTextPen(text_color)
+        self.grants_plot.getAxis('left').setTextPen(text_color)
+        
+        # Actualizar título
+        self.grants_plot.setTitle(
+            tr('pon_metrics_charts.olt_grants_title'),
+            color=text_color
+        )
+        
+        # Actualizar grid con el nuevo color
+        self.grants_plot.showGrid(x=True, y=True, alpha=0.3)
         
     def update_matplotlib_theme(self, dark_theme):
         """Actualizar tema de matplotlib para todos los gráficos"""
@@ -1164,6 +1212,9 @@ class PONMetricsChartsPanel(QWidget):
         
         # Tab 4: Análisis ONUs
         self.setup_onu_analysis_tab()
+        
+        # Tab 5: Análisis OLT (Grants)
+        self.setup_olt_analysis_tab()
         
     def setup_temporal_charts_tab(self):
         """Configurar tab de gráficos temporales"""
@@ -1293,6 +1344,111 @@ class PONMetricsChartsPanel(QWidget):
         
         self.tabs.addTab(tab, tr('pon_metrics_charts.tab_onu_analysis'))
     
+    def setup_olt_analysis_tab(self):
+        """Configurar tab de análisis OLT (visualización de grants)"""
+        tab = QWidget()
+        layout = QVBoxLayout(tab)
+        
+        if not PYQTGRAPH_AVAILABLE:
+            # Mostrar mensaje de advertencia si PyQtGraph no está disponible
+            warning_label = QLabel(tr('pon_metrics_charts.olt_pyqtgraph_warning'))
+            warning_label.setStyleSheet("QLabel { background-color: #fff3cd; border: 1px solid #ffeaa7; "
+                                       "border-radius: 5px; padding: 20px; margin: 20px; }")
+            warning_label.setAlignment(Qt.AlignCenter)
+            warning_label.setWordWrap(True)
+            layout.addWidget(warning_label)
+        else:
+            # Layout horizontal principal para gráfico + panel de control
+            main_layout = QHBoxLayout()
+            
+            # Widget de gráfico PyQtGraph
+            self.grants_plot_widget = pg.GraphicsLayoutWidget()
+            main_layout.addWidget(self.grants_plot_widget, stretch=4)
+            
+            # Crear el plot
+            self.grants_plot = self.grants_plot_widget.addPlot(
+                title=tr('pon_metrics_charts.olt_grants_title')
+            )
+            self.grants_plot.setLabel('left', tr('pon_metrics_charts.olt_axis_bytes'))
+            self.grants_plot.setLabel('bottom', tr('pon_metrics_charts.olt_axis_sequence'))
+            self.grants_plot.showGrid(x=True, y=True, alpha=0.3)
+            
+            # Panel lateral de control
+            control_panel = QWidget()
+            control_layout = QVBoxLayout()
+            control_panel.setLayout(control_layout)
+            control_panel.setMaximumWidth(300)
+            main_layout.addWidget(control_panel, stretch=1)
+            
+            # Título del panel
+            self.olt_control_title_label = QLabel(f"<h3>{tr('pon_metrics_charts.olt_control_panel')}</h3>")
+            control_layout.addWidget(self.olt_control_title_label)
+            
+            # Separador
+            control_layout.addWidget(QLabel("<hr>"))
+            
+            # Sección de ONUs
+            self.olt_filter_onu_label = QLabel(f"<h4>{tr('pon_metrics_charts.olt_filter_onu')}</h4>")
+            control_layout.addWidget(self.olt_filter_onu_label)
+            
+            # Contenedor de checkboxes de ONUs (se llenará dinámicamente)
+            self.onu_checkboxes_widget = QWidget()
+            self.onu_checkboxes_layout = QVBoxLayout(self.onu_checkboxes_widget)
+            self.onu_checkboxes_layout.setContentsMargins(0, 0, 0, 0)
+            control_layout.addWidget(self.onu_checkboxes_widget)
+            
+            # Separador
+            control_layout.addWidget(QLabel("<hr>"))
+            
+            # Sección de prioridades
+            self.olt_filter_priority_label = QLabel(f"<h4>{tr('pon_metrics_charts.olt_filter_priority')}</h4>")
+            control_layout.addWidget(self.olt_filter_priority_label)
+            
+            # Contenedor de checkboxes de prioridades (se llenará dinámicamente)
+            self.priority_checkboxes_widget = QWidget()
+            self.priority_checkboxes_layout = QVBoxLayout(self.priority_checkboxes_widget)
+            self.priority_checkboxes_layout.setContentsMargins(0, 0, 0, 0)
+            control_layout.addWidget(self.priority_checkboxes_widget)
+            
+            # Separador
+            control_layout.addWidget(QLabel("<hr>"))
+            
+            # Botones de control rápido
+            self.olt_quick_actions_label = QLabel(f"<h4>{tr('pon_metrics_charts.olt_quick_actions')}</h4>")
+            control_layout.addWidget(self.olt_quick_actions_label)
+            
+            # Botones
+            self.show_all_onus_btn = QPushButton(tr('pon_metrics_charts.olt_show_all_onus'))
+            control_layout.addWidget(self.show_all_onus_btn)
+            
+            self.hide_all_onus_btn = QPushButton(tr('pon_metrics_charts.olt_hide_all_onus'))
+            control_layout.addWidget(self.hide_all_onus_btn)
+            
+            self.show_all_priorities_btn = QPushButton(tr('pon_metrics_charts.olt_show_all_priorities'))
+            control_layout.addWidget(self.show_all_priorities_btn)
+            
+            self.hide_all_priorities_btn = QPushButton(tr('pon_metrics_charts.olt_hide_all_priorities'))
+            control_layout.addWidget(self.hide_all_priorities_btn)
+            
+            # Spacer para empujar todo hacia arriba
+            control_layout.addStretch()
+            
+            # Panel de información
+            self.grants_info_label = self.grants_plot_widget.addLabel(text="", row=1, col=0, colspan=1)
+            
+            # Inicializar diccionarios para control
+            self.onu_checkboxes = {}
+            self.priority_checkboxes = {}
+            self.grants_scatter_items = {}
+            
+            # Aplicar tema actual al gráfico PyQtGraph
+            if hasattr(self, 'dark_theme'):
+                self.update_pyqtgraph_theme(self.dark_theme)
+            
+            layout.addLayout(main_layout)
+        
+        self.tabs.addTab(tab, tr('pon_metrics_charts.tab_olt_analysis'))
+    
     def update_charts_with_data(self, simulation_data: Dict[str, Any]):
         """Actualizar todos los gráficos con nuevos datos"""
         if not MATPLOTLIB_AVAILABLE:
@@ -1338,6 +1494,10 @@ class PONMetricsChartsPanel(QWidget):
         if 'onu_tcont_analysis' in self.charts:
             self.charts['onu_tcont_analysis'].plot_onu_tcont_analysis(simulation_data)
             self.chart_updated.emit('onu_tcont_analysis')
+        
+        # Actualizar visualización de grants OLT
+        if PYQTGRAPH_AVAILABLE and hasattr(self, 'grants_plot'):
+            self.update_grants_visualization(simulation_data)
     
     def refresh_all_charts(self):
         """Actualizar todos los gráficos con los datos actuales"""
@@ -1469,6 +1629,7 @@ class PONMetricsChartsPanel(QWidget):
             self.tabs.setTabText(1, tr('pon_metrics_charts.tab_network_state'))
             self.tabs.setTabText(2, tr('pon_metrics_charts.tab_analysis'))
             self.tabs.setTabText(3, tr('pon_metrics_charts.tab_onu_analysis'))
+            self.tabs.setTabText(4, tr('pon_metrics_charts.tab_olt_analysis'))
         
         # GroupBoxes del tab temporal
         if hasattr(self, 'delay_group'):
@@ -1494,6 +1655,306 @@ class PONMetricsChartsPanel(QWidget):
         if hasattr(self, 'onu_analysis_group'):
             self.onu_analysis_group.setTitle(tr('pon_metrics_charts.onu_tcont_analysis'))
         
+        # Actualizar botones del tab OLT si existe
+        if hasattr(self, 'olt_control_title_label'):
+            self.olt_control_title_label.setText(f"<h3>{tr('pon_metrics_charts.olt_control_panel')}</h3>")
+        if hasattr(self, 'olt_filter_onu_label'):
+            self.olt_filter_onu_label.setText(f"<h4>{tr('pon_metrics_charts.olt_filter_onu')}</h4>")
+        if hasattr(self, 'olt_filter_priority_label'):
+            self.olt_filter_priority_label.setText(f"<h4>{tr('pon_metrics_charts.olt_filter_priority')}</h4>")
+        if hasattr(self, 'olt_quick_actions_label'):
+            self.olt_quick_actions_label.setText(f"<h4>{tr('pon_metrics_charts.olt_quick_actions')}</h4>")
+        if hasattr(self, 'show_all_onus_btn'):
+            self.show_all_onus_btn.setText(tr('pon_metrics_charts.olt_show_all_onus'))
+        if hasattr(self, 'hide_all_onus_btn'):
+            self.hide_all_onus_btn.setText(tr('pon_metrics_charts.olt_hide_all_onus'))
+        if hasattr(self, 'show_all_priorities_btn'):
+            self.show_all_priorities_btn.setText(tr('pon_metrics_charts.olt_show_all_priorities'))
+        if hasattr(self, 'hide_all_priorities_btn'):
+            self.hide_all_priorities_btn.setText(tr('pon_metrics_charts.olt_hide_all_priorities'))
+        
         # Regenerar graficos con textos traducidos si hay datos disponibles
         if hasattr(self, 'current_data') and self.current_data:
             self.update_charts_with_data(self.current_data)
+    
+    def _extract_grants_from_simulation_data(self, data: Dict[str, Any]) -> List[Dict]:
+        """
+        Extraer información de grants desde los datos de simulación en RAM
+        Estrategia 1: transmission_log (más completo)
+        Estrategia 2: delays (fallback)
+        """
+        grants = []
+        
+        # Estrategia 1: Buscar en transmission_log del OLT
+        if 'olt_stats' in data and 'transmission_log' in data['olt_stats']:
+            transmissions = data['olt_stats']['transmission_log']
+            
+            for idx, trans in enumerate(transmissions):
+                # Convertir data_size_mb a bytes
+                bytes_val = trans.get('data_size_mb', 0) * 1024 * 1024
+                
+                grants.append({
+                    'sequence': idx,
+                    'onu_id': str(trans.get('onu_id', '?')),
+                    'priority': trans.get('tcont_id', 'unknown'),
+                    'timestamp': trans.get('start_time', 0),
+                    'bytes': int(bytes_val),
+                    'duration': trans.get('duration', 0)
+                })
+        
+        # Estrategia 2: Buscar en delays (fallback)
+        if not grants and 'simulation_summary' in data and 'episode_metrics' in data['simulation_summary']:
+            delays = data['simulation_summary']['episode_metrics'].get('delays', [])
+            
+            for idx, delay_entry in enumerate(delays):
+                grants.append({
+                    'sequence': idx,
+                    'onu_id': str(delay_entry.get('onu_id', '?')),
+                    'priority': delay_entry.get('tcont_id', 'unknown'),
+                    'timestamp': delay_entry.get('timestamp', 0),
+                    'bytes': delay_entry.get('bytes', 0),
+                    'delay': delay_entry.get('delay', 0)
+                })
+        
+        return grants
+    
+    def update_grants_visualization(self, simulation_data: Dict[str, Any]):
+        """Actualizar visualización de grants OLT usando datos en RAM"""
+        if not PYQTGRAPH_AVAILABLE or not hasattr(self, 'grants_plot'):
+            return
+        
+        # Extraer grants de los datos en RAM
+        grants = self._extract_grants_from_simulation_data(simulation_data)
+        
+        if not grants:
+            print("WARNING: No se encontraron datos de grants en la simulación")
+            return
+        
+        # Paleta de colores para prioridades (misma que visualize_grants.py)
+        PRIORITY_COLORS = {
+            'lowest': (100, 100, 255),   # Azul claro
+            'low': (50, 150, 255),        # Azul medio
+            'medium': (255, 200, 0),      # Amarillo/Naranja
+            'high': (255, 100, 0),        # Naranja
+            'highest': (255, 0, 0),       # Rojo
+        }
+        
+        # Símbolos para cada ONU
+        ONU_MARKERS = {
+            '0': 'o',  # círculo
+            '1': 's',  # cuadrado
+            '2': 't',  # triángulo
+            '3': 'd',  # diamante
+        }
+        
+        # Limpiar plot anterior
+        self.grants_plot.clear()
+        self.grants_plot.setTitle(tr('pon_metrics_charts.olt_grants_title'))
+        self.grants_plot.setLabel('left', tr('pon_metrics_charts.olt_axis_bytes'))
+        self.grants_plot.setLabel('bottom', tr('pon_metrics_charts.olt_axis_sequence'))
+        self.grants_plot.showGrid(x=True, y=True, alpha=0.3)
+        
+        # Agrupar por ONU y prioridad
+        data_by_group = {}
+        for grant in grants:
+            onu_id = grant['onu_id']
+            priority = grant['priority']
+            key = (onu_id, priority)
+            
+            if key not in data_by_group:
+                data_by_group[key] = {'x': [], 'y': [], 'color': None, 'symbol': None}
+            
+            data_by_group[key]['x'].append(grant['sequence'])
+            data_by_group[key]['y'].append(grant['bytes'])
+            data_by_group[key]['color'] = PRIORITY_COLORS.get(priority, (128, 128, 128))
+            data_by_group[key]['symbol'] = ONU_MARKERS.get(onu_id, 'o')
+        
+        # Crear scatter plots para cada grupo
+        self.grants_scatter_items = {}
+        for (onu_id, priority), group_data in data_by_group.items():
+            scatter = pg.ScatterPlotItem(
+                x=group_data['x'],
+                y=group_data['y'],
+                size=8,
+                pen=pg.mkPen(None),
+                brush=pg.mkBrush(*group_data['color']),
+                symbol=group_data['symbol'],
+                name=f"ONU {onu_id} - {priority}"
+            )
+            self.grants_plot.addItem(scatter)
+            self.grants_scatter_items[(onu_id, priority)] = scatter
+        
+        # Actualizar panel de control
+        self._update_grants_control_panel(grants)
+        
+        # Actualizar información del panel
+        unique_onus = sorted(set(g['onu_id'] for g in grants))
+        summary_text = f"""
+        <b>{tr('pon_metrics_charts.olt_summary_title')}</b><br>
+        {tr('pon_metrics_charts.olt_total_grants').format(len(grants))}<br>
+        {tr('pon_metrics_charts.olt_total_onus').format(len(unique_onus))}
+        """
+        self.grants_info_label.setText(summary_text)
+        
+        # Conectar evento de movimiento del mouse para hover
+        self._setup_grants_hover(grants)
+    
+    def _update_grants_control_panel(self, grants: List[Dict]):
+        """Actualizar panel de control con checkboxes de ONUs y prioridades"""
+        if not hasattr(self, 'onu_checkboxes_layout'):
+            return
+        
+        # Limpiar checkboxes anteriores
+        while self.onu_checkboxes_layout.count():
+            child = self.onu_checkboxes_layout.takeAt(0)
+            if child.widget():
+                child.widget().deleteLater()
+        
+        while self.priority_checkboxes_layout.count():
+            child = self.priority_checkboxes_layout.takeAt(0)
+            if child.widget():
+                child.widget().deleteLater()
+        
+        self.onu_checkboxes = {}
+        self.priority_checkboxes = {}
+        
+        # Crear checkboxes para ONUs
+        unique_onus = sorted(set(str(g['onu_id']) for g in grants))
+        for onu_id in unique_onus:
+            checkbox = QCheckBox(tr('pon_metrics_charts.olt_onu_label').format(onu_id))
+            checkbox.setChecked(True)
+            checkbox.stateChanged.connect(lambda state, oid=onu_id: self._toggle_onu(oid, state))
+            checkbox.setStyleSheet("font-size: 13px; font-weight: bold;")
+            self.onu_checkboxes_layout.addWidget(checkbox)
+            self.onu_checkboxes[onu_id] = checkbox
+            
+            # Contador de grants
+            count = sum(1 for g in grants if str(g['onu_id']) == onu_id)
+            count_label = QLabel(f"   {tr('pon_metrics_charts.olt_grants_count').format(count)}")
+            count_label.setStyleSheet("color: gray; margin-left: 20px;")
+            self.onu_checkboxes_layout.addWidget(count_label)
+        
+        # Crear checkboxes para prioridades
+        unique_priorities = sorted(set(g['priority'] for g in grants))
+        
+        # Ordenar prioridades de mayor a menor (highest -> lowest)
+        priority_order = {'highest': 0, 'high': 1, 'medium': 2, 'low': 3, 'lowest': 4}
+        unique_priorities = sorted(unique_priorities, key=lambda p: priority_order.get(p, 999))
+        
+        PRIORITY_COLORS = {
+            'lowest': (100, 100, 255),
+            'low': (50, 150, 255),
+            'medium': (255, 200, 0),
+            'high': (255, 100, 0),
+            'highest': (255, 0, 0),
+        }
+        
+        for priority in unique_priorities:
+            checkbox = QCheckBox(priority)
+            checkbox.setChecked(True)
+            checkbox.stateChanged.connect(lambda state, p=priority: self._toggle_priority(p, state))
+            
+            color = PRIORITY_COLORS.get(priority, (128, 128, 128))
+            checkbox.setStyleSheet(f"font-size: 13px; color: rgb{color};")
+            self.priority_checkboxes_layout.addWidget(checkbox)
+            self.priority_checkboxes[priority] = checkbox
+            
+            # Contador de grants
+            count = sum(1 for g in grants if g['priority'] == priority)
+            count_label = QLabel(f"   {tr('pon_metrics_charts.olt_grants_count').format(count)}")
+            count_label.setStyleSheet("color: gray; margin-left: 20px;")
+            self.priority_checkboxes_layout.addWidget(count_label)
+        
+        # Conectar botones de acción rápida (desconectar primero si ya están conectados)
+        try:
+            self.show_all_onus_btn.clicked.disconnect()
+        except TypeError:
+            pass  # No había conexiones previas
+        
+        try:
+            self.hide_all_onus_btn.clicked.disconnect()
+        except TypeError:
+            pass
+        
+        try:
+            self.show_all_priorities_btn.clicked.disconnect()
+        except TypeError:
+            pass
+        
+        try:
+            self.hide_all_priorities_btn.clicked.disconnect()
+        except TypeError:
+            pass
+        
+        self.show_all_onus_btn.clicked.connect(
+            lambda: [cb.setChecked(True) for cb in self.onu_checkboxes.values()]
+        )
+        self.hide_all_onus_btn.clicked.connect(
+            lambda: [cb.setChecked(False) for cb in self.onu_checkboxes.values()]
+        )
+        self.show_all_priorities_btn.clicked.connect(
+            lambda: [cb.setChecked(True) for cb in self.priority_checkboxes.values()]
+        )
+        self.hide_all_priorities_btn.clicked.connect(
+            lambda: [cb.setChecked(False) for cb in self.priority_checkboxes.values()]
+        )
+    
+    def _toggle_onu(self, onu_id: str, state: int):
+        """Toggle visibilidad de grants de una ONU"""
+        visible = (state == 2)  # Qt.Checked = 2
+        for (scatter_onu, priority), scatter in self.grants_scatter_items.items():
+            if scatter_onu == onu_id:
+                if visible:
+                    scatter.show()
+                else:
+                    scatter.hide()
+    
+    def _toggle_priority(self, priority: str, state: int):
+        """Toggle visibilidad de grants de una prioridad"""
+        visible = (state == 2)  # Qt.Checked = 2
+        for (onu_id, scatter_priority), scatter in self.grants_scatter_items.items():
+            if scatter_priority == priority:
+                if visible:
+                    scatter.show()
+                else:
+                    scatter.hide()
+    
+    def _setup_grants_hover(self, grants: List[Dict]):
+        """Configurar evento de hover para mostrar información de grants"""
+        def mouse_moved(evt):
+            pos = evt[0]
+            if self.grants_plot.sceneBoundingRect().contains(pos):
+                mouse_point = self.grants_plot.vb.mapSceneToView(pos)
+                
+                # Buscar el punto más cercano
+                min_dist = float('inf')
+                closest_grant = None
+                for grant in grants:
+                    dist = abs(grant['sequence'] - mouse_point.x())
+                    if dist < min_dist:
+                        min_dist = dist
+                        closest_grant = grant
+                
+                if closest_grant and min_dist < 50:  # Radio de detección
+                    info_text = tr('pon_metrics_charts.olt_grant_info').format(
+                        closest_grant['sequence'],
+                        closest_grant['onu_id'],
+                        closest_grant['priority'],
+                        closest_grant['bytes'],
+                        closest_grant.get('timestamp', 0)
+                    )
+                    self.grants_info_label.setText(info_text)
+        
+        # Conectar señal de movimiento del ratón
+        if hasattr(self, '_grants_proxy'):
+            try:
+                self.grants_plot.scene().sigMouseMoved.disconnect(self._grants_proxy)
+            except:
+                pass
+        
+        self._grants_proxy = pg.SignalProxy(
+            self.grants_plot.scene().sigMouseMoved, 
+            rateLimit=60, 
+            slot=mouse_moved
+        )
+
