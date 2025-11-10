@@ -48,7 +48,6 @@ class IntegratedPONTestPanel(QWidget):
         # Variables para detectar cambios
         self.last_onu_count = 0
         self.last_algorithm = "FCFS"
-        self.last_scenario = ""
         self.last_duration = 10
         self.orchestrator_initialized = False
         self.auto_initialize = True  # Habilitar inicialización automática
@@ -631,15 +630,13 @@ class IntegratedPONTestPanel(QWidget):
         config_layout.addWidget(rl_widget, 3, 1)
 
         # RL model list update removed - use internal RL-DBA instead
-        
-        # Escenario de tráfico
-        config_layout.addWidget(QLabel("Escenario:"), 4, 0)
-        self.scenario_combo = QComboBox()
-        if self.adapter.is_pon_available():
-            self.scenario_combo.addItems(self.adapter.get_available_traffic_scenarios())
-        self.scenario_combo.currentTextChanged.connect(self.on_scenario_changed)
-        config_layout.addWidget(self.scenario_combo, 4, 1)
-        
+
+        # Nota informativa sobre configuración de tráfico
+        traffic_note = QLabel("ℹ️ Configura el perfil de tráfico de cada ONU desde sus propiedades (click derecho)")
+        traffic_note.setWordWrap(True)
+        traffic_note.setStyleSheet("QLabel { color: #0066cc; font-style: italic; padding: 5px; }")
+        config_layout.addWidget(traffic_note, 4, 0, 1, 2)
+
         # Arquitectura de simulación
         config_layout.addWidget(QLabel("Arquitectura:"), 5, 0)
         self.hybrid_checkbox = QCheckBox("Híbrida Event-Driven")
@@ -647,7 +644,7 @@ class IntegratedPONTestPanel(QWidget):
         self.hybrid_checkbox.setToolTip("Usar arquitectura híbrida con control temporal estricto")
         self.hybrid_checkbox.toggled.connect(self.on_architecture_changed)
         config_layout.addWidget(self.hybrid_checkbox, 5, 1)
-        
+
         # Tiempo de simulación (para arquitectura híbrida)
         config_layout.addWidget(QLabel("Tiempo (s):"), 6, 0)
         self.duration_spinbox = QSpinBox()
@@ -656,7 +653,7 @@ class IntegratedPONTestPanel(QWidget):
         self.duration_spinbox.setToolTip("Duración en segundos (solo arquitectura híbrida)")
         self.duration_spinbox.valueChanged.connect(self.on_duration_changed)
         config_layout.addWidget(self.duration_spinbox, 6, 1)
-        
+
         # Pasos de simulación (para arquitectura clásica)
         config_layout.addWidget(QLabel("Pasos:"), 7, 0)
         self.steps_spinbox = QSpinBox()
@@ -904,23 +901,16 @@ class IntegratedPONTestPanel(QWidget):
     def on_algorithm_changed(self):
         """Manejar cambio de algoritmo DBA"""
         algorithm = self.algorithm_combo.currentText()
-        
+
         # Mostrar/ocultar controles de modelo RL
         is_rl_algorithm = (algorithm == "RL Agent")
         # RL model UI removed - functionality moved to internal RL-DBA
         self.rl_info_group.setVisible(is_rl_algorithm)
-        
+
         if self.orchestrator_initialized and algorithm != self.last_algorithm:
             self.auto_reinitialize(f"algoritmo DBA ({algorithm})")
         self.last_algorithm = algorithm
-    
-    def on_scenario_changed(self):
-        """Manejar cambio de escenario de tráfico"""
-        scenario = self.scenario_combo.currentText()
-        if self.orchestrator_initialized and scenario != self.last_scenario:
-            self.auto_reinitialize(f"escenario de tráfico ({scenario})")
-        self.last_scenario = scenario
-    
+
     def on_duration_changed(self):
         """Manejar cambio de duración de simulación"""
         duration = self.duration_spinbox.value()
@@ -945,7 +935,7 @@ class IntegratedPONTestPanel(QWidget):
             # Obtener parámetros del entorno actual
             env_params = {
                 'num_onus': self.get_onu_count_from_topology(),
-                'traffic_scenario': self.scenario_combo.currentText(),
+                'traffic_scenario': 'residential_medium',  # Escenario por defecto (se usa si ONU no tiene configuración)
                 'episode_duration': self.duration_spinbox.value(),
                 'simulation_timestep': 0.0005
             }
@@ -1162,10 +1152,10 @@ class IntegratedPONTestPanel(QWidget):
             if getattr(self, 'verbose_debug', False):
                 print("DEBUG Adapter no disponible")
             return
-        
+
         # Obtener configuración automática
         num_onus = self.get_onu_count_from_topology()
-        scenario = self.scenario_combo.currentText()
+        scenario = 'residential_medium'  # Escenario por defecto (cada ONU tiene su configuración individual)
         algorithm = self.algorithm_combo.currentText()
         use_hybrid = self.hybrid_checkbox.isChecked()
         
@@ -1464,7 +1454,7 @@ class IntegratedPONTestPanel(QWidget):
             session_info = {
                 'num_onus': self.get_onu_count_from_topology(),
                 'algorithm': self.algorithm_combo.currentText(),
-                'traffic_scenario': self.scenario_combo.currentText(),
+                'traffic_scenario': 'residential_medium',  # Valor por defecto (cada ONU tiene configuración individual)
                 'steps': self.steps_spinbox.value(),
                 'auto_charts': self.auto_charts_checkbox.isChecked(),
                 'detailed_logging': self.detailed_log_checkbox.isChecked()

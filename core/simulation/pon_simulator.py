@@ -132,46 +132,90 @@ class PONSimulator:
     
     def setup_event_simulation(self, num_onus: int = 4, traffic_scenario: str = "residential_medium",
                              dba_algorithm: Optional[DBAAlgorithmInterface] = None,
-                             channel_capacity_mbps: float = 1024.0, use_sdn: bool = False):
+                             channel_capacity_mbps: float = 1024.0, use_sdn: bool = False,
+                             onu_configs: Dict[str, Dict] = None):
         """
         Configurar simulación por eventos discretos
-        
+
         Args:
             num_onus: Número de ONUs en la red
-            traffic_scenario: Escenario de tráfico a usar
+            traffic_scenario: Escenario de tráfico a usar (si no hay onu_configs)
             dba_algorithm: Algoritmo DBA (None = FCFS por defecto)
             channel_capacity_mbps: Capacidad del canal en Mbps
             use_sdn: Si es True, usa OLT_SDN en lugar de HybridOLT
+            onu_configs: Configuraciones individuales por ONU {onu_id: config_dict}
         """
         if self.simulation_mode != "events":
             raise ValueError("Este método solo funciona en modo 'events'")
-            
+
         self.num_onus = num_onus
         self.traffic_scenario = traffic_scenario
         self.channel_capacity = channel_capacity_mbps
-        
+
         # Inicializar ONUs con tráfico optimizado
-        self._setup_onus(traffic_scenario)
+        self._setup_onus(traffic_scenario, onu_configs)
         self._setup_olt(dba_algorithm, use_sdn)
         
         olt_type = "OLT_SDN" if use_sdn else "HybridOLT"
         print(f"Simulación por eventos configurada: {num_onus} ONUs, {traffic_scenario}, {channel_capacity_mbps} Mbps, {olt_type}")
     
-    def _setup_onus(self, traffic_scenario: str):
+    def _setup_onus(self, traffic_scenario: str, onu_configs: Dict[str, Dict] = None):
         """Configurar ONUs para simulación por eventos"""
-        scenario_config = get_traffic_scenario(traffic_scenario)
-        
         self.onus = {}
+
         for i in range(self.num_onus):
             onu_id = str(i)
-            
-            # SLA diferenciado por ONU
-            sla = 50.0 + i * 25.0  # 50, 75, 100, 125 Mbps
-            lambda_rate = calculate_realistic_lambda(sla, scenario_config)
-            
-            # Limitar tasa para evitar sobrecarga
-            lambda_rate = min(lambda_rate, 50.0)  # Máximo 50 paquetes/segundo
-            
+
+            # Si hay configuraciones individuales, usarlas; de lo contrario, usar escenario global
+            if onu_configs and onu_id in onu_configs:
+                onu_config = onu_configs[onu_id]
+
+                # Obtener escenario de tráfico de la ONU
+                onu_traffic_scenario = onu_config.get('traffic_scenario', traffic_scenario)
+                scenario_config = get_traffic_scenario(onu_traffic_scenario)
+
+                # Parámetros de la ONU
+                sla = onu_config.get('sla', 50.0 + i * 25.0)
+
+                # Calcular lambda basado en SLA y escenario
+                lambda_rate = calculate_realistic_lambda(sla, scenario_config)
+
+                # Limitar tasa para evitar sobrecarga
+                lambda_rate = min(lambda_rate, 50.0)  # Máximo 50 paquetes/segundo
+
+                # Si usa parámetros personalizados, crear una copia modificada del scenario_config
+                if onu_config.get('use_custom_params', False):
+                    # Modificar scenario_config con parámetros personalizados
+                    scenario_config = dict(scenario_config)  # Copiar
+                    scenario_config['traffic_sizes_mb'] = onu_config.get('custom_traffic_sizes', scenario_config.get('traffic_sizes_mb', {}))
+
+                    # Para HybridONU, necesitamos pasar las probabilidades personalizadas de otra manera
+                    # ya que HybridONU las calcula desde traffic_probs_range
+                    custom_probs = onu_config.get('custom_traffic_probs', {})
+                    # Convertir probabilidades a rangos (usar valor fijo como min y max)
+                    custom_probs_range = {
+                        traffic_type: (prob, prob)
+                        for traffic_type, prob in custom_probs.items()
+                    }
+                    scenario_config['traffic_probs_range'] = custom_probs_range
+
+                print(f"ONU {onu_id}: Escenario {onu_traffic_scenario}, SLA={sla} Mbps, "
+                      f"custom={onu_config.get('use_custom_params', False)}")
+
+            else:
+                # Usar configuración por defecto basada en el escenario global
+                scenario_config = get_traffic_scenario(traffic_scenario)
+
+                # SLA diferenciado por ONU
+                sla = 50.0 + i * 25.0  # 50, 75, 100, 125 Mbps
+                lambda_rate = calculate_realistic_lambda(sla, scenario_config)
+
+                # Limitar tasa para evitar sobrecarga
+                lambda_rate = min(lambda_rate, 50.0)  # Máximo 50 paquetes/segundo
+
+                print(f"ONU {onu_id}: Configuración POR DEFECTO ({traffic_scenario}), SLA={sla} Mbps")
+
+            # Crear HybridONU
             self.onus[onu_id] = HybridONU(onu_id, lambda_rate, scenario_config)
     
     def _setup_olt(self, dba_algorithm: Optional[DBAAlgorithmInterface], use_sdn: bool = False):

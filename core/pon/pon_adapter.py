@@ -182,30 +182,66 @@ class PONAdapter:
             self.log_callback(formatted_message)
     
     # ===== INITIALIZATION METHODS =====
-    
+
+    def _extract_onu_configs_from_devices(self, onu_devices):
+        """
+        Extraer configuraciones de tráfico de dispositivos ONU del canvas
+
+        Args:
+            onu_devices: Lista de dispositivos ONU del canvas
+
+        Returns:
+            dict: Configuraciones por ONU {onu_id: config_dict}
+        """
+        onu_configs = {}
+
+        for idx, onu_device in enumerate(onu_devices):
+            onu_id = str(idx)
+
+            # Extraer configuración del dispositivo
+            config = {
+                'traffic_scenario': onu_device.properties.get('traffic_scenario', 'residential_medium'),
+                'sla': onu_device.properties.get('sla', 200.0),
+                'buffer_size': onu_device.properties.get('buffer_size', 512),
+                'use_custom_params': onu_device.properties.get('use_custom_params', False),
+                'custom_traffic_probs': onu_device.properties.get('custom_traffic_probs', {}),
+                'custom_traffic_sizes': onu_device.properties.get('custom_traffic_sizes', {}),
+                'transmission_rate': onu_device.properties.get('transmission_rate', 1024.0),
+                'name': onu_device.name
+            }
+
+            onu_configs[onu_id] = config
+            self._log_event("CONFIG", f"ONU {onu_id} ({config['name']}): {config['traffic_scenario']}, "
+                          f"SLA={config['sla']} Mbps, custom={config['use_custom_params']}")
+
+        return onu_configs
+
     def initialize_from_topology(self, device_manager):
         """Inicializar simulación basándose en la topología del canvas"""
         if not self.is_available:
             return False, "PON Core no está disponible"
-            
+
         if not device_manager:
             return False, "Device manager no disponible"
-            
+
         # Validar topología
         olts = device_manager.get_devices_by_type("OLT")
         onus = device_manager.get_devices_by_type("ONU")
-        
+
         if not olts:
             return False, "No se encontró OLT en la topología"
         if len(olts) > 1:
             return False, "Solo se soporta un OLT por simulación"
         if not onus:
             return False, "No se encontraron ONUs en la topología"
-            
+
         num_onus = len(onus)
-        
+
+        # Extraer configuraciones de tráfico de cada ONU desde el canvas
+        onu_configs = self._extract_onu_configs_from_devices(onus)
+
         # Inicializar según modo de simulación
-        return self._initialize_simulator_from_topology(num_onus)
+        return self._initialize_simulator_from_topology(num_onus, onu_configs)
     
     def initialize_simulation(self, num_onus=None):
         """Inicializar simulación con número específico de ONUs"""
@@ -218,28 +254,29 @@ class PONAdapter:
         # Inicializar simulador unificado
         return self._initialize_simulator(num_onus)
     
-    def _initialize_simulator_from_topology(self, num_onus):
+    def _initialize_simulator_from_topology(self, num_onus, onu_configs=None):
         """Inicializar simulador desde topología"""
         try:
             if not all([PONOrchestrator, PONSimulator, EventEvaluator]):
                 return False, "Clases de simulación no disponibles"
-            
+
             dba_algorithm = self._get_dba_algorithm()
-            
+
             # Crear simulador unificado
             self.simulator = PONSimulator(simulation_mode=self.simulation_mode)
-            
+
             if self.simulation_mode == "events":
                 self.simulator.setup_event_simulation(
                     num_onus=num_onus,
                     traffic_scenario=self.config['traffic_scenario'],
                     dba_algorithm=dba_algorithm,
                     channel_capacity_mbps=self.config['channel_capacity_mbps'],
-                    use_sdn=self.use_sdn
+                    use_sdn=self.use_sdn,
+                    onu_configs=onu_configs  # Pasar configuraciones individuales
                 )
             elif self.simulation_mode == "cycles":
                 # Configurar simulación por ciclos (requiere orquestador)
-                self._initialize_orchestrator(num_onus)
+                self._initialize_orchestrator(num_onus, onu_configs)
                 if self.orchestrator:
                     self.simulator.setup_cycle_simulation(self.orchestrator.olt)
             
@@ -251,17 +288,18 @@ class PONAdapter:
             self._log_event("ERROR", error_msg)
             return False, error_msg
     
-    def _initialize_orchestrator(self, num_onus):
+    def _initialize_orchestrator(self, num_onus, onu_configs=None):
         """Inicializar orquestador para simulación por ciclos"""
         try:
             if not PONOrchestrator:
                 return False, "PONOrchestrator no disponible"
-            
+
             self.orchestrator = PONOrchestrator(
                 num_onus=num_onus,
                 traffic_scenario=self.config['traffic_scenario'],
                 episode_duration=self.config['episode_duration'],
-                simulation_timestep=self.config['simulation_timestep']
+                simulation_timestep=self.config['simulation_timestep'],
+                onu_configs=onu_configs  # Pasar configuraciones individuales
             )
             
             self.set_dba_algorithm(self.current_algorithm)
