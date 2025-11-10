@@ -46,7 +46,8 @@ class IntegratedPONTestPanel(QWidget):
         self.results_panel = None
         
         # Sistema de guardado automático y ventana emergente
-        self.graphics_saver = AutoGraphicsSaver()
+        self.graphics_saver = AutoGraphicsSaver(use_compression=True)  # Habilitar compresión gzip
+        self.graphics_saver.graphics_saved.connect(self._on_save_complete)  # Conectar señal de completado
         self.popup_window = None  # Se crea cuando se necesita
         
         # Variables para detectar cambios
@@ -1477,26 +1478,31 @@ class IntegratedPONTestPanel(QWidget):
             print(f"❌ Error en handle_automatic_graphics_processing: {e}")
     
     def _save_simulation_async(self, simulation_data: dict, session_info: dict):
-        """Guardar datos de simulación de forma asíncrona (no bloquea UI)"""
+        """Guardar datos de simulación usando QThread (verdaderamente asíncrono)"""
         try:
+            # El método ahora retorna el directorio inmediatamente y guarda en background
             session_directory = self.graphics_saver.save_simulation_graphics_and_data(
                 self.results_panel.charts_panel,
                 simulation_data,
                 session_info
             )
-            
+
             if session_directory:
-                self.results_panel.add_log_message(f"✅ Datos guardados en: {session_directory}")
-                
-                # Actualizar ventana emergente con el directorio
+                # Actualizar ventana emergente con el directorio (antes de que termine el guardado)
                 if self.popup_window:
                     self.popup_window.update_session_directory(session_directory)
+
+                self.results_panel.add_log_message(f"💾 Guardando datos en segundo plano: {session_directory}")
             else:
-                self.results_panel.add_log_message("❌ Error guardando datos de simulación")
-                
+                self.results_panel.add_log_message("❌ Error iniciando guardado")
+
         except Exception as e:
             self.results_panel.add_log_message(f"❌ Error guardando datos: {e}")
             print(f"❌ Error en _save_simulation_async: {e}")
+
+    def _on_save_complete(self, session_directory: str):
+        """Callback cuando el guardado se completa (conectado a graphics_saver.graphics_saved)"""
+        self.results_panel.add_log_message(f"✅ Datos guardados completamente: {session_directory}")
     
     def show_graphics_popup_window(self, 
                                  simulation_data: dict, 
