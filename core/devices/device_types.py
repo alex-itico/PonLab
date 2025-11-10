@@ -444,7 +444,28 @@ class ONU(Device):
             'burst_size': 100,   # Mbps
             'response_probability': 0.95,  # Probabilidad de responder al polling
             'queue_size': 0,  # Tamaño actual de la cola de datos
-            'max_queue_size': 1000  # Tamaño máximo de cola en MB
+            'max_queue_size': 1000,  # Tamaño máximo de cola en MB
+            # Propiedades de perfil de tráfico PON
+            'traffic_scenario': 'residential_medium',  # Perfil de tráfico seleccionado
+            'sla': 200.0,  # SLA en Mbps
+            'buffer_size': 512,  # Tamaño del buffer en número de solicitudes
+            # Probabilidades personalizadas por tipo de tráfico
+            'custom_traffic_probs': {
+                'highest': 0.2,
+                'high': 0.3,
+                'medium': 0.4,
+                'low': 0.3,
+                'lowest': 0.1
+            },
+            # Tamaños personalizados por tipo de tráfico (MB)
+            'custom_traffic_sizes': {
+                'highest': (0.100, 0.200),
+                'high': (0.040, 0.080),
+                'medium': (0.015, 0.030),
+                'low': (0.008, 0.020),
+                'lowest': (0.002, 0.008)
+            },
+            'use_custom_params': False  # Si es True, usa parámetros personalizados en lugar del escenario base
         }
         
         # Estado del protocolo

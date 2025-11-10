@@ -113,27 +113,50 @@ def get_traffic_scenario(scenario_name: str) -> dict:
 def calculate_realistic_lambda(sla_mbps: float, scenario_config: dict) -> float:
     """
     Calcula una tasa de llegada realista (λ) basada en el escenario
-    
+
     Args:
         sla_mbps: SLA en Mbps
         scenario_config: Configuración del escenario
-        
+
     Returns:
         float: Tasa de llegadas en solicitudes/segundo
     """
-    
-    # Calcular throughput objetivo
-    target_throughput = sla_mbps * scenario_config["target_utilization"]
-    
-    # Estimar tipos de tráfico activos promedio promediando el rango de probabilidad para cada tipo
-    avg_active_types = sum([
-        (prob_range[0] + prob_range[1]) / 2 
-        for prob_range in scenario_config["traffic_probs_range"].values()
-    ])
-    
-    request_size_mb = scenario_config["request_size_mb"]
-    lambda_rate = target_throughput / (request_size_mb * 8 * avg_active_types)
-    
+
+    # Calcular throughput objetivo en Mbps
+    target_throughput_mbps = sla_mbps * scenario_config["target_utilization"]
+
+    # Calcular tamaño promedio de paquete considerando probabilidades
+    # Cada tipo de tráfico tiene una probabilidad y un tamaño
+    avg_packet_size_mb = 0.0
+    total_prob = 0.0
+
+    for traffic_type in scenario_config["traffic_probs_range"].keys():
+        # Probabilidad promedio para este tipo
+        prob_range = scenario_config["traffic_probs_range"][traffic_type]
+        avg_prob = (prob_range[0] + prob_range[1]) / 2
+
+        # Tamaño promedio para este tipo
+        if traffic_type in scenario_config["traffic_sizes_mb"]:
+            size_range = scenario_config["traffic_sizes_mb"][traffic_type]
+            avg_size = (size_range[0] + size_range[1]) / 2
+
+            # Contribución ponderada por probabilidad
+            avg_packet_size_mb += avg_prob * avg_size
+            total_prob += avg_prob
+
+    # Normalizar por la probabilidad total (ya que las probabilidades no suman 1)
+    if total_prob > 0:
+        avg_packet_size_mb = avg_packet_size_mb / total_prob
+
+    # Convertir throughput de Mbps a MB/s
+    target_throughput_mb_per_sec = target_throughput_mbps / 8.0
+
+    # Calcular lambda: λ = Throughput(MB/s) / Tamaño_promedio(MB)
+    if avg_packet_size_mb > 0:
+        lambda_rate = target_throughput_mb_per_sec / avg_packet_size_mb
+    else:
+        lambda_rate = 10.0  # Fallback
+
     return max(lambda_rate, 5.0)  # Mínimo 5 solicitudes/segundo
 
 def get_available_scenarios() -> list[str]:
