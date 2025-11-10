@@ -11,8 +11,8 @@ from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel,
                              QPushButton, QComboBox, QSpinBox, QTextEdit,
                              QGroupBox, QGridLayout, QSizePolicy, QProgressBar,
                              QCheckBox, QSlider, QSplitter, QFileDialog, QMessageBox,
-                             QFrame)
-from PyQt5.QtCore import Qt, QTimer, pyqtSignal
+                             QFrame, QDialog)
+from PyQt5.QtCore import Qt, QTimer, pyqtSignal, QObject, QEvent 
 from PyQt5.QtGui import QFont
 from core import PONAdapter
 from .pon_simulation_results_panel import PONResultsPanel
@@ -52,7 +52,6 @@ class IntegratedPONTestPanel(QWidget):
         # Variables para detectar cambios
         self.last_onu_count = 0
         self.last_algorithm = "FCFS"
-        self.last_scenario = ""
         self.last_duration = 10
         self.orchestrator_initialized = False
         self.auto_initialize = True  # Habilitar inicialización automática
@@ -97,6 +96,396 @@ class IntegratedPONTestPanel(QWidget):
         
         # Conectar señales
         self.results_panel.results_updated.connect(self.on_results_updated)
+        
+    def on_add_algorithm_clicked(self):
+        """
+        Abre dos ventanas:
+        - Izquierda (solo lectura): core/algorithms/template_Algo_DBA.txt
+        - Derecha (editable):      core/algorithms/algo_DBA_Nuevo.txt  (con Guardar)
+        Ventanas top-level normales (Snap habilitado). Arrancan mitad izq/der del área útil.
+        """
+        try:
+            import os
+            from PyQt5.QtWidgets import QDialog, QTextEdit, QVBoxLayout, QHBoxLayout, QPushButton, QMessageBox
+            from PyQt5.QtGui import QFont
+            from PyQt5.QtCore import Qt, QTimer
+
+            # --- Rutas ---
+            ui_dir = os.path.dirname(os.path.abspath(__file__))
+            algo_dir = os.path.abspath(os.path.join(ui_dir, "..", "core", "algorithms"))
+            template_path = os.path.join(algo_dir, "template_Algo_DBA.txt")
+            user_algo_path = os.path.join(algo_dir, "algo_DBA_Nuevo.txt")
+
+            if not os.path.exists(template_path):
+                QMessageBox.warning(self, "Archivo no encontrado",
+                                    f"No se encontró el archivo de guía:\n{template_path}")
+                return
+            if not os.path.exists(user_algo_path):
+                # si no existe, crear uno vacío basado en la guía
+                with open(template_path, "r", encoding="utf-8") as f:
+                    guide = f.read()
+                with open(user_algo_path, "w", encoding="utf-8") as f:
+                    f.write(guide + "\n\n# Escribe tu algoritmo aquí...")
+
+            with open(template_path, "r", encoding="utf-8") as f:
+                template_content = f.read()
+            with open(user_algo_path, "r", encoding="utf-8") as f:
+                user_content = f.read()
+
+            # --- Geometría base (área útil) ---
+            probe = QDialog(self)
+            work = probe.screen().availableGeometry()
+
+            # =========================
+            #  Ventana IZQUIERDA (RO)
+            # =========================
+            left = QDialog(None)
+            left.setWindowTitle("Template de Algoritmo DBA (Guía)")
+            left.setModal(False)
+            left.setWindowFlags(Qt.Window | Qt.WindowTitleHint |
+                                Qt.WindowMinMaxButtonsHint | Qt.WindowCloseButtonHint)
+            left.setAttribute(Qt.WA_DeleteOnClose, True)
+            left.setStyleSheet("""
+                QDialog { background-color: #1f1f1f; }
+                QTextEdit {
+                    background-color: #232629; color: #e0e0e0; border: none;
+                    padding: 10px; selection-background-color: #3b82f6; selection-color: #ffffff;
+                }
+                QPushButton {
+                    background-color: #2d3748; color: #e2e8f0; border: 1px solid #3a3f44;
+                    border-radius: 6px; padding: 6px 10px;
+                }
+                QPushButton:hover { background-color: #3b495c; }
+                QPushButton:pressed { background-color: #2a3341; }
+            """)
+            # mitad izquierda
+            left.setGeometry(work.x(), work.y(), work.width() // 2, work.height())
+
+            l_root = QVBoxLayout(left); l_root.setContentsMargins(8, 8, 8, 8); l_root.setSpacing(8)
+            l_view = QTextEdit(); l_view.setReadOnly(True); l_view.setLineWrapMode(QTextEdit.NoWrap)
+            l_view.setFont(QFont("Consolas", 10)); l_view.setPlainText(template_content)
+            l_root.addWidget(l_view)
+
+            l_btns = QHBoxLayout(); l_btns.addStretch(1)
+            l_copy = QPushButton("Copiar todo")
+            l_copy.clicked.connect(lambda: (l_view.selectAll(), l_view.copy(),
+                                            QMessageBox.information(left, "Copiado", "Template copiado al portapapeles.")))
+            l_btns.addWidget(l_copy); l_root.addLayout(l_btns)
+
+            # ajuste fino para que el frame quede pegado al borde superior/izq
+            def snap_left():
+                frame_tl = left.frameGeometry().topLeft(); geom_tl = left.geometry().topLeft()
+                dx = frame_tl.x() - geom_tl.x(); dy = frame_tl.y() - geom_tl.y()
+                left.move(work.x() - dx, work.y() - dy)
+
+            # =========================
+            #  Ventana DERECHA (RW)
+            # =========================
+            right = QDialog(None)
+            right.setWindowTitle("Nuevo Algoritmo DBA (Editable)")
+            right.setModal(False)
+            right.setWindowFlags(Qt.Window | Qt.WindowTitleHint |
+                                Qt.WindowMinMaxButtonsHint | Qt.WindowCloseButtonHint)
+            right.setAttribute(Qt.WA_DeleteOnClose, True)
+            right.setStyleSheet(left.styleSheet())
+            # mitad derecha
+            right.setGeometry(work.x() + work.width() // 2, work.y(),
+                            work.width() // 2, work.height())
+
+            r_root = QVBoxLayout(right); r_root.setContentsMargins(8, 8, 8, 8); r_root.setSpacing(8)
+            r_edit = QTextEdit(); r_edit.setLineWrapMode(QTextEdit.NoWrap)
+            r_edit.setFont(QFont("Consolas", 10)); r_edit.setPlainText(user_content)
+            r_root.addWidget(r_edit)
+
+            r_btns = QHBoxLayout(); r_btns.addStretch(1)
+            r_save = QPushButton("Guardar")
+
+            def _save():
+                import re, ast, os
+                try:
+                    # 1) Guardar el texto del editor en algo_DBA_Nuevo.txt
+                    with open(user_algo_path, "w", encoding="utf-8") as f:
+                        f.write(r_edit.toPlainText())
+
+                    code_text = r_edit.toPlainText()
+
+                    # 2) Extraer el nombre del algoritmo (acepta -> str, -> Dict[..], etc.)
+                    m_name = re.search(
+                        r'def\s+get_algorithm_name\s*\([^)]*\)\s*(?:->\s*[A-Za-z_][A-Za-z0-9_\[\],\s]*)?\s*:[\s\S]*?return\s*[\'"]([^\'"]+)[\'"]',
+                        code_text
+                    )
+                    if not m_name:
+                        QMessageBox.warning(right, "No se detectó el nombre",
+                                            "No se encontró 'return' en get_algorithm_name().")
+                        return
+                    algo_name = m_name.group(1).strip()
+
+                    # 3) Extraer el nombre de la clase que hereda de DBAAlgorithmInterface
+                    m_class = re.search(
+                        r'class\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(\s*DBAAlgorithmInterface\s*\)\s*:',
+                        code_text
+                    )
+                    if not m_class:
+                        QMessageBox.warning(right, "No se detectó la clase",
+                                            "No se encontró una clase que herede de DBAAlgorithmInterface.")
+                        return
+                    class_name = m_class.group(1).strip()
+
+                    # 4) Ruta a pon_adapter.py
+                    adapter_path = os.path.join(algo_dir, "..", "pon", "pon_adapter.py")
+                    adapter_path = os.path.abspath(adapter_path)
+                    if not os.path.exists(adapter_path):
+                        QMessageBox.critical(right, "Error",
+                                            f"No se encontró pon_adapter.py en:\n{adapter_path}")
+                        return
+
+                    with open(adapter_path, "r", encoding="utf-8") as f:
+                        src = f.read()
+
+                    # Backup previo de pon_adapter.py
+                    try:
+                        with open(adapter_path + ".bak", "w", encoding="utf-8") as fb:
+                            fb.write(src)
+                    except Exception:
+                        pass
+
+                    # 5) --- IMPORT: from ..algorithms.pon_dba import ( ... ) ---
+                    imp_pat = re.compile(
+                        r'(from\s+\.\.[^\n]*pon_dba\s+import\s*\(\s*)([^)]*)(\))',
+                        re.DOTALL
+                    )
+                    m_imp = imp_pat.search(src)
+                    if m_imp:
+                        inner = m_imp.group(2)
+                        # ¿Ya está la clase?
+                        existing_ids = re.findall(r'\b([A-Za-z_][A-Za-z0-9_]*)\b', inner)
+                        if class_name not in existing_ids:
+                            lines = inner.splitlines()
+                            # quitar líneas en blanco finales
+                            while lines and not lines[-1].strip():
+                                lines.pop()
+                            # indentación de bloque
+                            indent = "    "
+                            for line in reversed(lines):
+                                if line.strip():
+                                    indent = re.match(r'\s*', line).group(0) or "    "
+                                    break
+                            # asegurar coma en la última entrada con contenido
+                            if lines and not lines[-1].rstrip().endswith(','):
+                                lines[-1] = lines[-1].rstrip() + ','
+                            # añadir nuestra clase
+                            lines.append(f"{indent}{class_name},")
+                            new_inner = "\n".join(lines) + "\n"
+                            src = src[:m_imp.start(2)] + new_inner + src[m_imp.end(2):]
+
+                    # 6) --- LISTA DEL COMBO: algorithms = [ ... ] ---
+                    list_pat = re.compile(r'(algorithms\s*=\s*\[)(.*?)(\])', re.DOTALL)
+                    m_alglist = list_pat.search(src)
+                    if m_alglist:
+                        inner = m_alglist.group(2)
+                        list_text = "[" + inner + "]"
+                        try:
+                            items = ast.literal_eval(list_text)
+                            if not isinstance(items, list):
+                                raise ValueError
+                        except Exception:
+                            items = re.findall(r'["\']([^"\']+)["\']', inner)
+
+                        if algo_name not in items:
+                            items.append(algo_name)
+                            new_inner = ", ".join(f'"{x}"' for x in items)
+                            src = src[:m_alglist.start(2)] + new_inner + src[m_alglist.end(2):]
+
+                    # 7) --- DICCIONARIO FACTORY: asegurar inserción ANTES de la '}' y con sangría correcta ---
+                    try:
+                        # Localiza el inicio del diccionario:  algorithms = {
+                        dict_head = re.search(r'algorithms\s*=\s*\{', src)
+                        if dict_head:
+                            start_idx = dict_head.end()  # posición después de la llave '{'
+
+                            # Encuentra la línea de cierre '}' del diccionario (la primera llave de cierre en una línea)
+                            close_m = re.search(r'\n([ \t]*)\}', src[start_idx:])
+                            if close_m:
+                                # Índice absoluto del cierre
+                                close_abs = start_idx + close_m.start()
+                                close_indent = close_m.group(1)          # sangría del '}' (normalmente 4 espacios)
+                                entry_indent = close_indent + '    '     # sangría de las entradas dentro del dict
+
+                                # Texto interior actual (sin la '}')
+                                inner_text = src[start_idx:close_abs]
+
+                                # ¿La clave ya existe?
+                                if not re.search(r'["\']' + re.escape(algo_name) + r'["\']\s*:', inner_text):
+                                    # Asegurar coma en la última entrada no vacía
+                                    lines = inner_text.splitlines()
+                                    k = len(lines) - 1
+                                    while k >= 0 and not lines[k].strip():
+                                        k -= 1
+                                    if k >= 0 and not lines[k].rstrip().endswith(','):
+                                        lines[k] = lines[k].rstrip() + ','
+                                    inner_text = "\n".join(lines).rstrip()
+
+                                    # Construir la nueva entrada bien alineada
+                                    new_entry = f'\n{entry_indent}"{algo_name}": {class_name},'
+
+                                    # Reconstruir src:   cabeza {  +  interior + nueva entrada  +  resto (incluyendo la } )
+                                    src = src[:start_idx] + inner_text + new_entry + src[close_abs:]
+                    except Exception as _:
+                        pass
+
+
+                    # 8) --- EXCEPT ImportError: agregar "Clase = None" de respaldo ---
+                    # Buscamos el bloque entre 'except ImportError as e:' y la primera línea con '=lambda'
+                    except_pat = re.compile(
+                        r'(except\s+ImportError\s+as\s+e:\s*\n)(.*?)(\n\s*[A-Za-z_]\w+\s*=\s*lambda\b)',
+                        re.DOTALL
+                    )
+                    m_exc = except_pat.search(src)
+                    if m_exc:
+                        exc_body = m_exc.group(2)
+                        # si aún no existe la línea 'ClassName = None'
+                        if not re.search(rf'^\s*{re.escape(class_name)}\s*=\s*None\s*$', exc_body, re.MULTILINE):
+                            # localizar indentación de las asignaciones = None
+                            assign_matches = list(re.finditer(r'^\s*[A-Za-z_]\w*\s*=\s*None\s*$', exc_body, re.MULTILINE))
+                            if assign_matches:
+                                last = assign_matches[-1]
+                                indent = re.match(r'\s*', last.group(0)).group(0)
+                                insert_pos = m_exc.start(2) + last.end()
+                                insertion = f"\n{indent}{class_name} = None"
+                                src = src[:insert_pos] + insertion + src[insert_pos:]
+
+                    # 9) Guardar cambios en pon_adapter.py
+                    with open(adapter_path, "w", encoding="utf-8") as fw:
+                        fw.write(src)
+
+                    # 10) --- Copiar implementación a core/algorithms/pon_dba.py ---
+                    try:
+                        block_pat = re.compile(
+                            r'#\s*===\s*BEGIN\s+USER_ALGO:.*?===\s*\n(.*?)\n#\s*===\s*END\s+USER_ALGO:.*?===',
+                            re.DOTALL | re.IGNORECASE
+                        )
+                        m_block = block_pat.search(code_text)
+                        if not m_block:
+                            QMessageBox.warning(
+                                right, "Bloque de código no encontrado",
+                                "No se encontró el bloque entre los marcadores BEGIN/END en el archivo editable."
+                            )
+                        else:
+                            user_impl = m_block.group(1).strip("\n")
+
+                            pon_dba_path = os.path.join(algo_dir, "pon_dba.py")
+                            pon_dba_path = os.path.abspath(pon_dba_path)
+
+                            if not os.path.exists(pon_dba_path):
+                                QMessageBox.critical(
+                                    right, "Archivo destino no encontrado",
+                                    f"No se encontró core/algorithms/pon_dba.py en:\n{pon_dba_path}"
+                                )
+                            else:
+                                with open(pon_dba_path, "r", encoding="utf-8") as f:
+                                    pon_src = f.read()
+
+                                # Evitar duplicados: si ya existe la clase, no volver a agregarla
+                                if re.search(rf'\bclass\s+{re.escape(class_name)}\s*\(', pon_src):
+                                    pass
+                                else:
+                                    try:
+                                        with open(pon_dba_path + ".bak", "w", encoding="utf-8") as fb:
+                                            fb.write(pon_src)
+                                    except Exception:
+                                        pass
+                                    new_pon = pon_src.rstrip() + "\n\n" + user_impl.strip() + "\n"
+                                    with open(pon_dba_path, "w", encoding="utf-8") as fw:
+                                        fw.write(new_pon)
+                    except Exception as ee:
+                        QMessageBox.critical(right, "Error al copiar implementación", str(ee))
+
+                    # 11) Mensaje final
+                    QMessageBox.information(
+                        right, "Guardado",
+                        f"Archivo guardado correctamente.\n\n"
+                        f"Clase agregada a import: {class_name}\n"
+                        f"Algoritmo agregado (lista y diccionario): {algo_name}\n"
+                        f"Fallback en except ImportError: {class_name} = None\n"
+                        f"Implementación añadida a pon_dba.py (si no existía).\n\n"
+                        "Vuelve a ejecutar la simulación para aplicar los cambios."
+                    )
+
+                except Exception as e:
+                    QMessageBox.critical(right, "Error al guardar", str(e))
+            # --- FIN DE FUNCIÓN _save() ---
+
+
+            r_save.clicked.connect(_save)
+            r_btns.addWidget(r_save)
+            r_root.addLayout(r_btns)
+
+            def snap_right():
+                frame_tl = right.frameGeometry().topLeft(); geom_tl = right.geometry().topLeft()
+                dx = frame_tl.x() - geom_tl.x(); dy = frame_tl.y() - geom_tl.y()
+                right.move(work.x() + work.width() // 2 - dx, work.y() - dy)
+
+            # === CIERRE COORDINADO (una sola confirmación) ===
+            # Usamos un flag compartido para evitar doble diálogo al cerrar la otra ventana.
+            _closing_state = {"active": False}
+
+            def _confirm_close():
+                resp = QMessageBox.question(
+                    None,
+                    "Cerrar sin guardar",
+                    "Estás cerrando sin guardar cambios.\n\n¿Seguro que deseas salir?",
+                    QMessageBox.Yes | QMessageBox.No,
+                    QMessageBox.No
+                )
+                return resp == QMessageBox.Yes
+
+            def _left_close(ev):
+                # Si ya estamos cerrando (por la otra ventana), no preguntar de nuevo.
+                if _closing_state["active"]:
+                    ev.accept()
+                    return
+
+                if _confirm_close():
+                    _closing_state["active"] = True
+                    try:
+                        # Cerrar la otra SIN volver a preguntar
+                        right.close()
+                    finally:
+                        ev.accept()
+                else:
+                    ev.ignore()
+
+            def _right_close(ev):
+                # Si ya estamos cerrando (por la otra ventana), no preguntar de nuevo.
+                if _closing_state["active"]:
+                    ev.accept()
+                    return
+
+                if _confirm_close():
+                    _closing_state["active"] = True
+                    try:
+                        # Cerrar la otra SIN volver a preguntar
+                        left.close()
+                    finally:
+                        ev.accept()
+                else:
+                    ev.ignore()
+
+            left.closeEvent = _left_close
+            right.closeEvent = _right_close
+            # === FIN CIERRE COORDINADO ===
+
+
+            # Mostrar ambas y ajustar
+            left.show(); right.show()
+            QTimer.singleShot(0, snap_left)
+            QTimer.singleShot(0, snap_right)
+
+        except Exception as e:
+            from PyQt5.QtWidgets import QMessageBox
+            QMessageBox.critical(self, "Error",
+                                f"Ocurrió un error al abrir/mostrar los editores:\n{e}")
+
         
     def create_controls_panel(self):
         """Crear panel de controles"""
@@ -159,9 +548,41 @@ class IntegratedPONTestPanel(QWidget):
         self.algorithm_combo.currentTextChanged.connect(self.on_algorithm_changed)
         config_layout.addWidget(self.algorithm_combo, 1, 1)
         
+        # --- Nuevo bloque: Botón "Agregar Algoritmo DBA" ---
+        config_layout.addWidget(QLabel("Agregar Algoritmo:"), 2, 0)
+
+        # --- Botón "Agregar Algoritmo DBA" (mismo estilo que el bloque RL) ---
+        algo_btns_layout = QVBoxLayout()
+        algo_btns_layout.setSpacing(8)
+
+        self.add_algorithm_btn = QPushButton("📄 Agregar Algoritmo DBA")
+        self.add_algorithm_btn.setToolTip("Crear un nuevo algoritmo DBA (plugin)")
+        self.add_algorithm_btn.setMinimumHeight(30)
+        self.add_algorithm_btn.clicked.connect(self.on_add_algorithm_clicked)  # handler abajo
+        algo_btns_layout.addWidget(self.add_algorithm_btn)
+
+        algo_btns_frame = QFrame()
+        algo_btns_frame.setFrameStyle(QFrame.StyledPanel | QFrame.Raised)
+        algo_btns_frame.setLineWidth(1)
+        algo_btns_frame.setLayout(algo_btns_layout)
+        algo_btns_frame.setStyleSheet("""
+            QFrame {
+                background-color: rgba(240, 240, 240, 0.1);
+                border: 1px solid #ccc;
+                border-radius: 8px;
+                margin: 3px;
+                padding: 8px;
+            }
+        """)
+
+        config_layout.addWidget(algo_btns_frame, 2, 1)
+        # --- fin bloque botón DBA ---
+
+        
+        
         # Selector de modelo RL (inicialmente oculto)
         self.rl_model_label = QLabel(tr("integrated_pon_panel.rl_model"))
-        config_layout.addWidget(self.rl_model_label, 2, 0)
+        config_layout.addWidget(self.rl_model_label, 3, 0)
         
         # Layout vertical para organizar mejor los elementos RL
         rl_main_layout = QVBoxLayout()
@@ -213,51 +634,48 @@ class IntegratedPONTestPanel(QWidget):
         # Crear widget de RL y agregarlo al layout
         rl_widget = QWidget()
         rl_widget.setLayout(rl_main_layout)
-        config_layout.addWidget(rl_widget, 2, 1)
+        config_layout.addWidget(rl_widget, 3, 1)
 
         # RL model list update removed - use internal RL-DBA instead
-        
-        # Escenario de tráfico
-        self.scenario_label = QLabel(tr("integrated_pon_panel.scenario"))
-        config_layout.addWidget(self.scenario_label, 3, 0)
-        self.scenario_combo = QComboBox()
-        if self.adapter.is_pon_available():
-            self.scenario_combo.addItems(self.adapter.get_available_traffic_scenarios())
-        self.scenario_combo.currentTextChanged.connect(self.on_scenario_changed)
-        config_layout.addWidget(self.scenario_combo, 3, 1)
-        
+
+        # Nota informativa sobre configuración de tráfico
+        traffic_note = QLabel(tr("integrated_pon_panel.traffic_note"))
+        traffic_note.setWordWrap(True)
+        traffic_note.setStyleSheet("QLabel { color: #0066cc; font-style: italic; padding: 5px; }")
+        config_layout.addWidget(traffic_note, 4, 0, 1, 2)
+
         # Arquitectura de simulación (OCULTA - siempre híbrida event-driven)
         self.architecture_label = QLabel(tr("integrated_pon_panel.architecture"))
         self.architecture_label.setVisible(False)  # Ocultar etiqueta
-        config_layout.addWidget(self.architecture_label, 4, 0)
+        config_layout.addWidget(self.architecture_label, 5, 0)
         self.hybrid_checkbox = QCheckBox(tr("integrated_pon_panel.hybrid_architecture"))
         self.hybrid_checkbox.setChecked(True)  # Por defecto usar híbrida (siempre activo)
         self.hybrid_checkbox.setVisible(False)  # Ocultar checkbox
         self.hybrid_checkbox.setToolTip(tr("integrated_pon_panel.hybrid_tooltip"))
         self.hybrid_checkbox.toggled.connect(self.on_architecture_changed)
-        config_layout.addWidget(self.hybrid_checkbox, 4, 1)
-        
+        config_layout.addWidget(self.hybrid_checkbox, 5, 1)
+
         # Tiempo de simulación (para arquitectura híbrida)
         self.time_label = QLabel(tr("integrated_pon_panel.time_seconds"))
-        config_layout.addWidget(self.time_label, 5, 0)
+        config_layout.addWidget(self.time_label, 6, 0)
         self.duration_spinbox = QSpinBox()
         self.duration_spinbox.setRange(1, 120)
         self.duration_spinbox.setValue(10)
         self.duration_spinbox.setToolTip(tr("integrated_pon_panel.time_tooltip"))
         self.duration_spinbox.valueChanged.connect(self.on_duration_changed)
-        config_layout.addWidget(self.duration_spinbox, 5, 1)
-        
+        config_layout.addWidget(self.duration_spinbox, 6, 1)
+
         # Pasos de simulación (OCULTOS - no se usan en arquitectura híbrida)
         self.steps_label = QLabel(tr("integrated_pon_panel.steps"))
         self.steps_label.setVisible(False)  # Ocultar etiqueta
-        config_layout.addWidget(self.steps_label, 6, 0)
+        config_layout.addWidget(self.steps_label, 7, 0)
         self.steps_spinbox = QSpinBox()
         self.steps_spinbox.setRange(100, 10000)
         self.steps_spinbox.setValue(1000)
         self.steps_spinbox.setSingleStep(100)
         self.steps_spinbox.setVisible(False)  # Ocultar control
         self.steps_spinbox.setToolTip(tr("integrated_pon_panel.steps_tooltip"))
-        config_layout.addWidget(self.steps_spinbox, 6, 1)
+        config_layout.addWidget(self.steps_spinbox, 7, 1)
         
         layout.addWidget(self.config_group)
         
@@ -490,23 +908,16 @@ class IntegratedPONTestPanel(QWidget):
     def on_algorithm_changed(self):
         """Manejar cambio de algoritmo DBA"""
         algorithm = self.algorithm_combo.currentText()
-        
+
         # Mostrar/ocultar controles de modelo RL
         is_rl_algorithm = (algorithm == "RL Agent")
         # RL model UI removed - functionality moved to internal RL-DBA
         self.rl_info_group.setVisible(is_rl_algorithm)
-        
+
         if self.orchestrator_initialized and algorithm != self.last_algorithm:
             self.auto_reinitialize(f"algoritmo DBA ({algorithm})")
         self.last_algorithm = algorithm
-    
-    def on_scenario_changed(self):
-        """Manejar cambio de escenario de tráfico"""
-        scenario = self.scenario_combo.currentText()
-        if self.orchestrator_initialized and scenario != self.last_scenario:
-            self.auto_reinitialize(f"escenario de tráfico ({scenario})")
-        self.last_scenario = scenario
-    
+
     def on_duration_changed(self):
         """Manejar cambio de duración de simulación"""
         duration = self.duration_spinbox.value()
@@ -531,7 +942,7 @@ class IntegratedPONTestPanel(QWidget):
             # Obtener parámetros del entorno actual
             env_params = {
                 'num_onus': self.get_onu_count_from_topology(),
-                'traffic_scenario': self.scenario_combo.currentText(),
+                'traffic_scenario': 'residential_medium',  # Escenario por defecto (se usa si ONU no tiene configuración)
                 'episode_duration': self.duration_spinbox.value(),
                 'simulation_timestep': 0.0005
             }
@@ -748,10 +1159,10 @@ class IntegratedPONTestPanel(QWidget):
             if getattr(self, 'verbose_debug', False):
                 print("DEBUG Adapter no disponible")
             return
-        
+
         # Obtener configuración automática
         num_onus = self.get_onu_count_from_topology()
-        scenario = self.scenario_combo.currentText()
+        scenario = 'residential_medium'  # Escenario por defecto (cada ONU tiene su configuración individual)
         algorithm = self.algorithm_combo.currentText()
         use_hybrid = self.hybrid_checkbox.isChecked()
         
@@ -1043,7 +1454,7 @@ class IntegratedPONTestPanel(QWidget):
             session_info = {
                 'num_onus': self.get_onu_count_from_topology(),
                 'algorithm': self.algorithm_combo.currentText(),
-                'traffic_scenario': self.scenario_combo.currentText(),
+                'traffic_scenario': 'residential_medium',  # Valor por defecto (cada ONU tiene configuración individual)
                 'steps': self.steps_spinbox.value(),
                 'detailed_logging': self.detailed_log_checkbox.isChecked()
             }

@@ -35,10 +35,11 @@ class ONU:
         mean_arrival_rate: Optional[float] = None,  # requests/second
         avg_request_size_mb: float = 0.015,  # 15KB por request por defecto
         traffic_sizes_mb: Optional[Dict[str, tuple]] = None,  # Tamaños por tipo
+        traffic_profile: str = "residential_medium",  # Perfil de tráfico asignado
     ):
         """
         Inicializar ONU con generación de tráfico realista
-        
+
         Args:
             id: Identificador único de la ONU
             name: Nombre descriptivo
@@ -48,9 +49,11 @@ class ONU:
             buffer_size: Capacidad máxima del buffer
             mean_arrival_rate: Tasa media de llegadas (req/s)
             avg_request_size_mb: Tamaño promedio de solicitud en MB
+            traffic_profile: Perfil de tráfico asignado (residential_light, residential_medium, etc.)
         """
         self._id = id
         self._name = name
+        self.traffic_profile = traffic_profile  # Almacenar perfil de tráfico
         self.traffic_transmition_probs = traffic_transmition_probs
         self.buffer_size = buffer_size
         self.avg_request_size_mb = avg_request_size_mb
@@ -207,10 +210,11 @@ class ONU:
     def get_onu_stats(self) -> dict:
         """Obtener estadísticas completas de la ONU"""
         response_rate = (self.responses_sent / self.polls_received * 100) if self.polls_received > 0 else 0
-        
+
         return {
             'id': self.id,
             'name': self.name,
+            'traffic_profile': self.traffic_profile,  # Incluir perfil de tráfico
             'transmission_rate': self.transmission_rate,  # Corregido typo
             'sla': self.service_level_agreement,
             'buffer_occupancy': self.get_buffer_occupancy(),

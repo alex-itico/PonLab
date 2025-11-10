@@ -1,0 +1,192 @@
+# ============================================================
+# TEMPLATE DE ALGORITMO DBA — SOLO LECTURA
+# ------------------------------------------------------------
+# Objetivo:
+#   Servir como guía para que los usuarios implementen su propio algoritmo DBA.
+#
+# Reglas del simulador:
+#   - Hereda de DBAAlgorithmInterface.
+#   - Debe implementar allocate_bandwidth() y get_algorithm_name().
+#   - Retorna {onu_id: MB_asignados}.
+#   - Soporta entrada simple {"onu0": 10.0} o por TCONT {"onu0": {"high":2,"low":1}}.
+#   - Usa MB en salida; puede operar internamente en bytes.
+#
+# Flujo típico:
+#   1) Normalizar entrada.
+#   2) Calcular demanda.
+#   3) Asignar mínimos.
+#   4) Repartir sobrante.
+#   5) Devolver asignaciones.
+#
+# Marcadores para detección automática:
+#   "# === BEGIN USER_ALGO: <Nombre> ==="
+#   "# === END USER_ALGO: <Nombre> ==="
+# ============================================================
+
+'''
+# Referencia (NO ejecutar aquí):
+# from pon_dba import DBAAlgorithmInterface
+# from typing import Any, Dict, List, Optional
+# class DBAAlgorithmInterface: ...
+'''
+
+# === BEGIN USER_ALGO: MyCustomDBA ===
+class MyCustomDBA(DBAAlgorithmInterface):
+    """
+    Ejemplo de algoritmo DBA:
+    - Soporta entrada simple o por TCONT.
+    - Implementa mínimos por ONU y reparto por prioridad.
+    - Puede usar 'action' como vector de pesos externo.
+    """
+
+    def __init__(self,
+                 min_share_per_onu_mb=0.0,
+                 max_share_per_onu_mb=None,
+                 tcont_order=None,
+                 prioritize_high=True,
+                 action_mix_alpha=0.5):
+        """
+        Args:
+            min_share_per_onu_mb: Garantía mínima por ONU.
+            max_share_per_onu_mb: Tope por ONU (None = sin tope).
+            tcont_order: Lista de prioridades TCONT.
+            prioritize_high: True = alta→baja prioridad.
+            action_mix_alpha: Ponderación demanda/acción (0..1).
+        """
+        self.min_share = max(0.0, float(min_share_per_onu_mb))
+        self.max_share = (None if max_share_per_onu_mb is None else max(0.0, float(max_share_per_onu_mb)))
+        self.tcont_order = tcont_order or ["highest", "high", "medium", "low", "lowest"]
+        self.prioritize_high = bool(prioritize_high)
+        self.action_mix_alpha = max(0.0, min(1.0, float(action_mix_alpha)))
+
+    # ---------- Helpers de unidades ----------
+    @staticmethod
+    def _mb_to_bytes(mb):
+        return int(max(0.0, float(mb)) * 1024 * 1024)
+
+    @staticmethod
+    def _bytes_to_mb(b):
+        return float(max(0, int(b))) / (1024 * 1024)
+
+    # ---------- Normalización de formato ----------
+    def _is_simple(self, onu_requests):
+        first = next(iter(onu_requests.values()), None)
+        return isinstance(first, (int, float)) or first is None
+
+    def _to_tcont_format(self, onu_requests):
+        """Convierte formato simple → por TCONT (con pesos ilustrativos)."""
+        if self._is_simple(onu_requests):
+            converted = {}
+            for onu_id, total_mb in onu_requests.items():
+                total_mb = float(max(0.0, total_mb or 0.0))
+                weights = {"highest": 0.4, "high": 0.3, "medium": 0.2, "low": 0.1, "lowest": 0.0}
+                remain = total_mb
+                tdict = {}
+                for t in self.tcont_order[:-1]:
+                    portion = total_mb * weights.get(t, 0.0)
+                    tdict[t] = max(0.0, portion)
+                    remain -= tdict[t]
+                tdict[self.tcont_order[-1]] = max(0.0, remain)
+                converted[onu_id] = tdict
+            return converted
+        normalized = {}
+        for onu_id, tdict in onu_requests.items():
+            normalized[onu_id] = {t: float(max(0.0, (tdict.get(t) or 0.0))) for t in self.tcont_order}
+        return normalized
+
+    # ---------- Núcleo de asignación ----------
+    def allocate_bandwidth(self, onu_requests, total_bandwidth, action=None):
+        """
+        Args:
+            onu_requests: dict simple o por TCONT (MB).
+            total_bandwidth: presupuesto total (MB).
+            action: lista de pesos opcional por ONU.
+        Return:
+            {onu_id: MB_asignados}
+        """
+        if not onu_requests or total_bandwidth <= 0:
+            return {}
+
+        req_t = self._to_tcont_format(onu_requests)
+        onu_ids = sorted(req_t.keys())
+        budget_b = self._mb_to_bytes(total_bandwidth)
+
+        demand_onu_b = {k: sum(self._mb_to_bytes(mb) for mb in req_t[k].values()) for k in onu_ids}
+        alloc_b = {k: {t: 0 for t in self.tcont_order} for k in onu_ids}
+        assigned = 0
+
+        # (1) Asigna mínimos por ONU
+        if self.min_share > 0:
+            min_b = self._mb_to_bytes(self.min_share)
+            for onu in onu_ids:
+                if assigned >= budget_b:
+                    break
+                need = demand_onu_b[onu]
+                if need <= 0:
+                    continue
+                give = min(min_b, need, budget_b - assigned)
+                left = give
+                order = (self.tcont_order if self.prioritize_high else list(reversed(self.tcont_order)))
+                for t in order:
+                    if left <= 0:
+                        break
+                    need_t = self._mb_to_bytes(req_t[onu][t]) - alloc_b[onu][t]
+                    if need_t <= 0:
+                        continue
+                    g = min(need_t, left)
+                    alloc_b[onu][t] += g
+                    left -= g
+                    assigned += g
+
+        # (2) Reparte sobrante
+        leftover = budget_b - assigned
+        weights = None
+        if hasattr(action, "__len__") and len(action) == len(onu_ids):
+            total = float(sum(action)) or 1.0
+            weights = {k: float(v) / total for k, v in zip(onu_ids, action)}
+
+        if leftover > 0:
+            order = (self.tcont_order if self.prioritize_high else list(reversed(self.tcont_order)))
+            for t in order:
+                rem_per_onu = {}
+                rem_total = 0
+                for onu in onu_ids:
+                    rem = self._mb_to_bytes(req_t[onu][t]) - alloc_b[onu][t]
+                    rem = max(0, rem)
+                    if rem > 0:
+                        rem_per_onu[onu] = rem
+                        rem_total += rem
+                if rem_total <= 0:
+                    continue
+                for onu in onu_ids:
+                    if leftover <= 0:
+                        break
+                    rem = rem_per_onu.get(onu, 0)
+                    if rem <= 0:
+                        continue
+                    if weights is None:
+                        share = int(leftover * (rem / rem_total))
+                    else:
+                        alpha = self.action_mix_alpha
+                        by_demand = rem / rem_total
+                        by_action = weights.get(onu, 0.0)
+                        share = int(leftover * (alpha * by_demand + (1 - alpha) * by_action))
+                    if self.max_share is not None:
+                        max_b = self._mb_to_bytes(self.max_share)
+                        already = sum(alloc_b[onu].values())
+                        room = max(0, max_b - already)
+                        share = min(share, room)
+                    give = min(share, rem, leftover)
+                    if give > 0:
+                        alloc_b[onu][t] += give
+                        leftover -= give
+                        assigned += give
+                if leftover <= 0:
+                    break
+
+        return {k: self._bytes_to_mb(sum(alloc_b[k].values())) for k in onu_ids}
+
+    def get_algorithm_name(self) -> str:
+        """Nombre del algoritmo visible en el simulador"""
+        return "MY-CUSTOM-DBA"
+# === END USER_ALGO: MyCustomDBA ===

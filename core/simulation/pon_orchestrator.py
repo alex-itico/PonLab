@@ -39,21 +39,24 @@ class PONOrchestrator:
     """
     
     def __init__(self, num_onus: int = 4, traffic_scenario: str = "residential_medium",
-                 episode_duration: float = 1.0, simulation_timestep: float = 0.001):
+                 episode_duration: float = 1.0, simulation_timestep: float = 0.001,
+                 onu_configs: Dict[str, Dict] = None):
         """
         Inicializar orquestador PON.
-        
+
         Args:
             num_onus: Número de ONUs en la red
-            traffic_scenario: Escenario de tráfico
+            traffic_scenario: Escenario de tráfico (usado si no hay onu_configs)
             episode_duration: Duración del episodio en segundos
             simulation_timestep: Paso de simulación en segundos
+            onu_configs: Configuraciones individuales por ONU {onu_id: config_dict}
         """
         self.num_onus = num_onus
         self.traffic_scenario = traffic_scenario
         self.episode_duration = episode_duration
         self.simulation_timestep = simulation_timestep
         self.steps_per_episode = int(episode_duration / simulation_timestep)
+        self.onu_configs = onu_configs  # Guardar configuraciones individuales
         
         # Estado del orquestador
         self.current_step = 0
@@ -119,35 +122,80 @@ class PONOrchestrator:
     
     def _create_onus(self) -> Dict[str, ONU]:
         """Crear configuración de ONUs"""
-        scenario_config = get_traffic_scenario(self.traffic_scenario)
         onus = {}
-        
+
         for i in range(self.num_onus):
             onu_id = str(i)
-            sla = 100.0 + i * 50.0  # SLAs diferenciados
-            lambda_rate = calculate_realistic_lambda(sla, scenario_config)
-            
-            traffic_probs = {
-                "highest": 0.1,
-                "high": 0.2,
-                "medium": 0.4,
-                "low": 0.2,
-                "lowest": 0.1
-            }
-            
+
+            # Si hay configuraciones individuales, usarlas; de lo contrario, usar escenario global
+            if self.onu_configs and onu_id in self.onu_configs:
+                onu_config = self.onu_configs[onu_id]
+
+                # Obtener escenario de tráfico de la ONU
+                traffic_scenario = onu_config.get('traffic_scenario', self.traffic_scenario)
+                scenario_config = get_traffic_scenario(traffic_scenario)
+
+                # Parámetros de la ONU
+                sla = onu_config.get('sla', 100.0 + i * 50.0)
+                buffer_size = onu_config.get('buffer_size', 512)
+                transmission_rate = onu_config.get('transmission_rate', 100.0)
+                onu_name = onu_config.get('name', f"ONU_{i}")
+
+                # Calcular lambda basado en SLA y escenario
+                lambda_rate = calculate_realistic_lambda(sla, scenario_config)
+
+                # Decidir si usar parámetros personalizados o del escenario
+                if onu_config.get('use_custom_params', False):
+                    # Usar parámetros personalizados
+                    traffic_probs = onu_config.get('custom_traffic_probs', {})
+                    traffic_sizes = onu_config.get('custom_traffic_sizes', {})
+                    self._log_event("ONUS", f"ONU {onu_id} ({onu_name}): Parámetros PERSONALIZADOS")
+                else:
+                    # Usar valores del escenario, calculando promedios de los rangos
+                    traffic_probs_range = scenario_config.get('traffic_probs_range', {})
+                    traffic_probs = {
+                        traffic_type: (min_p + max_p) / 2
+                        for traffic_type, (min_p, max_p) in traffic_probs_range.items()
+                    }
+                    traffic_sizes = scenario_config.get("traffic_sizes_mb", {})
+                    self._log_event("ONUS", f"ONU {onu_id} ({onu_name}): Escenario {traffic_scenario}")
+
+            else:
+                # Usar configuración por defecto basada en el escenario global
+                scenario_config = get_traffic_scenario(self.traffic_scenario)
+
+                sla = 100.0 + i * 50.0  # SLAs diferenciados
+                buffer_size = 500
+                transmission_rate = 100.0
+                onu_name = f"ONU_{i}"
+                lambda_rate = calculate_realistic_lambda(sla, scenario_config)
+
+                # Valores del escenario
+                traffic_probs_range = scenario_config.get('traffic_probs_range', {})
+                traffic_probs = {
+                    traffic_type: (min_p + max_p) / 2
+                    for traffic_type, (min_p, max_p) in traffic_probs_range.items()
+                }
+                traffic_sizes = scenario_config.get("traffic_sizes_mb", {})
+                traffic_scenario = self.traffic_scenario
+
+                self._log_event("ONUS", f"ONU {onu_id} ({onu_name}): Configuración POR DEFECTO ({self.traffic_scenario})")
+
+            # Crear ONU con los parámetros determinados
             onus[onu_id] = ONU(
                 id=onu_id,
-                name=f"ONU_{i}",
+                name=onu_name,
                 traffic_transmition_probs=traffic_probs,
-                transmition_rate=100.0,
+                transmission_rate=transmission_rate,
                 service_level_agreement=sla,
-                buffer_size=500,
+                buffer_size=buffer_size,
                 mean_arrival_rate=lambda_rate,
-                avg_request_size_mb=scenario_config["request_size_mb"],
-                traffic_sizes_mb=scenario_config.get("traffic_sizes_mb", None)
+                avg_request_size_mb=scenario_config.get("request_size_mb", 0.015),
+                traffic_sizes_mb=traffic_sizes,
+                traffic_profile=traffic_scenario
             )
-        
-        self._log_event("ONUS", f"{self.num_onus} ONUs creadas con escenario {self.traffic_scenario}")
+
+        self._log_event("ONUS", f"{self.num_onus} ONUs creadas")
         return onus
     
     def init(self) -> None:
