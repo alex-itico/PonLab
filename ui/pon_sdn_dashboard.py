@@ -845,16 +845,18 @@ class PONSDNDashboard(QWidget):
                 self._show_error_message("No se encontró la carpeta 'simulation_results'.\nEjecuta una simulación primero.")
                 return
             
-            # Buscar todos los archivos datos_simulacion.json
+            # Buscar archivos datos_simulacion.json y datos_simulacion.json.gz
             json_files = list(sim_results_path.rglob("datos_simulacion.json"))
-            
-            if not json_files:
+            json_gz_files = list(sim_results_path.rglob("datos_simulacion.json.gz"))
+            all_files = json_files + json_gz_files
+
+            if not all_files:
                 print("❌ No se encontraron archivos de simulación")
                 self._show_error_message("No se encontraron archivos de simulación.\nEjecuta una simulación primero.")
                 return
-            
-            # Obtener el archivo más reciente
-            latest_file = max(json_files, key=lambda p: p.stat().st_mtime)
+
+            # Obtener el archivo más reciente (puede ser .json o .json.gz)
+            latest_file = max(all_files, key=lambda p: p.stat().st_mtime)
             
             print(f"📂 Archivo encontrado: {latest_file.parent.name}/{latest_file.name}")
             print(f"📍 Ruta completa: {latest_file}")

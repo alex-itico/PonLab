@@ -18,18 +18,27 @@ class SDNMetricsProcessor:
         
     def load_simulation_data(self, json_path: str) -> bool:
         """
-        Cargar datos de simulación desde archivo JSON
-        
+        Cargar datos de simulación desde archivo JSON (soporta .json y .json.gz)
+
         Args:
-            json_path: Ruta al archivo datos_simulacion.json
-            
+            json_path: Ruta al archivo datos_simulacion.json o datos_simulacion.json.gz
+
         Returns:
             True si se cargó exitosamente
         """
         try:
-            with open(json_path, 'r', encoding='utf-8') as f:
-                self.simulation_data = json.load(f)
-            print(f"✅ Datos de simulación cargados desde: {json_path}")
+            import gzip
+
+            # Detectar si es comprimido por extensión
+            if json_path.endswith('.gz'):
+                with gzip.open(json_path, 'rt', encoding='utf-8') as f:
+                    self.simulation_data = json.load(f)
+                print(f"✅ Datos de simulación cargados (comprimidos): {json_path}")
+            else:
+                with open(json_path, 'r', encoding='utf-8') as f:
+                    self.simulation_data = json.load(f)
+                print(f"✅ Datos de simulación cargados: {json_path}")
+
             return True
         except Exception as e:
             print(f"❌ Error cargando datos de simulación: {e}")

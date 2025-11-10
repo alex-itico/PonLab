@@ -5,23 +5,173 @@ Sistema de guardado automático de gráficos al finalizar simulación
 
 import os
 import json
+import gzip
+import time
 from datetime import datetime
 from typing import Dict, Any, Optional
-from PyQt5.QtCore import QObject, pyqtSignal
+from PyQt5.QtCore import QObject, pyqtSignal, QThread
 
 from .pon_metrics_charts import PONMetricsChartsPanel
 
 
+class SaveDataThread(QThread):
+    """Thread para guardar datos en segundo plano sin bloquear UI"""
+
+    # Señales
+    save_complete = pyqtSignal(str, float, float)  # (directorio, tiempo_guardado, tamaño_mb)
+    save_error = pyqtSignal(str)     # Emite error si falla
+    save_progress = pyqtSignal(str)  # Emite progreso (opcional)
+
+    def __init__(self, session_dir: str, simulation_data: Dict[str, Any],
+                 session_info: Optional[Dict[str, Any]] = None,
+                 use_compression: bool = True):
+        super().__init__()
+        self.session_dir = session_dir
+        self.simulation_data = simulation_data
+        self.session_info = session_info
+        self.use_compression = use_compression
+        self.start_time = None
+        self.file_size_mb = 0
+
+    def run(self):
+        """Ejecutar guardado en thread separado con medición de tiempo"""
+        try:
+            # Iniciar cronómetro
+            self.start_time = time.time()
+
+            # 1. Guardar JSON
+            self.save_progress.emit("Guardando datos JSON...")
+            data_file = self._save_json_data()
+
+            # 2. Guardar resumen TXT
+            self.save_progress.emit("Generando resumen...")
+            self._save_summary(data_file)
+
+            # 3. Guardar metadata
+            self.save_progress.emit("Guardando metadata...")
+            self._save_metadata()
+
+            # Calcular tiempo total
+            elapsed_time = time.time() - self.start_time
+
+            # Emitir señal de completado con métricas
+            self.save_complete.emit(self.session_dir, elapsed_time, self.file_size_mb)
+
+        except Exception as e:
+            self.save_error.emit(f"Error en thread de guardado: {e}")
+
+    def _save_json_data(self) -> str:
+        """Guardar datos JSON con compresión opcional y medición de tamaño"""
+        try:
+            if self.use_compression:
+                # Guardar comprimido con gzip
+                data_file = os.path.join(self.session_dir, "datos_simulacion.json.gz")
+                with gzip.open(data_file, 'wt', encoding='utf-8') as f:
+                    # Sin indent para reducir tamaño ~40%
+                    json.dump(self.simulation_data, f, ensure_ascii=False, default=str)
+
+                # Obtener tamaño del archivo
+                self.file_size_mb = os.path.getsize(data_file) / (1024 * 1024)
+                print(f"✅ Datos guardados (comprimidos): datos_simulacion.json.gz ({self.file_size_mb:.2f} MB)")
+            else:
+                # Guardar sin comprimir pero sin indent
+                data_file = os.path.join(self.session_dir, "datos_simulacion.json")
+                with open(data_file, 'w', encoding='utf-8') as f:
+                    json.dump(self.simulation_data, f, ensure_ascii=False, default=str)
+
+                # Obtener tamaño del archivo
+                self.file_size_mb = os.path.getsize(data_file) / (1024 * 1024)
+                print(f"✅ Datos guardados: datos_simulacion.json ({self.file_size_mb:.2f} MB)")
+
+            return data_file
+
+        except Exception as e:
+            raise Exception(f"Error guardando JSON: {e}")
+
+    def _save_summary(self, data_file: str):
+        """Guardar archivo de resumen TXT"""
+        try:
+            summary_file = os.path.join(self.session_dir, "RESUMEN.txt")
+
+            with open(summary_file, 'w', encoding='utf-8') as f:
+                f.write("=" * 60 + "\n")
+                f.write("RESUMEN DE SIMULACION PON\n")
+                f.write("=" * 60 + "\n\n")
+
+                # Fecha
+                f.write(f"📅 Fecha: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+                f.write(f"📂 Directorio: {os.path.basename(self.session_dir)}\n\n")
+
+                # Configuración
+                if self.session_info:
+                    f.write("⚙️ CONFIGURACIÓN:\n")
+                    f.write("-" * 30 + "\n")
+                    for key, value in self.session_info.items():
+                        f.write(f"• {key}: {value}\n")
+                    f.write("\n")
+
+                # Métricas principales
+                sim_summary = self.simulation_data.get('simulation_summary', {})
+                sim_stats = sim_summary.get('simulation_stats', {})
+                perf_metrics = sim_summary.get('performance_metrics', {})
+
+                f.write("📊 RESULTADOS:\n")
+                f.write("-" * 30 + "\n")
+                f.write(f"• Pasos: {sim_stats.get('total_steps', 0)}\n")
+                f.write(f"• Tiempo simulado: {sim_stats.get('simulation_time', 0):.6f}s\n")
+                f.write(f"• Delay promedio: {perf_metrics.get('mean_delay', 0):.6f}s\n")
+                f.write(f"• Throughput promedio: {perf_metrics.get('mean_throughput', 0):.3f} MB/s\n")
+                f.write(f"• Utilización: {perf_metrics.get('network_utilization', 0):.1f}%\n\n")
+
+                # Archivos generados
+                f.write("📁 ARCHIVOS GENERADOS:\n")
+                f.write("-" * 30 + "\n")
+                f.write(f"• Datos completos: {os.path.basename(data_file)}\n")
+                f.write(f"• Resumen: RESUMEN.txt\n")
+                f.write(f"• Metadata: metadata.json\n")
+
+            print(f"✅ Resumen guardado: RESUMEN.txt")
+
+        except Exception as e:
+            raise Exception(f"Error guardando resumen: {e}")
+
+    def _save_metadata(self):
+        """Guardar metadata de la sesión"""
+        try:
+            metadata_file = os.path.join(self.session_dir, "metadata.json")
+
+            metadata = {
+                'timestamp': datetime.now().isoformat(),
+                'session_dir': os.path.basename(self.session_dir),
+                'compression_used': self.use_compression,
+                'data_file': 'datos_simulacion.json.gz' if self.use_compression else 'datos_simulacion.json'
+            }
+
+            if self.session_info:
+                metadata.update(self.session_info)
+
+            with open(metadata_file, 'w', encoding='utf-8') as f:
+                json.dump(metadata, f, indent=2, ensure_ascii=False)
+
+            print(f"✅ Metadata guardada: metadata.json")
+
+        except Exception as e:
+            raise Exception(f"Error guardando metadata: {e}")
+
+
 class AutoGraphicsSaver(QObject):
     """Gestor de guardado automático de gráficos"""
-    
+
     # Señales
     graphics_saved = pyqtSignal(str)  # Directorio donde se guardaron
     save_error = pyqtSignal(str)      # Error al guardar
-    
-    def __init__(self):
+    save_progress = pyqtSignal(str)   # Progreso del guardado
+
+    def __init__(self, use_compression: bool = True):
         super().__init__()
         self.base_directory = "simulation_results"
+        self.use_compression = use_compression  # Usar compresión gzip por defecto
+        self.save_thread = None  # Thread actual de guardado
         self.ensure_base_directory()
         
     def ensure_base_directory(self):
@@ -42,51 +192,85 @@ class AutoGraphicsSaver(QObject):
             print(f"ERROR Error creando directorio de sesion: {e}")
             return self.base_directory
     
-    def save_simulation_graphics_and_data(self, 
+    def save_simulation_graphics_and_data(self,
                                         charts_panel: PONMetricsChartsPanel,
                                         simulation_data: Dict[str, Any],
                                         session_info: Optional[Dict[str, Any]] = None) -> str:
         """
-        Guardar automáticamente gráficos y datos de simulación
-        
+        Guardar automáticamente gráficos y datos de simulación usando QThread.
+        El guardado se ejecuta en segundo plano sin bloquear la UI.
+
         Args:
             charts_panel: Panel de gráficos con los charts generados
             simulation_data: Datos completos de la simulación
             session_info: Información adicional de la sesión
-            
+
         Returns:
-            str: Directorio donde se guardó todo
+            str: Directorio donde se guardará todo (retorna inmediatamente)
         """
         try:
             # Crear directorio de sesión
             session_dir = self.create_session_directory()
-            print(f"Guardando resultados en: {session_dir}")
-            
-            # 1. NO Guardar gráficos PNG automáticamente (usar solo botón "Exportar Gráficos")
-            graphics_saved = {}  # Vacío - no se generan gráficos automáticamente
-            # graphics_saved = self._save_graphics_as_images(charts_panel, session_dir)
-            
-            # 2. Guardar datos de simulación como JSON
-            data_saved = self._save_simulation_data(simulation_data, session_dir)
-            
-            # 3. Crear archivo de resumen
-            summary_saved = self._save_session_summary(
-                session_dir, simulation_data, session_info, graphics_saved, data_saved
-            )
-            
-            # 4. Crear archivo de metadatos
-            self._save_metadata(session_dir, simulation_data, session_info)
-            
-            print(f"OK Resultados guardados exitosamente en: {session_dir}")
-            self.graphics_saved.emit(session_dir)
-            
+            print(f"📁 Directorio de sesión creado: {session_dir}")
+
+            # DESACTIVADO: No guardar gráficos PNG automáticamente
+            # if charts_panel and hasattr(charts_panel, 'charts'):
+            #     self._save_graphics_as_images(charts_panel, session_dir)
+
+            # Iniciar guardado de datos en THREAD SEPARADO
+            print(f"🚀 Iniciando guardado en segundo plano...")
+            self._start_async_save(session_dir, simulation_data, session_info)
+
+            # Retornar directorio inmediatamente (el guardado continúa en background)
             return session_dir
-            
+
         except Exception as e:
-            error_msg = f"Error guardando gráficos: {e}"
+            error_msg = f"Error iniciando guardado: {e}"
             print(f"ERROR {error_msg}")
             self.save_error.emit(error_msg)
             return ""
+
+    def _start_async_save(self, session_dir: str, simulation_data: Dict[str, Any],
+                         session_info: Optional[Dict[str, Any]]):
+        """Iniciar guardado asíncrono en thread separado"""
+        # Si hay un thread anterior ejecutándose, esperar a que termine
+        if self.save_thread and self.save_thread.isRunning():
+            print("⚠️ Guardado anterior aún en progreso, esperando...")
+            self.save_thread.wait()
+
+        # Crear y configurar thread de guardado
+        self.save_thread = SaveDataThread(
+            session_dir,
+            simulation_data,
+            session_info,
+            use_compression=self.use_compression
+        )
+
+        # Conectar señales
+        self.save_thread.save_complete.connect(self._on_save_complete)
+        self.save_thread.save_error.connect(self._on_save_error)
+        self.save_thread.save_progress.connect(self._on_save_progress)
+
+        # Iniciar thread
+        self.save_thread.start()
+
+    def _on_save_complete(self, session_dir: str, elapsed_time: float, file_size_mb: float):
+        """Callback cuando el guardado se completa exitosamente"""
+        print(f"✅ Guardado completado en segundo plano: {session_dir}")
+        print(f"⏱️  Tiempo de guardado: {elapsed_time:.2f} segundos")
+        print(f"💾 Tamaño del archivo: {file_size_mb:.2f} MB")
+        print(f"📊 Velocidad: {file_size_mb/elapsed_time:.2f} MB/s")
+        self.graphics_saved.emit(session_dir)
+
+    def _on_save_error(self, error_msg: str):
+        """Callback cuando hay un error en el guardado"""
+        print(f"❌ Error en guardado asíncrono: {error_msg}")
+        self.save_error.emit(error_msg)
+
+    def _on_save_progress(self, progress_msg: str):
+        """Callback para reportar progreso del guardado"""
+        print(f"💾 {progress_msg}")
+        self.save_progress.emit(progress_msg)
     
     def _save_graphics_as_images(self, charts_panel: PONMetricsChartsPanel, session_dir: str) -> Dict[str, str]:
         """Guardar todos los gráficos como imágenes PNG de alta calidad"""
