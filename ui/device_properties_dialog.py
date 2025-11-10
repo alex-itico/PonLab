@@ -3,9 +3,10 @@ Device Properties Dialog
 Ventana de propiedades para dispositivos PON
 """
 
-from PyQt5.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QFormLayout, 
-                             QLabel, QLineEdit, QPushButton, QGroupBox, 
-                             QSpinBox, QDoubleSpinBox, QFrame, QMessageBox)
+from PyQt5.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QFormLayout,
+                             QLabel, QLineEdit, QPushButton, QGroupBox,
+                             QSpinBox, QDoubleSpinBox, QFrame, QMessageBox,
+                             QComboBox, QCheckBox, QTabWidget, QWidget, QScrollArea)
 from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtGui import QFont, QIcon
 import os
@@ -31,8 +32,13 @@ class DevicePropertiesDialog(QDialog):
         """Configurar la interfaz de usuario"""
         self.setWindowTitle(f"Propiedades - {self.device.name}")
         self.setModal(True)
-        self.setFixedSize(500, 450)  # Aumentado de 400x350 a 500x450
-        
+
+        # Ajustar tamaño según el tipo de dispositivo
+        if self.device.device_type == "ONU":
+            self.setFixedSize(550, 700)  # Más grande para ONU con configuración de tráfico
+        else:
+            self.setFixedSize(500, 450)
+
         # Eliminar botón de "What's This?" (signo de interrogación)
         self.setWindowFlags(self.windowFlags() & ~Qt.WindowContextHelpButtonHint)
         
@@ -163,7 +169,7 @@ class DevicePropertiesDialog(QDialog):
         onu_group = QGroupBox("Información ONU")
         onu_layout = QFormLayout(onu_group)
         onu_layout.setSpacing(8)  # Espaciado entre filas
-        
+
         # Distancia de la OLT conectada (calculado)
         olt_distance = self.calculate_olt_distance()
         distance_text = f"{olt_distance:.1f} m" if olt_distance is not None else "No conectada"
@@ -171,9 +177,172 @@ class DevicePropertiesDialog(QDialog):
         self.distance_edit.setReadOnly(True)
         self.distance_edit.setMinimumWidth(200)
         onu_layout.addRow("Distancia a OLT:", self.distance_edit)
-        
+
         main_layout.addWidget(onu_group)
-    
+
+        # Agregar configuración de perfil de tráfico
+        self.setup_traffic_profile_section(main_layout)
+
+    def setup_traffic_profile_section(self, main_layout):
+        """Configurar sección de perfil de tráfico para ONU"""
+        traffic_group = QGroupBox("Perfil de Tráfico PON")
+        traffic_layout = QVBoxLayout(traffic_group)
+        traffic_layout.setSpacing(10)
+
+        # Selector de escenario de tráfico
+        scenario_layout = QFormLayout()
+        scenario_layout.setSpacing(8)
+
+        self.traffic_scenario_combo = QComboBox()
+        self.traffic_scenario_combo.addItems([
+            "residential_light",
+            "residential_medium",
+            "residential_heavy",
+            "enterprise"
+        ])
+        self.traffic_scenario_combo.setMinimumWidth(250)
+        self.traffic_scenario_combo.currentTextChanged.connect(self.on_traffic_scenario_changed)
+        scenario_layout.addRow("Escenario:", self.traffic_scenario_combo)
+
+        # Descripción del escenario
+        self.scenario_description_label = QLabel()
+        self.scenario_description_label.setWordWrap(True)
+        self.scenario_description_label.setStyleSheet("QLabel { color: gray; font-style: italic; }")
+        scenario_layout.addRow("", self.scenario_description_label)
+
+        traffic_layout.addLayout(scenario_layout)
+
+        # Parámetros básicos
+        params_layout = QFormLayout()
+        params_layout.setSpacing(8)
+
+        # SLA
+        self.sla_spinbox = QDoubleSpinBox()
+        self.sla_spinbox.setRange(10.0, 10000.0)
+        self.sla_spinbox.setSuffix(" Mbps")
+        self.sla_spinbox.setSingleStep(10.0)
+        self.sla_spinbox.setMinimumWidth(150)
+        params_layout.addRow("SLA:", self.sla_spinbox)
+
+        # Buffer Size
+        self.buffer_size_spinbox = QSpinBox()
+        self.buffer_size_spinbox.setRange(100, 2000)
+        self.buffer_size_spinbox.setSuffix(" solicitudes")
+        self.buffer_size_spinbox.setSingleStep(50)
+        self.buffer_size_spinbox.setMinimumWidth(150)
+        params_layout.addRow("Tamaño Buffer:", self.buffer_size_spinbox)
+
+        traffic_layout.addLayout(params_layout)
+
+        # Checkbox para habilitar personalización
+        self.use_custom_params_checkbox = QCheckBox("Usar parámetros personalizados")
+        self.use_custom_params_checkbox.stateChanged.connect(self.on_custom_params_toggled)
+        traffic_layout.addWidget(self.use_custom_params_checkbox)
+
+        # Área de parámetros personalizados (colapsable)
+        self.custom_params_widget = QWidget()
+        custom_params_layout = QVBoxLayout(self.custom_params_widget)
+        custom_params_layout.setContentsMargins(0, 0, 0, 0)
+
+        # Probabilidades personalizadas
+        probs_group = QGroupBox("Probabilidades de Tráfico")
+        probs_layout = QFormLayout(probs_group)
+        probs_layout.setSpacing(5)
+
+        self.traffic_prob_spinboxes = {}
+        for traffic_type in ['highest', 'high', 'medium', 'low', 'lowest']:
+            spinbox = QDoubleSpinBox()
+            spinbox.setRange(0.0, 1.0)
+            spinbox.setSingleStep(0.05)
+            spinbox.setDecimals(2)
+            spinbox.setMinimumWidth(100)
+            probs_layout.addRow(f"{traffic_type.capitalize()}:", spinbox)
+            self.traffic_prob_spinboxes[traffic_type] = spinbox
+
+        custom_params_layout.addWidget(probs_group)
+
+        # Tamaños de tráfico personalizados
+        sizes_group = QGroupBox("Tamaños de Tráfico (MB)")
+        sizes_layout = QFormLayout(sizes_group)
+        sizes_layout.setSpacing(5)
+
+        self.traffic_size_spinboxes = {}
+        for traffic_type in ['highest', 'high', 'medium', 'low', 'lowest']:
+            min_spinbox = QDoubleSpinBox()
+            min_spinbox.setRange(0.001, 1.0)
+            min_spinbox.setSingleStep(0.01)
+            min_spinbox.setDecimals(3)
+            min_spinbox.setMinimumWidth(80)
+
+            max_spinbox = QDoubleSpinBox()
+            max_spinbox.setRange(0.001, 1.0)
+            max_spinbox.setSingleStep(0.01)
+            max_spinbox.setDecimals(3)
+            max_spinbox.setMinimumWidth(80)
+
+            size_layout = QHBoxLayout()
+            size_layout.addWidget(QLabel("Min:"))
+            size_layout.addWidget(min_spinbox)
+            size_layout.addWidget(QLabel("Max:"))
+            size_layout.addWidget(max_spinbox)
+            size_layout.addStretch()
+
+            sizes_layout.addRow(f"{traffic_type.capitalize()}:", size_layout)
+            self.traffic_size_spinboxes[traffic_type] = (min_spinbox, max_spinbox)
+
+        custom_params_layout.addWidget(sizes_group)
+        traffic_layout.addWidget(self.custom_params_widget)
+
+        # Ocultar parámetros personalizados por defecto
+        self.custom_params_widget.setVisible(False)
+
+        main_layout.addWidget(traffic_group)
+
+    def on_traffic_scenario_changed(self, scenario_name):
+        """Manejar cambio de escenario de tráfico"""
+        # Importar get_traffic_scenario
+        try:
+            from ..core.utilities.pon_traffic import get_traffic_scenario
+            scenario_config = get_traffic_scenario(scenario_name)
+
+            # Actualizar descripción
+            self.scenario_description_label.setText(scenario_config.get('description', ''))
+
+            # Si no está usando parámetros personalizados, actualizar valores según el escenario
+            if not self.use_custom_params_checkbox.isChecked():
+                # Actualizar SLA con el valor medio del rango
+                sla_range = scenario_config.get('sla_range', (100, 300))
+                sla_default = (sla_range[0] + sla_range[1]) / 2
+                self.sla_spinbox.setValue(sla_default)
+
+                # Actualizar probabilidades
+                traffic_probs_range = scenario_config.get('traffic_probs_range', {})
+                for traffic_type, (min_p, max_p) in traffic_probs_range.items():
+                    if traffic_type in self.traffic_prob_spinboxes:
+                        # Usar valor medio del rango
+                        self.traffic_prob_spinboxes[traffic_type].setValue((min_p + max_p) / 2)
+
+                # Actualizar tamaños
+                traffic_sizes_mb = scenario_config.get('traffic_sizes_mb', {})
+                for traffic_type, (min_size, max_size) in traffic_sizes_mb.items():
+                    if traffic_type in self.traffic_size_spinboxes:
+                        min_spinbox, max_spinbox = self.traffic_size_spinboxes[traffic_type]
+                        min_spinbox.setValue(min_size)
+                        max_spinbox.setValue(max_size)
+
+        except Exception as e:
+            print(f"Error al cargar escenario de tráfico: {e}")
+
+    def on_custom_params_toggled(self, state):
+        """Manejar toggle de parámetros personalizados"""
+        is_checked = state == Qt.Checked
+        self.custom_params_widget.setVisible(is_checked)
+
+        # Si se desactiva, recargar valores del escenario
+        if not is_checked:
+            current_scenario = self.traffic_scenario_combo.currentText()
+            self.on_traffic_scenario_changed(current_scenario)
+
     def setup_buttons(self, main_layout):
         """Configurar botones del diálogo"""
         # Agregar espacio flexible antes de los botones
@@ -211,7 +380,7 @@ class DevicePropertiesDialog(QDialog):
             'x': self.device.x,
             'y': self.device.y
         }
-        
+
         # Agregar transmission_rate para OLTs
         if self.device.device_type in ["OLT", "OLT_SDN"]:
             current_transmission_rate = self.device.properties.get('transmission_rate', 4096.0)
@@ -219,6 +388,44 @@ class DevicePropertiesDialog(QDialog):
             # Actualizar el campo visual con el valor actual del dispositivo
             if hasattr(self, 'transmission_rate_spinbox'):
                 self.transmission_rate_spinbox.setValue(current_transmission_rate)
+
+        # Cargar configuración de tráfico para ONUs
+        if self.device.device_type == "ONU" and hasattr(self, 'traffic_scenario_combo'):
+            # Cargar escenario de tráfico
+            traffic_scenario = self.device.properties.get('traffic_scenario', 'residential_medium')
+            index = self.traffic_scenario_combo.findText(traffic_scenario)
+            if index >= 0:
+                self.traffic_scenario_combo.setCurrentIndex(index)
+
+            # Cargar SLA y buffer size
+            self.sla_spinbox.setValue(self.device.properties.get('sla', 200.0))
+            self.buffer_size_spinbox.setValue(self.device.properties.get('buffer_size', 512))
+
+            # Cargar use_custom_params
+            use_custom = self.device.properties.get('use_custom_params', False)
+            self.use_custom_params_checkbox.setChecked(use_custom)
+
+            # Cargar probabilidades personalizadas
+            custom_probs = self.device.properties.get('custom_traffic_probs', {})
+            for traffic_type, spinbox in self.traffic_prob_spinboxes.items():
+                spinbox.setValue(custom_probs.get(traffic_type, 0.3))
+
+            # Cargar tamaños personalizados
+            custom_sizes = self.device.properties.get('custom_traffic_sizes', {})
+            for traffic_type, (min_spinbox, max_spinbox) in self.traffic_size_spinboxes.items():
+                size_range = custom_sizes.get(traffic_type, (0.01, 0.1))
+                min_spinbox.setValue(size_range[0])
+                max_spinbox.setValue(size_range[1])
+
+            # Guardar en original_properties
+            self.original_properties.update({
+                'traffic_scenario': traffic_scenario,
+                'sla': self.device.properties.get('sla', 200.0),
+                'buffer_size': self.device.properties.get('buffer_size', 512),
+                'use_custom_params': use_custom,
+                'custom_traffic_probs': custom_probs,
+                'custom_traffic_sizes': custom_sizes
+            })
     
     def calculate_connected_onus(self):
         """Calcular número de ONUs conectadas a esta OLT"""
@@ -263,27 +470,65 @@ class DevicePropertiesDialog(QDialog):
         # Validar datos
         if not self.validate_data():
             return
-        
+
         # Crear diccionario con nuevas propiedades
         new_properties = {
             'name': self.name_edit.text().strip(),
             'x': self.x_spinbox.value(),
             'y': self.y_spinbox.value()
         }
-        
+
         # Agregar transmission_rate si es un OLT
         if self.device.device_type in ["OLT", "OLT_SDN"] and hasattr(self, 'transmission_rate_spinbox'):
             new_transmission_rate = self.transmission_rate_spinbox.value()
             new_properties['transmission_rate'] = new_transmission_rate
-            
+
             # Usar el método update_property para sincronización automática
             if hasattr(self.device, 'update_property'):
                 self.device.update_property('transmission_rate', new_transmission_rate)
                 print(f"🔄 Transmission rate actualizada desde UI: {new_transmission_rate} Mbps")
-        
+
+        # Agregar configuración de tráfico si es una ONU
+        if self.device.device_type == "ONU" and hasattr(self, 'traffic_scenario_combo'):
+            # Recopilar configuración de tráfico
+            traffic_scenario = self.traffic_scenario_combo.currentText()
+            sla = self.sla_spinbox.value()
+            buffer_size = self.buffer_size_spinbox.value()
+            use_custom = self.use_custom_params_checkbox.isChecked()
+
+            # Recopilar probabilidades personalizadas
+            custom_probs = {}
+            for traffic_type, spinbox in self.traffic_prob_spinboxes.items():
+                custom_probs[traffic_type] = spinbox.value()
+
+            # Recopilar tamaños personalizados
+            custom_sizes = {}
+            for traffic_type, (min_spinbox, max_spinbox) in self.traffic_size_spinboxes.items():
+                custom_sizes[traffic_type] = (min_spinbox.value(), max_spinbox.value())
+
+            # Actualizar propiedades del dispositivo
+            self.device.properties['traffic_scenario'] = traffic_scenario
+            self.device.properties['sla'] = sla
+            self.device.properties['buffer_size'] = buffer_size
+            self.device.properties['use_custom_params'] = use_custom
+            self.device.properties['custom_traffic_probs'] = custom_probs
+            self.device.properties['custom_traffic_sizes'] = custom_sizes
+
+            # Agregar a new_properties para emitir señal
+            new_properties.update({
+                'traffic_scenario': traffic_scenario,
+                'sla': sla,
+                'buffer_size': buffer_size,
+                'use_custom_params': use_custom,
+                'custom_traffic_probs': custom_probs,
+                'custom_traffic_sizes': custom_sizes
+            })
+
+            print(f"✅ Configuración de tráfico actualizada para {self.device.name}: {traffic_scenario}")
+
         # Emitir señal con cambios
         self.properties_updated.emit(self.device.id, new_properties)
-        
+
         # Cerrar diálogo
         self.accept()
     
