@@ -747,5 +747,21 @@
     "save_success": "Projet enregistré: {0}",
     "save_error_title": "Erreur lors de l'enregistrement",
     "save_error_question": "Impossible d'enregistrer le projet dans:\n{0}\n\nVoulez-vous fermer sans enregistrer?"
+  },
+  "saving_progress": {
+    "window_title": "Sauvegarde de la Simulation",
+    "title": "💾 Sauvegarde des Données de Simulation...",
+    "subtitle": "Écriture incrémentale en arrière-plan",
+    "general_progress": "Progrès général:",
+    "snapshots": "Snapshots: {0:,} / {1:,}",
+    "size": "Taille: {0:.2f} MB (comprimé)",
+    "speed": "Vitesse: {0} items/s",
+    "time": "Temps: {0:.1f}s",
+    "info_message": "✨ Vous pouvez continuer à utiliser l'application pendant la sauvegarde",
+    "minimize_button": "Réduire",
+    "completed_title": "✅ Données Sauvegardées avec Succès",
+    "completed_subtitle": "Sauvegarde terminée avec succès",
+    "completed_message": "🎉 Toutes les données ont été sauvegardées correctement",
+    "close_button": "Fermer"
   }
 }

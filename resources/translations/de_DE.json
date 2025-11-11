@@ -747,5 +747,21 @@
     "save_success": "Projekt gespeichert: {0}",
     "save_error_title": "Fehler beim Speichern",
     "save_error_question": "Das Projekt konnte nicht gespeichert werden in:\n{0}\n\nMöchten Sie ohne Speichern schließen?"
+  },
+  "saving_progress": {
+    "window_title": "Simulation Speichern",
+    "title": "💾 Speichere Simulationsdaten...",
+    "subtitle": "Inkrementelles Schreiben im Hintergrund",
+    "general_progress": "Gesamtfortschritt:",
+    "snapshots": "Snapshots: {0:,} / {1:,}",
+    "size": "Größe: {0:.2f} MB (komprimiert)",
+    "speed": "Geschwindigkeit: {0} Items/s",
+    "time": "Zeit: {0:.1f}s",
+    "info_message": "✨ Sie können die Anwendung während des Speicherns weiter verwenden",
+    "minimize_button": "Minimieren",
+    "completed_title": "✅ Daten Erfolgreich Gespeichert",
+    "completed_subtitle": "Speichern erfolgreich abgeschlossen",
+    "completed_message": "🎉 Alle Daten wurden korrekt gespeichert",
+    "close_button": "Schließen"
   }
 }

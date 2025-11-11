@@ -748,5 +748,21 @@
     "save_success": "Proyecto guardado: {0}",
     "save_error_title": "Error al guardar",
     "save_error_question": "No se pudo guardar el proyecto en:\n{0}\n\n¿Quieres cerrar sin guardar?"
+  },
+  "saving_progress": {
+    "window_title": "Guardando Simulación",
+    "title": "💾 Guardando Datos de Simulación...",
+    "subtitle": "Escritura incremental en segundo plano",
+    "general_progress": "Progreso general:",
+    "snapshots": "Snapshots: {0:,} / {1:,}",
+    "size": "Tamaño: {0:.2f} MB (comprimido)",
+    "speed": "Velocidad: {0} items/s",
+    "time": "Tiempo: {0:.1f}s",
+    "info_message": "✨ Puedes seguir usando la aplicación mientras se guarda",
+    "minimize_button": "Minimizar",
+    "completed_title": "✅ Datos Guardados Exitosamente",
+    "completed_subtitle": "Guardado completado con éxito",
+    "completed_message": "🎉 Todos los datos fueron guardados correctamente",
+    "close_button": "Cerrar"
   }
 }
