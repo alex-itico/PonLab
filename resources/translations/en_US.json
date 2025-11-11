@@ -293,7 +293,22 @@
     "save": "Save",
     "validation_error": "Validation Error",
     "empty_name_error": "Device name cannot be empty.",
-    "invalid_rate_error": "Transmission rate must be greater than 0."
+    "invalid_rate_error": "Transmission rate must be greater than 0.",
+    "traffic_profile_title": "PON Traffic Profile",
+    "scenario_label": "Scenario:",
+    "sla_label": "SLA:",
+    "buffer_size_label": "Buffer Size:",
+    "buffer_suffix": " requests",
+    "use_custom_params": "Use custom parameters",
+    "traffic_probs_title": "Traffic Probabilities",
+    "traffic_sizes_title": "Traffic Sizes (MB)",
+    "priority_highest": "Highest",
+    "priority_high": "High",
+    "priority_medium": "Medium",
+    "priority_low": "Low",
+    "priority_lowest": "Lowest",
+    "min_label": "Min:",
+    "max_label": "Max:"
   },
   "sdn_dashboard": {
     "title": "📊 SDN Dashboard - Advanced Metrics",

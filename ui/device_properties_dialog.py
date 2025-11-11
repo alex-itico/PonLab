@@ -194,7 +194,9 @@ class DevicePropertiesDialog(QDialog):
 
     def setup_traffic_profile_section(self, main_layout):
         """Configurar sección de perfil de tráfico para ONU"""
-        traffic_group = QGroupBox("Perfil de Tráfico PON")
+        tr = translation_manager.get_text
+        
+        traffic_group = QGroupBox(tr("properties_dialog.traffic_profile_title"))
         traffic_layout = QVBoxLayout(traffic_group)
         traffic_layout.setSpacing(10)
 
@@ -211,7 +213,7 @@ class DevicePropertiesDialog(QDialog):
         ])
         self.traffic_scenario_combo.setMinimumWidth(250)
         self.traffic_scenario_combo.currentTextChanged.connect(self.on_traffic_scenario_changed)
-        scenario_layout.addRow("Escenario:", self.traffic_scenario_combo)
+        scenario_layout.addRow(tr("properties_dialog.scenario_label"), self.traffic_scenario_combo)
 
         # Descripción del escenario
         self.scenario_description_label = QLabel()
@@ -231,20 +233,20 @@ class DevicePropertiesDialog(QDialog):
         self.sla_spinbox.setSuffix(" Mbps")
         self.sla_spinbox.setSingleStep(10.0)
         self.sla_spinbox.setMinimumWidth(150)
-        params_layout.addRow("SLA:", self.sla_spinbox)
+        params_layout.addRow(tr("properties_dialog.sla_label"), self.sla_spinbox)
 
         # Buffer Size
         self.buffer_size_spinbox = QSpinBox()
         self.buffer_size_spinbox.setRange(100, 2000)
-        self.buffer_size_spinbox.setSuffix(" solicitudes")
+        self.buffer_size_spinbox.setSuffix(tr("properties_dialog.buffer_suffix"))
         self.buffer_size_spinbox.setSingleStep(50)
         self.buffer_size_spinbox.setMinimumWidth(150)
-        params_layout.addRow("Tamaño Buffer:", self.buffer_size_spinbox)
+        params_layout.addRow(tr("properties_dialog.buffer_size_label"), self.buffer_size_spinbox)
 
         traffic_layout.addLayout(params_layout)
 
         # Checkbox para habilitar personalización
-        self.use_custom_params_checkbox = QCheckBox("Usar parámetros personalizados")
+        self.use_custom_params_checkbox = QCheckBox(tr("properties_dialog.use_custom_params"))
         self.use_custom_params_checkbox.stateChanged.connect(self.on_custom_params_toggled)
         traffic_layout.addWidget(self.use_custom_params_checkbox)
 
@@ -254,24 +256,31 @@ class DevicePropertiesDialog(QDialog):
         custom_params_layout.setContentsMargins(0, 0, 0, 0)
 
         # Probabilidades personalizadas
-        probs_group = QGroupBox("Probabilidades de Tráfico")
+        probs_group = QGroupBox(tr("properties_dialog.traffic_probs_title"))
         probs_layout = QFormLayout(probs_group)
         probs_layout.setSpacing(5)
 
         self.traffic_prob_spinboxes = {}
+        priority_labels = {
+            'highest': tr("properties_dialog.priority_highest"),
+            'high': tr("properties_dialog.priority_high"),
+            'medium': tr("properties_dialog.priority_medium"),
+            'low': tr("properties_dialog.priority_low"),
+            'lowest': tr("properties_dialog.priority_lowest")
+        }
         for traffic_type in ['highest', 'high', 'medium', 'low', 'lowest']:
             spinbox = QDoubleSpinBox()
             spinbox.setRange(0.0, 1.0)
             spinbox.setSingleStep(0.05)
             spinbox.setDecimals(2)
             spinbox.setMinimumWidth(100)
-            probs_layout.addRow(f"{traffic_type.capitalize()}:", spinbox)
+            probs_layout.addRow(f"{priority_labels[traffic_type]}:", spinbox)
             self.traffic_prob_spinboxes[traffic_type] = spinbox
 
         custom_params_layout.addWidget(probs_group)
 
         # Tamaños de tráfico personalizados
-        sizes_group = QGroupBox("Tamaños de Tráfico (MB)")
+        sizes_group = QGroupBox(tr("properties_dialog.traffic_sizes_title"))
         sizes_layout = QFormLayout(sizes_group)
         sizes_layout.setSpacing(5)
 
@@ -290,13 +299,13 @@ class DevicePropertiesDialog(QDialog):
             max_spinbox.setMinimumWidth(80)
 
             size_layout = QHBoxLayout()
-            size_layout.addWidget(QLabel("Min:"))
+            size_layout.addWidget(QLabel(tr("properties_dialog.min_label")))
             size_layout.addWidget(min_spinbox)
-            size_layout.addWidget(QLabel("Max:"))
+            size_layout.addWidget(QLabel(tr("properties_dialog.max_label")))
             size_layout.addWidget(max_spinbox)
             size_layout.addStretch()
 
-            sizes_layout.addRow(f"{traffic_type.capitalize()}:", size_layout)
+            sizes_layout.addRow(f"{priority_labels[traffic_type]}:", size_layout)
             self.traffic_size_spinboxes[traffic_type] = (min_spinbox, max_spinbox)
 
         custom_params_layout.addWidget(sizes_group)

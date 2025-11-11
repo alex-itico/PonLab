@@ -293,7 +293,22 @@
     "save": "Guardar",
     "validation_error": "Error de Validación",
     "empty_name_error": "El nombre del dispositivo no puede estar vacío.",
-    "invalid_rate_error": "La tasa de transmisión debe ser mayor a 0."
+    "invalid_rate_error": "La tasa de transmisión debe ser mayor a 0.",
+    "traffic_profile_title": "Perfil de Tráfico PON",
+    "scenario_label": "Escenario:",
+    "sla_label": "SLA:",
+    "buffer_size_label": "Tamaño Buffer:",
+    "buffer_suffix": " solicitudes",
+    "use_custom_params": "Usar parámetros personalizados",
+    "traffic_probs_title": "Probabilidades de Tráfico",
+    "traffic_sizes_title": "Tamaños de Tráfico (MB)",
+    "priority_highest": "Más alta",
+    "priority_high": "Alta",
+    "priority_medium": "Media",
+    "priority_low": "Baja",
+    "priority_lowest": "Más baja",
+    "min_label": "Mín:",
+    "max_label": "Máx:"
   },
   "sdn_dashboard": {
     "title": "📊 Dashboard SDN - Métricas Avanzadas",
