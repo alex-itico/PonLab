@@ -1238,11 +1238,21 @@ class IntegratedPONTestPanel(QWidget):
         
         if use_hybrid:
             self.results_panel.add_log_message("🚀 Inicializando simulación híbrida...")
-            success, message = self.adapter.initialize_hybrid_simulator(
-                num_onus=num_onus,
-                traffic_scenario=scenario,
-                channel_capacity_mbps=1024.0
-            )
+            
+            # Usar topología del canvas si está disponible
+            if self.canvas_reference:
+                # Primero configurar el modo de simulación a "events"
+                self.adapter.set_simulation_mode("events")
+                # Luego inicializar desde la topología del canvas
+                success, message = self.adapter.initialize_from_topology(
+                    self.canvas_reference.device_manager
+                )
+            else:
+                success, message = self.adapter.initialize_hybrid_simulator(
+                    num_onus=num_onus,
+                    traffic_scenario=scenario,
+                    channel_capacity_mbps=1024.0
+                )
         else:
             self.results_panel.add_log_message("🚀 Inicializando simulación clásica...")
             

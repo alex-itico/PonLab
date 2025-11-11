@@ -93,7 +93,7 @@ class OptimizedHybridPONSimulator:
         
         self.onus = {}
         for i in range(self.num_onus):
-            onu_id = str(i)
+            onu_id = f'ONU_{i}'  # Usar formato de nombre real
             
             # SLA diferenciado por ONU pero más moderado
             sla = 50.0 + i * 25.0  # 50, 75, 100, 125 Mbps (reducido)

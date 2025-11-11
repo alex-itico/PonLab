@@ -163,13 +163,16 @@ class PONSimulator:
         """Configurar ONUs para simulación por eventos"""
         self.onus = {}
 
-        for i in range(self.num_onus):
-            onu_id = str(i)
+        # Si hay configuraciones, usar sus IDs reales; si no, usar índices numéricos
+        if onu_configs:
+            onu_items = list(onu_configs.items())
+        else:
+            # Crear configuración por defecto con nombres ONU_0, ONU_1, etc.
+            onu_items = [(f'ONU_{i}', {}) for i in range(self.num_onus)]
 
+        for i, (onu_id, onu_config) in enumerate(onu_items):
             # Si hay configuraciones individuales, usarlas; de lo contrario, usar escenario global
-            if onu_configs and onu_id in onu_configs:
-                onu_config = onu_configs[onu_id]
-
+            if onu_config:
                 # Obtener escenario de tráfico de la ONU
                 onu_traffic_scenario = onu_config.get('traffic_scenario', traffic_scenario)
                 scenario_config = get_traffic_scenario(onu_traffic_scenario)

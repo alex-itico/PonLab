@@ -660,7 +660,7 @@
     "no_data": "No data available",
     "legend_delay_avg": "Average delay",
     "legend_throughput_avg": "Average throughput",
-    "legend_onu": "ONU {0}",
+    "legend_onu": "{0}",
     "legend_medium_level": "Medium level (50%)",
     "legend_high_level": "High level (80%)",
     "legend_mean_delay": "Mean Delay",
@@ -705,11 +705,11 @@
     "olt_summary_title": "Grants Summary:",
     "olt_total_grants": "Total allocations: {0}",
     "olt_total_onus": "ONUs: {0}",
-    "olt_onu_label": "ONU {0}",
+    "olt_onu_label": "{0}",
     "olt_grants_count": "{0} grants",
     "olt_axis_sequence": "Allocation Sequence (Packet #)",
     "olt_axis_bytes": "Allocated Bytes",
-    "olt_grant_info": "Grant #{0} | ONU {1} | {2} | {3} bytes | t={4}s",
+    "olt_grant_info": "Grant #{0} | {1} | {2} | {3} bytes | t={4}s",
     "olt_pyqtgraph_warning": "⚠️ PyQtGraph is not installed.\n\nTo view OLT grants visualization, install pyqtgraph:\npip install pyqtgraph>=0.12.0"
   },
   "connection_errors": {

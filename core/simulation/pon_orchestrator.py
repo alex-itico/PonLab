@@ -124,13 +124,16 @@ class PONOrchestrator:
         """Crear configuración de ONUs"""
         onus = {}
 
-        for i in range(self.num_onus):
-            onu_id = str(i)
+        # Si hay configuraciones, usar sus IDs reales; si no, usar índices numéricos
+        if self.onu_configs:
+            onu_items = list(self.onu_configs.items())
+        else:
+            # Crear configuración por defecto con nombres ONU_0, ONU_1, etc.
+            onu_items = [(f'ONU_{i}', {}) for i in range(self.num_onus)]
 
+        for i, (onu_id, onu_config) in enumerate(onu_items):
             # Si hay configuraciones individuales, usarlas; de lo contrario, usar escenario global
-            if self.onu_configs and onu_id in self.onu_configs:
-                onu_config = self.onu_configs[onu_id]
-
+            if onu_config:
                 # Obtener escenario de tráfico de la ONU
                 traffic_scenario = onu_config.get('traffic_scenario', self.traffic_scenario)
                 scenario_config = get_traffic_scenario(traffic_scenario)
@@ -139,7 +142,8 @@ class PONOrchestrator:
                 sla = onu_config.get('sla', 100.0 + i * 50.0)
                 buffer_size = onu_config.get('buffer_size', 512)
                 transmission_rate = onu_config.get('transmission_rate', 100.0)
-                onu_name = onu_config.get('name', f"ONU_{i}")
+                # El onu_id ya es el nombre del dispositivo
+                onu_name = onu_id
 
                 # Calcular lambda basado en SLA y escenario
                 lambda_rate = calculate_realistic_lambda(sla, scenario_config)
@@ -167,7 +171,7 @@ class PONOrchestrator:
                 sla = 100.0 + i * 50.0  # SLAs diferenciados
                 buffer_size = 500
                 transmission_rate = 100.0
-                onu_name = f"ONU_{i}"
+                onu_name = onu_id  # Usar onu_id como nombre (ya tiene formato ONU_X)
                 lambda_rate = calculate_realistic_lambda(sla, scenario_config)
 
                 # Valores del escenario
@@ -308,9 +312,8 @@ class PONOrchestrator:
     def get_buffer_levels(self) -> List[float]:
         """Obtener niveles de buffer normalizados [0-1] para todas las ONUs"""
         buffer_levels = []
-        for i in range(self.num_onus):
-            onu_id = str(i)
-            onu = self.olt.onus[onu_id]
+        # Usar las ONUs reales del OLT (con nombres reales)
+        for onu_id, onu in self.olt.onus.items():
             level = len(onu.buffer) / max(onu.buffer.size, 1)
             buffer_levels.append(min(level, 1.0))
         return buffer_levels

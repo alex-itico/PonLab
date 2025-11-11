@@ -267,8 +267,6 @@ class PONMetricsChart(FigureCanvas):
 
     def plot_onu_buffer_levels(self, simulation_data: Dict[str, Any]):
         """Graficar evolución temporal de los niveles de buffer por ONU"""
-        print(f"[BUFFER-LOG-GUI] plot_onu_buffer_levels() llamado")
-
         if not MATPLOTLIB_AVAILABLE:
             return
 
@@ -279,21 +277,15 @@ class PONMetricsChart(FigureCanvas):
         simulation_summary = simulation_data.get('simulation_summary', {})
         episode_metrics = simulation_summary.get('episode_metrics', {})
         buffer_history = episode_metrics.get('buffer_levels_history', [])
-        print(f"[BUFFER-LOG-GUI] buffer_history desde episode_metrics: {len(buffer_history)} entries")
 
         # Si no hay datos, intentar desde la raíz (estructura alternativa)
         if not buffer_history:
             episode_metrics_root = simulation_data.get('episode_metrics', {})
             buffer_history = episode_metrics_root.get('buffer_levels_history', [])
-            print(f"[BUFFER-LOG-GUI] buffer_history desde raíz: {len(buffer_history)} entries")
 
         if not buffer_history:
-            print(f"[BUFFER-LOG-GUI] ⚠️ ERROR: Sin historial de buffer disponible!")
             self._plot_no_data("Sin historial de buffer")
             return
-        else:
-            print(f"[BUFFER-LOG-GUI] ✅ buffer_history tiene {len(buffer_history)} entries")
-            print(f"[BUFFER-LOG-GUI] Primera entrada: {buffer_history[0]}")
 
         ax = self.fig.add_subplot(111)
 
@@ -1562,7 +1554,6 @@ class PONMetricsChartsPanel(QWidget):
         
         # Convertir buffer levels: mantener formato nuevo con MB y timestamps
         buffer_history = episode_metrics.get('buffer_levels_history', [])
-        print(f"[BUFFER-LOG-GUI] Normalizando datos. buffer_history tiene {len(buffer_history)} entries")
         if buffer_history:
             converted_buffer_history = []
             for step_data in buffer_history:
@@ -1570,11 +1561,7 @@ class PONMetricsChartsPanel(QWidget):
                 if isinstance(step_data, dict) and 'time' in step_data and 'buffers' in step_data:
                     # Formato nuevo con timestamps - mantener tal cual
                     converted_buffer_history.append(step_data)
-                    if len(converted_buffer_history) == 1:
-                        print(f"[BUFFER-LOG-GUI] Formato NUEVO detectado con timestamps")
                 else:
-                    if len(converted_buffer_history) == 0:
-                        print(f"[BUFFER-LOG-GUI] Formato ANTIGUO sin timestamps")
                     # Formato antiguo sin timestamps - convertir
                     converted_step = {}
                     for onu_id, level_data in step_data.items():
@@ -1600,9 +1587,6 @@ class PONMetricsChartsPanel(QWidget):
                 converted_data['simulation_summary']['episode_metrics'] = {}
 
             converted_data['simulation_summary']['episode_metrics']['buffer_levels_history'] = converted_buffer_history
-            print(f"[BUFFER-LOG-GUI] Después de normalización: {len(converted_buffer_history)} entries")
-        else:
-            print(f"[BUFFER-LOG-GUI] ⚠️ buffer_history estaba VACÍO en entrada!")
         
         # Los delays y throughputs híbridos ya tienen formato compatible
         # (incluso mejor con timestamp, onu_id, tcont_id)
@@ -1779,7 +1763,7 @@ class PONMetricsChartsPanel(QWidget):
                 pen=pg.mkPen(None),
                 brush=pg.mkBrush(*group_data['color']),
                 symbol=group_data['symbol'],
-                name=f"ONU {onu_id} - {priority}"
+                name=f"{onu_id} - {priority}"  # onu_id ya contiene "ONU_1", "ONU_2", etc.
             )
             self.grants_plot.addItem(scatter)
             self.grants_scatter_items[(onu_id, priority)] = scatter

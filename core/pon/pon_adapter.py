@@ -200,7 +200,8 @@ class PONAdapter:
         onu_configs = {}
 
         for idx, onu_device in enumerate(onu_devices):
-            onu_id = str(idx)
+            # Usar el nombre real del dispositivo como ID
+            onu_id = onu_device.name  # 'casa', 'prueba', etc.
 
             # Extraer configuración del dispositivo
             config = {
@@ -211,11 +212,11 @@ class PONAdapter:
                 'custom_traffic_probs': onu_device.properties.get('custom_traffic_probs', {}),
                 'custom_traffic_sizes': onu_device.properties.get('custom_traffic_sizes', {}),
                 'transmission_rate': onu_device.properties.get('transmission_rate', 1024.0),
-                'name': onu_device.name
+                'index': idx  # Guardar índice numérico para compatibilidad
             }
 
             onu_configs[onu_id] = config
-            self._log_event("CONFIG", f"ONU {onu_id} ({config['name']}): {config['traffic_scenario']}, "
+            self._log_event("CONFIG", f"ONU {onu_id}: {config['traffic_scenario']}, "
                           f"SLA={config['sla']} Mbps, custom={config['use_custom_params']}")
 
         return onu_configs
@@ -319,7 +320,7 @@ class PONAdapter:
             self._log_event("ERROR", error_msg)
             return False
     
-    def _initialize_simulator(self, num_onus):
+    def _initialize_simulator(self, num_onus, onu_configs=None):
         """Inicializar simulador unificado"""
         try:
             if not PONSimulator:
@@ -336,11 +337,12 @@ class PONAdapter:
                     traffic_scenario=self.config['traffic_scenario'],
                     dba_algorithm=dba_algorithm,
                     channel_capacity_mbps=self.config['channel_capacity_mbps'],
-                    use_sdn=self.use_sdn
+                    use_sdn=self.use_sdn,
+                    onu_configs=onu_configs  # ✨ AGREGADO: Pasar configuraciones individuales
                 )
             elif self.simulation_mode == "cycles":
                 # Configurar simulación por ciclos (requiere orquestador)
-                self._initialize_orchestrator(num_onus)
+                self._initialize_orchestrator(num_onus, onu_configs)  # ✨ AGREGADO: Pasar onu_configs
                 if self.orchestrator:
                     self.simulator.setup_cycle_simulation(self.orchestrator.olt)
             
