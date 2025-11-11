@@ -5,8 +5,11 @@ Control temporal estricto - sin colisiones de transmisión
 
 import heapq
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional, Any, TYPE_CHECKING
 from enum import Enum
+
+if TYPE_CHECKING:
+    from ..simulation.incremental_data_writer import IncrementalDataWriter
 
 
 class EventType(Enum):
@@ -106,6 +109,10 @@ class TimeSlotManager:
         self.channel_capacity = channel_capacity_mbps
         self.current_transmission_end = 0.0  # Cuándo termina la transmisión actual
         self.transmission_log = []  # Para debugging
+
+        # Escritura incremental (opcional)
+        self.incremental_writer: Optional['IncrementalDataWriter'] = None
+        self.incremental_writing_enabled = False
         
     def calculate_transmission_time(self, data_size_mb: float) -> float:
         """
@@ -150,16 +157,24 @@ class TimeSlotManager:
         
         # Actualizar cuándo termina la próxima transmisión
         self.current_transmission_end = end_time
-        
-        # Log para debugging
-        self.transmission_log.append({
+
+        # Log para debugging/análisis
+        log_entry = {
             'onu_id': onu_id,
             'tcont_id': tcont_id,
             'start_time': start_time,
             'end_time': end_time,
             'duration': transmission_duration,
-            'data_size_mb': data_size_mb
-        })
+            'data_size_mb': data_size_mb,
+            'latency': end_time - start_time  # Para métricas
+        }
+
+        # SIEMPRE guardar en memoria (necesario para gráficos y análisis)
+        self.transmission_log.append(log_entry)
+
+        # Si está habilitada la escritura incremental, TAMBIÉN escribir a disco
+        if self.incremental_writing_enabled and self.incremental_writer:
+            self.incremental_writer.write_item('transmission_log', log_entry)
         
         return start_time, end_time
     
@@ -191,6 +206,21 @@ class TimeSlotManager:
     def get_transmission_log(self) -> List[Dict]:
         """Obtener log de transmisiones para debugging"""
         return self.transmission_log.copy()
+
+    def enable_incremental_writing(self, writer: 'IncrementalDataWriter'):
+        """
+        Habilitar escritura incremental de transmission_log
+
+        Args:
+            writer: Instancia de IncrementalDataWriter configurada
+        """
+        self.incremental_writer = writer
+        self.incremental_writing_enabled = True
+
+    def disable_incremental_writing(self):
+        """Deshabilitar escritura incremental"""
+        self.incremental_writer = None
+        self.incremental_writing_enabled = False
 
 
 class CycleTimeManager:
