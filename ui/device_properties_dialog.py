@@ -37,7 +37,7 @@ class DevicePropertiesDialog(QDialog):
         self.setModal(True)
 
         # Ajustar tamaño según el tipo de dispositivo
-        if self.device.device_type == "ONU":
+        if self.device.device_type in ["ONU", "CUSTOM_ONU"]:
             self.setFixedSize(550, 700)  # Más grande para ONU con configuración de tráfico
         else:
             self.setFixedSize(500, 450)
@@ -133,9 +133,9 @@ class DevicePropertiesDialog(QDialog):
     
     def setup_specific_info_section(self, main_layout):
         """Configurar sección de información específica del tipo"""
-        if self.device.device_type in ["OLT", "OLT_SDN"]:
+        if self.device.device_type in ["OLT", "OLT_SDN", "CUSTOM_OLT"]:
             self.setup_olt_info(main_layout)
-        elif self.device.device_type == "ONU":
+        elif self.device.device_type in ["ONU", "CUSTOM_ONU"]:
             self.setup_onu_info(main_layout)
     
     def setup_olt_info(self, main_layout):
@@ -402,7 +402,7 @@ class DevicePropertiesDialog(QDialog):
         }
 
         # Agregar transmission_rate para OLTs
-        if self.device.device_type in ["OLT", "OLT_SDN"]:
+        if self.device.device_type in ["OLT", "OLT_SDN", "CUSTOM_OLT"]:
             current_transmission_rate = self.device.properties.get('transmission_rate', 4096.0)
             self.original_properties['transmission_rate'] = current_transmission_rate
             # Actualizar el campo visual con el valor actual del dispositivo
@@ -410,7 +410,7 @@ class DevicePropertiesDialog(QDialog):
                 self.transmission_rate_spinbox.setValue(current_transmission_rate)
 
         # Cargar configuración de tráfico para ONUs
-        if self.device.device_type == "ONU" and hasattr(self, 'traffic_scenario_combo'):
+        if self.device.device_type in ["ONU", "CUSTOM_ONU"] and hasattr(self, 'traffic_scenario_combo'):
             # Cargar escenario de tráfico
             traffic_scenario = self.device.properties.get('traffic_scenario', 'residential_medium')
             index = self.traffic_scenario_combo.findText(traffic_scenario)
@@ -467,9 +467,9 @@ class DevicePropertiesDialog(QDialog):
         
         for connection in self.connection_manager.connections:
             olt_device = None
-            if connection.device_a.id == self.device.id and connection.device_b.device_type in ["OLT", "OLT_SDN"]:
+            if connection.device_a.id == self.device.id and connection.device_b.device_type in ["OLT", "OLT_SDN", "CUSTOM_OLT"]:
                 olt_device = connection.device_b
-            elif connection.device_b.id == self.device.id and connection.device_a.device_type in ["OLT", "OLT_SDN"]:
+            elif connection.device_b.id == self.device.id and connection.device_a.device_type in ["OLT", "OLT_SDN", "CUSTOM_OLT"]:
                 olt_device = connection.device_a
             
             if olt_device:
@@ -499,7 +499,7 @@ class DevicePropertiesDialog(QDialog):
         }
 
         # Agregar transmission_rate si es un OLT
-        if self.device.device_type in ["OLT", "OLT_SDN"] and hasattr(self, 'transmission_rate_spinbox'):
+        if self.device.device_type in ["OLT", "OLT_SDN", "CUSTOM_OLT"] and hasattr(self, 'transmission_rate_spinbox'):
             new_transmission_rate = self.transmission_rate_spinbox.value()
             new_properties['transmission_rate'] = new_transmission_rate
 
@@ -509,7 +509,7 @@ class DevicePropertiesDialog(QDialog):
                 print(f"🔄 Transmission rate actualizada desde UI: {new_transmission_rate} Mbps")
 
         # Agregar configuración de tráfico si es una ONU
-        if self.device.device_type == "ONU" and hasattr(self, 'traffic_scenario_combo'):
+        if self.device.device_type in ["ONU", "CUSTOM_ONU"] and hasattr(self, 'traffic_scenario_combo'):
             # Recopilar configuración de tráfico
             traffic_scenario = self.traffic_scenario_combo.currentText()
             sla = self.sla_spinbox.value()
@@ -563,7 +563,7 @@ class DevicePropertiesDialog(QDialog):
             return False
         
         # Validar transmission_rate para OLTs
-        if self.device.device_type in ["OLT", "OLT_SDN"] and hasattr(self, 'transmission_rate_spinbox'):
+        if self.device.device_type in ["OLT", "OLT_SDN", "CUSTOM_OLT"] and hasattr(self, 'transmission_rate_spinbox'):
             transmission_rate = self.transmission_rate_spinbox.value()
             if transmission_rate <= 0:
                 QMessageBox.warning(self, tr('properties_dialog.validation_error'), 
@@ -589,7 +589,7 @@ class DevicePropertiesDialog(QDialog):
     
     def on_transmission_rate_changed(self, value):
         """Manejar cambios en tiempo real del transmission_rate"""
-        if self.device and self.device.device_type in ["OLT", "OLT_SDN"]:
+        if self.device and self.device.device_type in ["OLT", "OLT_SDN", "CUSTOM_OLT"]:
             # Actualizar la propiedad inmediatamente
             self.device.properties['transmission_rate'] = float(value)
             

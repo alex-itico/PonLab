@@ -648,6 +648,7 @@ class CustomOLT(OLT):
         
         # Aplicar tasa de transmisión personalizada si existe
         if 'transmission_rate' in self.custom_data:
+            self.transmission_rate = float(self.custom_data['transmission_rate'])
             self.properties['transmission_rate'] = float(self.custom_data['transmission_rate'])
         
         # Guardar color personalizado
@@ -747,6 +748,17 @@ class CustomONU(ONU):
         
         # Guardar color personalizado
         self.custom_color = self.custom_data.get('color', '#ff9800')
+        
+        # Configurar perfil de tráfico desde custom_data
+        if 'traffic_scenario' in self.custom_data:
+            self.traffic_scenario = self.custom_data['traffic_scenario']
+            self.properties['traffic_scenario'] = self.custom_data['traffic_scenario']
+        if 'sla' in self.custom_data:
+            self.sla = self.custom_data['sla']
+            self.properties['sla'] = self.custom_data['sla']
+        if 'buffer_size' in self.custom_data:
+            self.buffer_size = self.custom_data['buffer_size']
+            self.properties['buffer_size'] = self.custom_data['buffer_size']
     
     def to_dict(self):
         """Serializar dispositivo custom a diccionario incluyendo datos personalizados"""
@@ -838,28 +850,47 @@ def create_device(device_type, name=None, x=0, y=0):
     elif device_type.startswith("CUSTOM_OLT"):
         # Para dispositivos personalizados, cargar los datos del JSON
         from utils.custom_device_manager import custom_device_manager
-        # Extraer el ID del tipo (formato: CUSTOM_OLT_YYYYMMDD_HHMMSS o solo el nombre)
+        import re
+        
         custom_devices = custom_device_manager.load_custom_olts()
         
-        # Buscar el dispositivo por nombre
+        # Extraer el nombre base eliminando sufijos numéricos (_2, _3, etc.)
+        base_name = re.sub(r'_\d+$', '', name) if name else name
+        
+        # Buscar el dispositivo por nombre base o nombre exacto
         custom_data = None
         for device in custom_devices:
-            if device['name'] == name or device['id'] == device_type:
+            if device['name'] == base_name or device['name'] == name or device['id'] == device_type:
                 custom_data = device
                 break
+        
+        if custom_data:
+            print(f"✅ Custom OLT encontrado: '{name}' -> base: '{base_name}' -> color: {custom_data.get('color', 'N/A')}")
+        else:
+            print(f"⚠️ Custom OLT NO encontrado para: '{name}' (base: '{base_name}')")
         
         return CustomOLT(name, x, y, custom_data)
     elif device_type.startswith("CUSTOM_ONU"):
         # Para dispositivos ONU personalizados, cargar los datos del JSON
         from utils.custom_device_manager import custom_device_manager
+        import re
+        
         custom_devices = custom_device_manager.load_custom_onus()
         
-        # Buscar el dispositivo por nombre
+        # Extraer el nombre base eliminando sufijos numéricos (_2, _3, etc.)
+        base_name = re.sub(r'_\d+$', '', name) if name else name
+        
+        # Buscar el dispositivo por nombre base o nombre exacto
         custom_data = None
         for device in custom_devices:
-            if device['name'] == name or device['id'] == device_type:
+            if device['name'] == base_name or device['name'] == name or device['id'] == device_type:
                 custom_data = device
                 break
+        
+        if custom_data:
+            print(f"✅ Custom ONU encontrado: '{name}' -> base: '{base_name}' -> color: {custom_data.get('color', 'N/A')}")
+        else:
+            print(f"⚠️ Custom ONU NO encontrado para: '{name}' (base: '{base_name}')")
         
         return CustomONU(name, x, y, custom_data)
     else:

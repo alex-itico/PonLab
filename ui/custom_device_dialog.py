@@ -5,7 +5,7 @@ Diálogo para crear/editar dispositivos OLT personalizados
 from PyQt5.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, 
     QSpinBox, QPushButton, QFrame, QMessageBox, QGridLayout,
-    QSlider, QRadioButton, QGroupBox, QButtonGroup
+    QSlider, QRadioButton, QGroupBox, QButtonGroup, QComboBox, QDoubleSpinBox
 )
 from PyQt5.QtCore import Qt, pyqtSignal, QSize, QByteArray
 from PyQt5.QtGui import QFont, QColor, QPalette, QPixmap
@@ -756,6 +756,7 @@ class CustomONUDialog(QDialog):
         self.setModal(True)
         self.setMinimumWidth(500)
         self.setMaximumWidth(650)
+        self.setMinimumHeight(650)  # Aumentado para perfil de tráfico
         
         # Layout principal
         main_layout = QVBoxLayout(self)
@@ -796,6 +797,52 @@ class CustomONUDialog(QDialog):
         self.name_input.setPlaceholderText(tr('custom_device.name_placeholder_onu'))
         self.name_input.setFixedHeight(35)
         properties_layout.addWidget(self.name_input)
+        
+        # Espaciado
+        properties_layout.addSpacing(15)
+        
+        # ===== PERFIL DE TRÁFICO PON =====
+        traffic_title = QLabel(tr('properties_dialog.traffic_profile_title'))
+        traffic_title.setFont(QFont("Arial", 10, QFont.Bold))
+        properties_layout.addWidget(traffic_title)
+        
+        # Escenario de tráfico
+        scenario_label = QLabel(tr('properties_dialog.scenario_label'))
+        properties_layout.addWidget(scenario_label)
+        
+        self.traffic_scenario_combo = QComboBox()
+        self.traffic_scenario_combo.addItems([
+            "residential_light",
+            "residential_medium",
+            "residential_heavy",
+            "enterprise"
+        ])
+        self.traffic_scenario_combo.setFixedHeight(30)
+        properties_layout.addWidget(self.traffic_scenario_combo)
+        
+        # SLA
+        sla_label = QLabel(tr('properties_dialog.sla_label'))
+        properties_layout.addWidget(sla_label)
+        
+        self.sla_spinbox = QDoubleSpinBox()
+        self.sla_spinbox.setRange(10.0, 10000.0)
+        self.sla_spinbox.setSuffix(" Mbps")
+        self.sla_spinbox.setSingleStep(10.0)
+        self.sla_spinbox.setValue(200.0)  # Valor por defecto
+        self.sla_spinbox.setFixedHeight(30)
+        properties_layout.addWidget(self.sla_spinbox)
+        
+        # Tamaño de Buffer
+        buffer_label = QLabel(tr('properties_dialog.buffer_size_label'))
+        properties_layout.addWidget(buffer_label)
+        
+        self.buffer_size_spinbox = QSpinBox()
+        self.buffer_size_spinbox.setRange(100, 2000)
+        self.buffer_size_spinbox.setSuffix(tr('properties_dialog.buffer_suffix'))
+        self.buffer_size_spinbox.setSingleStep(50)
+        self.buffer_size_spinbox.setValue(512)  # Valor por defecto
+        self.buffer_size_spinbox.setFixedHeight(30)
+        properties_layout.addWidget(self.buffer_size_spinbox)
         
         properties_layout.addStretch()
         
@@ -1102,6 +1149,15 @@ class CustomONUDialog(QDialog):
         self.selected_color = QColor(color_hex)
         self.update_rgb_sliders()
         self.update_color_preview()
+        
+        # Cargar perfil de tráfico
+        traffic_scenario = self.device_data.get('traffic_scenario', 'residential_medium')
+        index = self.traffic_scenario_combo.findText(traffic_scenario)
+        if index >= 0:
+            self.traffic_scenario_combo.setCurrentIndex(index)
+        
+        self.sla_spinbox.setValue(self.device_data.get('sla', 200.0))
+        self.buffer_size_spinbox.setValue(self.device_data.get('buffer_size', 512))
     
     def validate_inputs(self) -> bool:
         """Validar campos del formulario"""
@@ -1136,7 +1192,10 @@ class CustomONUDialog(QDialog):
         # Recopilar datos simplificados
         device_data = {
             'name': self.name_input.text().strip(),
-            'color': self.selected_color.name()  # Guardar color en formato #RRGGBB
+            'color': self.selected_color.name(),  # Guardar color en formato #RRGGBB
+            'traffic_scenario': self.traffic_scenario_combo.currentText(),
+            'sla': self.sla_spinbox.value(),
+            'buffer_size': self.buffer_size_spinbox.value()
         }
         
         try:

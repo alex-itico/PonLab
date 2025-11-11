@@ -289,6 +289,28 @@ class DeviceManager(QObject):
         """Establecer referencia al canvas"""
         self.canvas = canvas
     
+    def _get_unique_custom_name(self, base_name):
+        """Generar nombre único para dispositivo custom si ya existe
+        
+        Args:
+            base_name: Nombre base del dispositivo custom (ej: "ONU_lenta")
+        
+        Returns:
+            Nombre único (ej: "ONU_lenta", "ONU_lenta_2", "ONU_lenta_3", etc.)
+        """
+        # Verificar si el nombre base ya existe
+        existing_names = [device.name for device in self.devices.values()]
+        
+        if base_name not in existing_names:
+            return base_name
+        
+        # Si existe, buscar el siguiente número disponible
+        counter = 2
+        while f"{base_name}_{counter}" in existing_names:
+            counter += 1
+        
+        return f"{base_name}_{counter}"
+    
     def add_device(self, device_type, x, y, name=None, device_name=None):
         """Agregar nuevo dispositivo al canvas
         
@@ -301,7 +323,8 @@ class DeviceManager(QObject):
         try:
             # Para dispositivos personalizados, usar el device_name si se proporciona
             if device_type.startswith('CUSTOM_') and device_name:
-                final_name = device_name
+                base_name = device_name
+                final_name = self._get_unique_custom_name(base_name)
             elif name is None:
                 # Generar nombre automático si no se proporciona
                 # Para OLT_SDN, usar el contador de OLT
