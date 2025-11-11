@@ -8,6 +8,10 @@ from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel,
 from PyQt5.QtCore import Qt, QTimer, pyqtSignal
 from PyQt5.QtGui import QFont
 
+# Importar sistema de traducciones
+from utils.translation_manager import translation_manager
+tr = translation_manager.get_text
+
 
 class SavingProgressWidget(QWidget):
     """
@@ -46,7 +50,7 @@ class SavingProgressWidget(QWidget):
         frame_layout.setSpacing(10)
 
         # Título
-        self.title_label = QLabel("💾 Guardando Datos de Simulación...")
+        self.title_label = QLabel(tr('saving_progress.title'))
         title_font = QFont()
         title_font.setPointSize(12)
         title_font.setBold(True)
@@ -56,7 +60,7 @@ class SavingProgressWidget(QWidget):
         frame_layout.addWidget(self.title_label)
 
         # Subtítulo
-        self.subtitle_label = QLabel("Escritura incremental en segundo plano")
+        self.subtitle_label = QLabel(tr('saving_progress.subtitle'))
         self.subtitle_label.setAlignment(Qt.AlignCenter)
         self.subtitle_label.setStyleSheet("color: #6c757d; font-size: 9pt; font-style: italic;")
         frame_layout.addWidget(self.subtitle_label)
@@ -72,7 +76,7 @@ class SavingProgressWidget(QWidget):
         progress_layout = QVBoxLayout()
         progress_layout.setSpacing(5)
 
-        self.progress_label = QLabel("Progreso general:")
+        self.progress_label = QLabel(tr('saving_progress.general_progress'))
         self.progress_label.setStyleSheet("color: #495057; font-weight: bold;")
         progress_layout.addWidget(self.progress_label)
 
@@ -159,14 +163,14 @@ class SavingProgressWidget(QWidget):
         frame_layout.addWidget(separator2)
 
         # Mensaje informativo
-        self.info_label = QLabel("✨ Puedes seguir usando la aplicación mientras se guarda")
+        self.info_label = QLabel(tr('saving_progress.info_message'))
         self.info_label.setAlignment(Qt.AlignCenter)
         self.info_label.setWordWrap(True)
         self.info_label.setStyleSheet("color: #28a745; font-size: 9pt; font-style: italic;")
         frame_layout.addWidget(self.info_label)
 
         # Botón cerrar (opcional)
-        self.close_button = QPushButton("Minimizar")
+        self.close_button = QPushButton(tr('saving_progress.minimize_button'))
         self.close_button.setStyleSheet("""
             QPushButton {
                 background-color: #6c757d;
@@ -197,10 +201,10 @@ class SavingProgressWidget(QWidget):
         self.total_snapshots_estimate = total_snapshots_estimate
 
         # Inicializar UI con valores iniciales
-        self.snapshots_label.setText(f"Snapshots: 0 / {self.total_snapshots_estimate:,}")
-        self.size_label.setText(f"Tamaño: 0.00 MB (comprimido)")
-        self.speed_label.setText(f"Velocidad: 0 items/s")
-        self.time_label.setText(f"Tiempo: 0.0s")
+        self.snapshots_label.setText(tr('saving_progress.snapshots').format(0, self.total_snapshots_estimate))
+        self.size_label.setText(tr('saving_progress.size').format(0.00))
+        self.speed_label.setText(tr('saving_progress.speed').format(0))
+        self.time_label.setText(tr('saving_progress.time').format(0.0))
         self.progress_bar.setValue(0)
 
         # Actualizar cada 500ms
@@ -235,10 +239,10 @@ class SavingProgressWidget(QWidget):
         self.progress_bar.setValue(progress)
 
         # Actualizar labels
-        self.snapshots_label.setText(f"Snapshots: {chunks_written:,} / {self.total_snapshots_estimate:,}")
-        self.size_label.setText(f"Tamaño: {mb_written:.2f} MB (comprimido)")
-        self.speed_label.setText(f"Velocidad: {items_per_second:.0f} items/s")
-        self.time_label.setText(f"Tiempo: {elapsed_time:.1f}s")
+        self.snapshots_label.setText(tr('saving_progress.snapshots').format(chunks_written, self.total_snapshots_estimate))
+        self.size_label.setText(tr('saving_progress.size').format(mb_written))
+        self.speed_label.setText(tr('saving_progress.speed').format(int(items_per_second)))
+        self.time_label.setText(tr('saving_progress.time').format(elapsed_time))
 
     def set_completed(self):
         """Marcar guardado como completado"""
@@ -246,14 +250,40 @@ class SavingProgressWidget(QWidget):
             self.update_timer.stop()
 
         self.progress_bar.setValue(100)
-        self.title_label.setText("✅ Datos Guardados Exitosamente")
+        self.title_label.setText(tr('saving_progress.completed_title'))
         self.title_label.setStyleSheet("color: #28a745; font-weight: bold;")
-        self.subtitle_label.setText("Guardado completado con éxito")
-        self.info_label.setText("🎉 Todos los datos fueron guardados correctamente")
-        self.close_button.setText("Cerrar")
+        self.subtitle_label.setText(tr('saving_progress.completed_subtitle'))
+        self.info_label.setText(tr('saving_progress.completed_message'))
+        self.close_button.setText(tr('saving_progress.close_button'))
 
     def stop_monitoring(self):
         """Detener monitoreo"""
         if self.update_timer:
             self.update_timer.stop()
             self.update_timer = None
+
+    def retranslate_ui(self):
+        """Actualizar todos los textos traducibles del widget"""
+        # Actualizar título de la ventana
+        self.setWindowTitle(tr('saving_progress.window_title'))
+        
+        # Actualizar título y subtítulo
+        if self.progress_bar.value() == 100:
+            # Si está completado, usar textos de completado
+            self.title_label.setText(tr('saving_progress.completed_title'))
+            self.subtitle_label.setText(tr('saving_progress.completed_subtitle'))
+            self.info_label.setText(tr('saving_progress.completed_message'))
+            self.close_button.setText(tr('saving_progress.close_button'))
+        else:
+            # Si está en progreso, usar textos normales
+            self.title_label.setText(tr('saving_progress.title'))
+            self.subtitle_label.setText(tr('saving_progress.subtitle'))
+            self.info_label.setText(tr('saving_progress.info_message'))
+            self.close_button.setText(tr('saving_progress.minimize_button'))
+        
+        # Actualizar label de progreso
+        self.progress_label.setText(tr('saving_progress.general_progress'))
+        
+        # Actualizar estadísticas con los valores actuales
+        if self.adapter:
+            self.update_statistics()

@@ -747,5 +747,21 @@
     "save_success": "Project saved: {0}",
     "save_error_title": "Save error",
     "save_error_question": "Could not save the project to:\n{0}\n\nDo you want to close without saving?"
+  },
+  "saving_progress": {
+    "window_title": "Saving Simulation",
+    "title": "💾 Saving Simulation Data...",
+    "subtitle": "Incremental writing in background",
+    "general_progress": "Overall progress:",
+    "snapshots": "Snapshots: {0:,} / {1:,}",
+    "size": "Size: {0:.2f} MB (compressed)",
+    "speed": "Speed: {0} items/s",
+    "time": "Time: {0:.1f}s",
+    "info_message": "✨ You can continue using the application while saving",
+    "minimize_button": "Minimize",
+    "completed_title": "✅ Data Saved Successfully",
+    "completed_subtitle": "Save completed successfully",
+    "completed_message": "🎉 All data was saved correctly",
+    "close_button": "Close"
   }
 }

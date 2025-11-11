@@ -1819,7 +1819,7 @@ class IntegratedPONTestPanel(QWidget):
             # Crear widget de progreso si no existe
             if not self.saving_progress_widget:
                 self.saving_progress_widget = SavingProgressWidget()
-                self.saving_progress_widget.setWindowTitle("Guardando Simulación")
+                self.saving_progress_widget.setWindowTitle(tr("saving_progress.window_title"))
                 self.saving_progress_widget.setMinimumWidth(450)
                 self.saving_progress_widget.setMinimumHeight(400)
 
@@ -1941,6 +1941,10 @@ class IntegratedPONTestPanel(QWidget):
         # Actualizar ventana popup de gráficos si existe
         if hasattr(self, 'popup_window') and self.popup_window:
             self.popup_window.retranslate_ui()
+        
+        # Actualizar widget de progreso de guardado si existe
+        if hasattr(self, 'saving_progress_widget') and self.saving_progress_widget:
+            self.saving_progress_widget.retranslate_ui()
         
         # Recargar estado (si está disponible, mantiene el estado traducido)
         self.check_pon_status()
