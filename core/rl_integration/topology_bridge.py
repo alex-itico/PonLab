@@ -63,33 +63,41 @@ class TopologyBridge(QObject):
                 connections = []
 
                 for item in scene.items():
-                    # Buscar nodos ONU y OLT
-                    if hasattr(item, 'node_type'):
+                    # Buscar nodos ONU y OLT (son DeviceGraphicsItem)
+                    if hasattr(item, 'device'):
+                        device = item.device
+                        device_name = device.name  # Usar el nombre real del dispositivo
+                        
                         node_data = {
-                            'id': getattr(item, 'node_id', f'node_{len(nodes)}'),
-                            'type': item.node_type,
-                            'position': (item.pos().x(), item.pos().y()),
-                            'properties': getattr(item, 'properties', {})
+                            'id': device_name,  # Usar el nombre actual del dispositivo
+                            'type': device.device_type,
+                            'position': (device.x, device.y),
+                            'properties': device.properties
                         }
                         nodes.append(node_data)
 
                         # Configurar ONUs
-                        if item.node_type == 'ONU':
-                            onu_id = str(topology['num_onus'])
+                        if device.device_type in ["ONU", "CUSTOM_ONU"]:
+                            # Usar el nombre real del dispositivo como ID
+                            onu_id = device_name  # "casa", "edificio", "ONU_1", etc.
                             topology['onus_config'][onu_id] = {
                                 'id': onu_id,
-                                'name': node_data['id'],
-                                'sla': node_data['properties'].get('sla', 100.0),
-                                'buffer_size': node_data['properties'].get('buffer_size', 500),
-                                'transmission_rate': node_data['properties'].get('transmission_rate', 100.0)
+                                'sla': device.properties.get('sla', 100.0),
+                                'buffer_size': device.properties.get('buffer_size', 500),
+                                'transmission_rate': device.properties.get('transmission_rate', 100.0),
+                                'traffic_scenario': device.properties.get('traffic_scenario', 'residential_medium'),
+                                'use_custom_params': device.properties.get('use_custom_params', False),
+                                'custom_traffic_probs': device.properties.get('custom_traffic_probs', {}),
+                                'custom_traffic_sizes': device.properties.get('custom_traffic_sizes', {}),
+                                'index': topology['num_onus']  # Guardar índice numérico para compatibilidad
                             }
                             topology['num_onus'] += 1
 
                         # Configurar OLT
-                        elif item.node_type == 'OLT':
+                        elif device.device_type in ["OLT", "OLT_SDN", "CUSTOM_OLT"]:
                             topology['olt_config'] = {
-                                'id': node_data['id'],
-                                'transmission_rate': node_data['properties'].get('transmission_rate', 1024.0)
+                                'id': device_name,
+                                'transmission_rate': device.properties.get('transmission_rate', 1024.0)
                             }
 
                     # Buscar conexiones
@@ -119,13 +127,13 @@ class TopologyBridge(QObject):
                 print("[INFO] No se encontraron ONUs en canvas, usando configuración por defecto")
                 topology['num_onus'] = 4
                 for i in range(4):
-                    onu_id = str(i)
+                    onu_id = f'ONU_{i}'  # Usar formato de nombre real
                     topology['onus_config'][onu_id] = {
                         'id': onu_id,
-                        'name': f'ONU_{i}',
                         'sla': 100.0 + i * 50.0,
                         'buffer_size': 500,
-                        'transmission_rate': 100.0
+                        'transmission_rate': 100.0,
+                        'index': i
                     }
                     topology['links_data'][onu_id] = {'length': 1.0 + i * 0.5}
 
@@ -164,13 +172,13 @@ class TopologyBridge(QObject):
         }
 
         for i in range(4):
-            onu_id = str(i)
+            onu_id = f'ONU_{i}'  # Usar formato de nombre real
             topology['onus_config'][onu_id] = {
                 'id': onu_id,
-                'name': f'ONU_{i}',
                 'sla': 100.0 + i * 50.0,
                 'buffer_size': 500,
-                'transmission_rate': 100.0
+                'transmission_rate': 100.0,
+                'index': i
             }
             topology['links_data'][onu_id] = {'length': 1.0 + i * 0.5}
 
