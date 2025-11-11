@@ -12,12 +12,13 @@ from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel,
                              QGroupBox, QGridLayout, QSizePolicy, QProgressBar,
                              QCheckBox, QSlider, QSplitter, QFileDialog, QMessageBox,
                              QFrame, QDialog)
-from PyQt5.QtCore import Qt, QTimer, pyqtSignal, QObject, QEvent 
+from PyQt5.QtCore import Qt, QTimer, pyqtSignal, QObject, QEvent, QThread
 from PyQt5.QtGui import QFont
 from core import PONAdapter
 from .pon_simulation_results_panel import PONResultsPanel
 from .auto_graphics_saver import AutoGraphicsSaver
 from .graphics_popup_window import GraphicsPopupWindow
+from .saving_progress_widget import SavingProgressWidget
 
 # Importar sistema de traducciones
 from utils.translation_manager import translation_manager
@@ -25,6 +26,63 @@ tr = translation_manager.get_text
 
 # Model Bridge no disponible - eliminado para independencia
 MODEL_BRIDGE_AVAILABLE = False
+
+
+class SimulationWorker(QThread):
+    """
+    Worker thread para ejecutar simulación sin bloquear la UI
+    """
+    # Señales
+    update_signal = pyqtSignal(str, dict)  # (event_type, data)
+    finished_signal = pyqtSignal(bool, object)  # (success, result)
+
+    def __init__(self, adapter, use_hybrid=True, duration=10, steps=1000):
+        super().__init__()
+        self.adapter = adapter
+        self.use_hybrid = use_hybrid
+        self.duration = duration
+        self.steps = steps
+        self._is_running = True
+
+    def run(self):
+        """Ejecutar simulación en thread separado"""
+        try:
+            if self.use_hybrid:
+                # Simulación híbrida por eventos
+                def callback(event_type, data):
+                    if self._is_running:
+                        self.update_signal.emit(event_type, data)
+
+                success, result = self.adapter.run_hybrid_simulation(
+                    duration_seconds=self.duration,
+                    callback=callback
+                )
+
+                if self._is_running:
+                    self.finished_signal.emit(success, result)
+            else:
+                # Simulación clásica por pasos
+                def callback(event_type, data):
+                    if self._is_running:
+                        self.update_signal.emit(event_type, data)
+
+                success = self.adapter.run_netsim_simulation(
+                    timesteps=self.steps,
+                    callback=callback
+                )
+
+                if self._is_running:
+                    self.finished_signal.emit(success, None)
+
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            if self._is_running:
+                self.finished_signal.emit(False, str(e))
+
+    def stop(self):
+        """Detener la simulación"""
+        self._is_running = False
 
 
 class IntegratedPONTestPanel(QWidget):
@@ -49,7 +107,13 @@ class IntegratedPONTestPanel(QWidget):
         self.graphics_saver = AutoGraphicsSaver(use_compression=True)  # Habilitar compresión gzip
         self.graphics_saver.graphics_saved.connect(self._on_save_complete)  # Conectar señal de completado
         self.popup_window = None  # Se crea cuando se necesita
-        
+
+        # Widget de progreso de guardado incremental
+        self.saving_progress_widget = None
+
+        # Worker thread para simulación asíncrona
+        self.simulation_worker = None
+
         # Variables para detectar cambios
         self.last_onu_count = 0
         self.last_algorithm = "FCFS"
@@ -1230,97 +1294,121 @@ class IntegratedPONTestPanel(QWidget):
             self.status_label.setStyleSheet("color: red;")
     
     def run_full_simulation(self):
-        """Ejecutar simulación completa"""
+        """Ejecutar simulación completa en thread separado (no bloquea UI)"""
         if not self.orchestrator_initialized:
             return
-        
+
         use_hybrid = self.hybrid_checkbox.isChecked()
-        
+
         # Deshabilitar botones durante simulación
         self.start_btn.setEnabled(False)
-        
+        self.simulation_running = True
+
+        # NUEVO: Habilitar escritura incremental
+        session_dir = self.graphics_saver.create_session_directory()
+        if self.adapter.enable_incremental_data_writing(session_dir):
+            self.results_panel.add_log_message(f"💾 Escritura incremental habilitada: {session_dir}")
+
+            # Mostrar widget de progreso
+            self._show_saving_progress_widget(use_hybrid)
+        else:
+            self.results_panel.add_log_message("⚠️ No se pudo habilitar escritura incremental (usando modo legacy)")
+
+        # Configurar barra de progreso
+        self.progress_bar.setVisible(True)
+        self.progress_bar.setValue(0)
+
         if use_hybrid:
             # Simulación híbrida por tiempo
             duration = self.duration_spinbox.value()
-            
-            # Configurar barra de progreso (estimación)
-            self.progress_bar.setVisible(True)
             self.progress_bar.setRange(0, 100)
-            self.progress_bar.setValue(0)
-            
-            self.results_panel.add_log_message(f"🏃 Ejecutando simulación híbrida: {duration}s...")
-            
-            # Callback para simulación híbrida
-            def hybrid_callback(event_type, data):
-                if event_type == "update":
-                    # Actualizar progreso basado en tiempo simulado
-                    sim_time = data.get('sim_time', 0)
-                    progress = min(int((sim_time / duration) * 100), 100)
-                    self.progress_bar.setValue(progress)
-                    
-                    # Log eventos importantes
-                    if data.get('event_type') == 'polling_cycle':
-                        cycle_num = data.get('data', {}).get('cycle_number', 0)
-                        if cycle_num % 100 == 0:  # Log cada 100 ciclos
-                            self.results_panel.add_log_message(f"Ciclo DBA: {cycle_num}")
-                            # Actualizar dashboard SDN durante la simulación
-                            sdn_metrics = self.adapter.get_sdn_metrics()
-                            if sdn_metrics:
-                                self.results_panel.add_log_message(f"📊 Actualizando métricas SDN (ciclo {cycle_num})")
-                                self.parent().update_sdn_metrics(sdn_metrics)
-                            else:
-                                self.results_panel.add_log_message("⚠️ No hay métricas SDN disponibles")
-                    
-                elif event_type == "end":
-                    self.progress_bar.setValue(100)
-                    self.results_panel.add_log_message("✅ Simulación híbrida completada")
-                    self.process_hybrid_results(data)
-                    self.on_simulation_finished()
-            
-            # Ejecutar simulación híbrida
-            success, result = self.adapter.run_hybrid_simulation(
-                duration_seconds=duration, 
-                callback=hybrid_callback
+            self.results_panel.add_log_message(f"🏃 Ejecutando simulación híbrida: {duration}s (en background)...")
+
+            # Crear worker thread
+            self.simulation_worker = SimulationWorker(
+                adapter=self.adapter,
+                use_hybrid=True,
+                duration=duration,
+                steps=0
             )
-            
-            if not success:
-                self.results_panel.add_log_message(f"❌ Error en simulación híbrida: {result}")
-                self.on_simulation_finished()
         else:
             # Simulación clásica por pasos
             steps = self.steps_spinbox.value()
-            
-            # Mostrar barra de progreso
-            self.progress_bar.setVisible(True)
             self.progress_bar.setRange(0, steps)
-            self.progress_bar.setValue(0)
-            
-            self.results_panel.add_log_message(f"🏃 Ejecutando simulación clásica: {steps} pasos...")
-            
-            # Callback para monitoreo de progreso
-            def simulation_callback(event_type, data):
-                if event_type == "init":
-                    self.results_panel.add_log_message("Simulacion NetSim iniciada")
-                    
-                elif event_type == "update":
-                    current_step = data.get('steps', 0)
-                    if current_step % 100 == 0:  # Actualizar cada 100 pasos
-                        self.progress_bar.setValue(current_step)
-                        
-                        # Actualizar métricas en tiempo real
-                        self.update_realtime_metrics(data)
-                        
-                elif event_type == "end":
-                    self.progress_bar.setValue(steps)
-                    self.results_panel.add_log_message("✅ Simulación clásica completada")
-                    self.on_simulation_finished()
-            
-            # Ejecutar simulación clásica
-            success = self.adapter.run_netsim_simulation(timesteps=steps, callback=simulation_callback)
-            
-            if not success:
-                self.results_panel.add_log_message("❌ Error en simulación clásica")
-                self.on_simulation_finished()
+            self.results_panel.add_log_message(f"🏃 Ejecutando simulación clásica: {steps} pasos (en background)...")
+
+            # Crear worker thread
+            self.simulation_worker = SimulationWorker(
+                adapter=self.adapter,
+                use_hybrid=False,
+                duration=0,
+                steps=steps
+            )
+
+        # Conectar señales del worker
+        self.simulation_worker.update_signal.connect(self._on_simulation_update)
+        self.simulation_worker.finished_signal.connect(self._on_simulation_finished_worker)
+
+        # Iniciar simulación en thread separado
+        self.simulation_worker.start()
+        self.results_panel.add_log_message("✅ Simulación iniciada en thread separado (UI no se bloqueará)")
+
+    def _on_simulation_update(self, event_type: str, data: dict):
+        """Callback para actualizaciones de simulación desde worker thread"""
+        use_hybrid = self.hybrid_checkbox.isChecked()
+
+        if use_hybrid:
+            # Simulación híbrida
+            if event_type == "update":
+                # Actualizar progreso basado en tiempo simulado
+                duration = self.duration_spinbox.value()
+                sim_time = data.get('sim_time', 0)
+                progress = min(int((sim_time / duration) * 100), 100)
+                self.progress_bar.setValue(progress)
+
+                # Log eventos importantes
+                if data.get('event_type') == 'polling_cycle':
+                    cycle_num = data.get('data', {}).get('cycle_number', 0)
+                    if cycle_num % 100 == 0:  # Log cada 100 ciclos
+                        self.results_panel.add_log_message(f"Ciclo DBA: {cycle_num}")
+                        # Actualizar dashboard SDN durante la simulación
+                        sdn_metrics = self.adapter.get_sdn_metrics()
+                        if sdn_metrics:
+                            self.results_panel.add_log_message(f"📊 Actualizando métricas SDN (ciclo {cycle_num})")
+                            self.parent().update_sdn_metrics(sdn_metrics)
+                        else:
+                            self.results_panel.add_log_message("⚠️ No hay métricas SDN disponibles")
+        else:
+            # Simulación clásica
+            if event_type == "init":
+                self.results_panel.add_log_message("Simulacion NetSim iniciada")
+
+            elif event_type == "update":
+                current_step = data.get('steps', 0)
+                if current_step % 100 == 0:  # Actualizar cada 100 pasos
+                    self.progress_bar.setValue(current_step)
+                    # Actualizar métricas en tiempo real
+                    self.update_realtime_metrics(data)
+
+    def _on_simulation_finished_worker(self, success: bool, result):
+        """Callback cuando el worker thread termina la simulación"""
+        use_hybrid = self.hybrid_checkbox.isChecked()
+
+        self.progress_bar.setValue(self.progress_bar.maximum())
+        self.simulation_running = False
+
+        if success:
+            if use_hybrid:
+                self.results_panel.add_log_message("✅ Simulación híbrida completada")
+                self.process_hybrid_results(result)
+            else:
+                self.results_panel.add_log_message("✅ Simulación clásica completada")
+        else:
+            error_msg = str(result) if result else "Error desconocido"
+            self.results_panel.add_log_message(f"❌ Error en simulación: {error_msg}")
+
+        # Llamar al callback de finalización
+        self.on_simulation_finished()
     
     def force_sdn_metrics_update(self, attempt_desc=""):
         """Forzar actualización de métricas SDN con múltiples intentos"""
@@ -1384,11 +1472,23 @@ class IntegratedPONTestPanel(QWidget):
     def on_simulation_finished(self):
         """Callback cuando termina la simulación"""
         # Rehabilitar botones
-        self.start_btn.setEnabled(True)
-        
+        self.start_btn.setEnabled(False)  # Mantener deshabilitado hasta que termine todo
+
         # Ocultar barra de progreso
         self.progress_bar.setVisible(False)
-        
+
+        # NUEVO: Finalizar escritura incremental
+        self.results_panel.add_log_message("💾 Finalizando escritura de datos...")
+        final_file = self.adapter.finalize_incremental_data_writing()
+        if final_file:
+            self.results_panel.add_log_message(f"✅ Archivo guardado: {final_file}")
+
+            # Marcar widget de progreso como completado
+            if self.saving_progress_widget:
+                self.saving_progress_widget.set_completed()
+        else:
+            self.results_panel.add_log_message("⚠️ Error finalizando escritura incremental")
+
         # Actualizar resultados finales
         self.results_panel.refresh_results()
         
@@ -1434,23 +1534,28 @@ class IntegratedPONTestPanel(QWidget):
         
         # Emitir señal
         self.simulation_finished.emit()
-        
+
+        # Rehabilitar botón ahora que todo terminó
+        self.start_btn.setEnabled(True)
+
         self.results_panel.add_log_message("🎯 Simulación finalizada - Resultados y gráficos procesados")
     
     
     def handle_automatic_graphics_processing(self):
         """Manejar el procesamiento automático de gráficos al finalizar simulación"""
         try:
+            # NOTA: Los datos ya fueron guardados incremental mente durante la simulación
+            # Solo necesitamos mostrar la ventana emergente si está habilitada
+
             # Obtener datos completos de la simulación
-            # El adapter ya retorna la estructura correcta con 'simulation_summary'
             simulation_data = self.adapter.get_simulation_summary()
-            
+
             # Agregar datos adicionales
             simulation_data.update({
                 'current_state': self.adapter.get_current_state(),
                 'orchestrator_stats': self.adapter.get_orchestrator_stats()
             })
-            
+
             # Recopilar información de la sesión
             session_info = {
                 'num_onus': self.get_onu_count_from_topology(),
@@ -1459,20 +1564,14 @@ class IntegratedPONTestPanel(QWidget):
                 'steps': self.steps_spinbox.value(),
                 'detailed_logging': self.detailed_log_checkbox.isChecked()
             }
-            
-            # Mostrar ventana emergente PRIMERO (sin bloquear)
+
+            # Mostrar ventana emergente si está habilitada
             should_popup = self.popup_window_checkbox.isChecked()
             if should_popup:
-                self.show_graphics_popup_window(simulation_data, "", session_info)
-            
-            # DESPUÉS guardar los archivos en HILO SEPARADO (no bloquea UI)
-            if hasattr(self.results_panel, 'charts_panel'):
-                self.results_panel.add_log_message("💾 Guardando datos de simulación en segundo plano...")
-                
-                # Guardar asíncronamente
-                from PyQt5.QtCore import QTimer
-                QTimer.singleShot(100, lambda: self._save_simulation_async(simulation_data, session_info))
-            
+                # Obtener directorio de sesión (ya creado por escritura incremental)
+                session_dir = self.adapter.incremental_writer.session_dir if self.adapter.incremental_writer else ""
+                self.show_graphics_popup_window(simulation_data, session_dir, session_info)
+
         except Exception as e:
             self.results_panel.add_log_message(f"❌ Error en procesamiento automático: {e}")
             print(f"❌ Error en handle_automatic_graphics_processing: {e}")
@@ -1676,8 +1775,12 @@ class IntegratedPONTestPanel(QWidget):
             if hasattr(self, 'popup_window') and self.popup_window:
                 self.popup_window.close()
                 self.popup_window = None
-            
-            
+
+            if hasattr(self, 'saving_progress_widget') and self.saving_progress_widget:
+                self.saving_progress_widget.stop_monitoring()
+                self.saving_progress_widget.close()
+                self.saving_progress_widget = None
+
             print("Panel PON integrado limpiado")
             
         except Exception as e:
@@ -1700,7 +1803,51 @@ class IntegratedPONTestPanel(QWidget):
         # Este método fue eliminado en la refactorización a Smart RL interno
         # pero se mantiene como stub para evitar errores de atributo
         pass
-    
+
+    def _show_saving_progress_widget(self, use_hybrid: bool):
+        """
+        Mostrar widget de progreso de guardado incremental
+
+        Args:
+            use_hybrid: Si es simulación híbrida (para estimar snapshots)
+        """
+        try:
+            # Crear widget de progreso si no existe
+            if not self.saving_progress_widget:
+                self.saving_progress_widget = SavingProgressWidget()
+                self.saving_progress_widget.setWindowTitle("Guardando Simulación")
+                self.saving_progress_widget.setMinimumWidth(450)
+                self.saving_progress_widget.setMinimumHeight(400)
+
+                # Conectar señal de cerrar
+                self.saving_progress_widget.close_requested.connect(
+                    lambda: self.saving_progress_widget.hide()
+                )
+
+            # Estimar número total de snapshots
+            if use_hybrid:
+                duration = self.duration_spinbox.value()
+                # Cada ciclo = 125us, calcular cuántos ciclos en la duración
+                cycles_per_second = 1 / 125e-6  # ~8000 ciclos/segundo
+                total_snapshots = int(duration * cycles_per_second)
+            else:
+                # Simulación clásica
+                total_snapshots = self.steps_spinbox.value()
+
+            # Iniciar monitoreo
+            self.saving_progress_widget.start_monitoring(self.adapter, total_snapshots)
+
+            # Mostrar widget
+            self.saving_progress_widget.show()
+            self.saving_progress_widget.raise_()
+            self.saving_progress_widget.activateWindow()
+
+            self.results_panel.add_log_message(f"📊 Widget de progreso mostrado (estimando {total_snapshots:,} snapshots)")
+
+        except Exception as e:
+            self.results_panel.add_log_message(f"⚠️ Error mostrando widget de progreso: {e}")
+            print(f"Error en _show_saving_progress_widget: {e}")
+
     def retranslate_ui(self):
         """Actualizar todos los textos traducibles del panel"""
         # Título

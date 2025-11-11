@@ -9,6 +9,7 @@ from .pon_event_onu import HybridONU
 
 if TYPE_CHECKING:
     from ..algorithms.pon_dba import DBAAlgorithmInterface
+    from ..simulation.incremental_data_writer import IncrementalDataWriter
 
 
 class HybridOLT:
@@ -67,6 +68,10 @@ class HybridOLT:
 
         # Historial de buffers capturado durante polling
         self.buffer_snapshots = []  # Lista de {'time': float, 'buffers': {onu_id: {...}}}
+
+        # Escritura incremental (opcional, se activa externamente)
+        self.incremental_writer: Optional['IncrementalDataWriter'] = None
+        self.incremental_writing_enabled = False
 
         print(f"  OLT: Polling automático cada {self.cycle_duration*1e6:.0f}us (sin eventos en cola)")
     
@@ -186,10 +191,16 @@ class HybridOLT:
         # Agregar snapshot con timestamp
         snapshot = {
             'time': current_time,
+            'cycle': self.current_cycle,
             'buffers': buffers
         }
 
+        # SIEMPRE guardar en memoria (necesario para gráficos)
         self.buffer_snapshots.append(snapshot)
+
+        # Si está habilitada la escritura incremental, TAMBIÉN escribir a disco
+        if self.incremental_writing_enabled and self.incremental_writer:
+            self.incremental_writer.write_item('buffer_snapshots', snapshot)
 
     def _execute_dba_algorithm(self, reports: Dict[str, Dict[str, int]], 
                               current_time: float) -> Dict[str, Dict[str, int]]:
@@ -504,3 +515,20 @@ class HybridOLT:
     def set_dba_algorithm(self, dba_algorithm: 'DBAAlgorithmInterface'):
         """Cambiar algoritmo DBA"""
         self.dba_algorithm = dba_algorithm
+
+    def enable_incremental_writing(self, writer: 'IncrementalDataWriter'):
+        """
+        Habilitar escritura incremental de datos durante la simulación
+
+        Args:
+            writer: Instancia de IncrementalDataWriter configurada
+        """
+        self.incremental_writer = writer
+        self.incremental_writing_enabled = True
+        print(f"✅ OLT: Escritura incremental habilitada")
+
+    def disable_incremental_writing(self):
+        """Deshabilitar escritura incremental"""
+        self.incremental_writer = None
+        self.incremental_writing_enabled = False
+        print(f"⚠️ OLT: Escritura incremental deshabilitada")

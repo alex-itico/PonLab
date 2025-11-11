@@ -77,6 +77,10 @@ class PONAdapter:
         
         # Results storage
         self.last_simulation_results = None
+
+        # Incremental data writing
+        self.incremental_writer = None
+        self.incremental_writing_enabled = False
         
     def get_olt(self):
         """Obtener el OLT actual de la simulación"""
@@ -810,6 +814,183 @@ class PONAdapter:
     def is_smart_rl_available(self):
         """Verificar si Smart RL DBA está disponible"""
         return self.smart_rl_algorithm is not None
+
+    # ===== INCREMENTAL DATA WRITING =====
+
+    def enable_incremental_data_writing(self, session_dir: str) -> bool:
+        """
+        Habilitar escritura incremental de datos durante la simulación
+
+        Args:
+            session_dir: Directorio donde guardar los datos
+
+        Returns:
+            True si se habilitó correctamente
+        """
+        try:
+            from ..simulation.incremental_data_writer import IncrementalDataWriter
+
+            # Crear escritor incremental
+            self.incremental_writer = IncrementalDataWriter(session_dir, use_compression=True)
+
+            # Iniciar escritura
+            if not self.incremental_writer.start_writing():
+                self._log_event("ERROR", "No se pudo iniciar escritura incremental")
+                return False
+
+            # Iniciar secciones
+            self.incremental_writer.start_section('buffer_snapshots')
+            self.incremental_writer.start_section('transmission_log')
+
+            # Habilitar en componentes del simulador
+            if self.simulator:
+                print(f"✅ Simulador encontrado: {type(self.simulator).__name__}")
+                olt = self.get_olt()
+                if olt:
+                    print(f"✅ OLT encontrado: {type(olt).__name__}")
+                    olt.enable_incremental_writing(self.incremental_writer)
+
+                    # Habilitar también en slot_manager del OLT
+                    if hasattr(olt, 'slot_manager'):
+                        print(f"✅ slot_manager encontrado en OLT")
+                        olt.slot_manager.enable_incremental_writing(self.incremental_writer)
+                        self._log_event("INCREMENTAL_WRITE", "Slot manager habilitado")
+                    else:
+                        print(f"⚠️ OLT no tiene slot_manager")
+                else:
+                    print(f"❌ No se pudo obtener OLT del simulador")
+                    self._log_event("ERROR", "No se pudo obtener OLT del simulador")
+            else:
+                print(f"❌ No hay simulador disponible")
+                self._log_event("ERROR", "No hay simulador para habilitar escritura incremental")
+
+            self.incremental_writing_enabled = True
+            self._log_event("INCREMENTAL_WRITE", f"Escritura incremental habilitada: {session_dir}")
+            return True
+
+        except Exception as e:
+            self._log_event("ERROR", f"Error habilitando escritura incremental: {e}")
+            return False
+
+    def finalize_incremental_data_writing(self) -> str:
+        """
+        Finalizar escritura incremental y guardar metadata
+
+        Returns:
+            Ruta del archivo final, o None si hubo error
+        """
+        if not self.incremental_writing_enabled or not self.incremental_writer:
+            print("⚠️ Escritura incremental no estaba habilitada")
+            return None
+
+        try:
+            print("🔄 Cerrando secciones del JSON...")
+
+            # Cerrar secciones
+            self.incremental_writer.close_section('buffer_snapshots')
+            self.incremental_writer.close_section('transmission_log')
+
+            print("📝 Recopilando metadata final...")
+
+            # Escribir metadata final (simulation_summary, orchestrator_stats, etc.)
+            # Recopilar cada sección con manejo de errores individual
+            metadata = {}
+
+            try:
+                print("  - Obteniendo simulation_summary...")
+                metadata['simulation_summary'] = self.get_simulation_summary()
+            except Exception as e:
+                print(f"  ⚠️ Error obteniendo simulation_summary: {e}")
+                metadata['simulation_summary'] = {}
+
+            try:
+                print("  - Obteniendo current_state...")
+                metadata['current_state'] = self.get_current_state()
+            except Exception as e:
+                print(f"  ⚠️ Error obteniendo current_state: {e}")
+                metadata['current_state'] = {}
+
+            try:
+                print("  - Obteniendo orchestrator_stats...")
+                metadata['orchestrator_stats'] = self.get_orchestrator_stats()
+            except Exception as e:
+                print(f"  ⚠️ Error obteniendo orchestrator_stats: {e}")
+                metadata['orchestrator_stats'] = {}
+
+            try:
+                print("  - Obteniendo olt_stats...")
+                metadata['olt_stats'] = self._get_olt_stats_without_large_arrays()
+            except Exception as e:
+                print(f"  ⚠️ Error obteniendo olt_stats: {e}")
+                metadata['olt_stats'] = {}
+
+            print(f"💾 Escribiendo metadata ({len(metadata)} secciones)...")
+            self.incremental_writer.write_metadata(metadata)
+
+            print("🏁 Finalizando archivo JSON...")
+            # Finalizar y obtener ruta del archivo
+            final_file = self.incremental_writer.finalize()
+
+            # Deshabilitar escritura incremental en componentes
+            if self.simulator:
+                olt = self.get_olt()
+                if olt:
+                    olt.disable_incremental_writing()
+
+                    # Deshabilitar también en slot_manager
+                    if hasattr(olt, 'slot_manager'):
+                        olt.slot_manager.disable_incremental_writing()
+
+            self.incremental_writing_enabled = False
+            self._log_event("INCREMENTAL_WRITE", f"Escritura incremental finalizada: {final_file}")
+
+            return final_file
+
+        except Exception as e:
+            self._log_event("ERROR", f"Error finalizando escritura incremental: {e}")
+            if self.incremental_writer:
+                self.incremental_writer.abort()
+            return None
+
+    def _get_olt_stats_without_large_arrays(self) -> dict:
+        """
+        Obtener estadísticas de OLT sin arrays grandes (ya escritos incrementalmente)
+        """
+        olt = self.get_olt()
+        if not olt:
+            return {}
+
+        # Obtener estadísticas básicas sin buffer_snapshots
+        stats = {
+            'cycles_executed': olt.stats.get('cycles_executed', 0),
+            'reports_collected': olt.stats.get('reports_collected', 0),
+            'grants_assigned': olt.stats.get('grants_assigned', 0),
+            'total_grants_bytes': olt.stats.get('total_grants_bytes', 0),
+            'successful_transmissions': olt.stats.get('successful_transmissions', 0),
+            'failed_transmissions': olt.stats.get('failed_transmissions', 0),
+            'channel_utilization_samples': olt.stats.get('channel_utilization_samples', [])
+        }
+
+        # Agregar info de transmission_log sin los datos (ya escritos)
+        if hasattr(olt, 'slot_manager'):
+            stats['transmission_log_count'] = len(olt.slot_manager.transmission_log)
+            stats['buffer_snapshots_count'] = len(olt.buffer_snapshots)
+        else:
+            stats['transmission_log_count'] = 0
+            stats['buffer_snapshots_count'] = len(olt.buffer_snapshots)
+
+        return {'olt_stats': stats}
+
+    def get_incremental_writing_statistics(self) -> dict:
+        """
+        Obtener estadísticas de escritura incremental en tiempo real
+
+        Returns:
+            Diccionario con estadísticas o vacío si no está habilitada
+        """
+        if self.incremental_writing_enabled and self.incremental_writer:
+            return self.incremental_writer.get_statistics()
+        return {}
 
     # ===== CLEANUP =====
     
