@@ -703,12 +703,6 @@ class IntegratedPONTestPanel(QWidget):
 
         # RL model list update removed - use internal RL-DBA instead
 
-        # Nota informativa sobre configuración de tráfico
-        traffic_note = QLabel(tr("integrated_pon_panel.traffic_note"))
-        traffic_note.setWordWrap(True)
-        traffic_note.setStyleSheet("QLabel { color: #0066cc; font-style: italic; padding: 5px; }")
-        config_layout.addWidget(traffic_note, 4, 0, 1, 2)
-
         # Arquitectura de simulación (OCULTA - siempre híbrida event-driven)
         self.architecture_label = QLabel(tr("integrated_pon_panel.architecture"))
         self.architecture_label.setVisible(False)  # Ocultar etiqueta

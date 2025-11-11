@@ -293,7 +293,22 @@
     "save": "Speichern",
     "validation_error": "Validierungsfehler",
     "empty_name_error": "Gerätename darf nicht leer sein.",
-    "invalid_rate_error": "Übertragungsrate muss größer als 0 sein."
+    "invalid_rate_error": "Übertragungsrate muss größer als 0 sein.",
+    "traffic_profile_title": "PON-Verkehrsprofil",
+    "scenario_label": "Szenario:",
+    "sla_label": "SLA:",
+    "buffer_size_label": "Puffergröße:",
+    "buffer_suffix": " Anfragen",
+    "use_custom_params": "Benutzerdefinierte Parameter verwenden",
+    "traffic_probs_title": "Verkehrswahrscheinlichkeiten",
+    "traffic_sizes_title": "Verkehrsgrößen (MB)",
+    "priority_highest": "Höchste",
+    "priority_high": "Hoch",
+    "priority_medium": "Mittel",
+    "priority_low": "Niedrig",
+    "priority_lowest": "Niedrigste",
+    "min_label": "Min:",
+    "max_label": "Max:"
   },
   "sdn_dashboard": {
     "title": "📊 SDN-Dashboard - Erweiterte Metriken",
