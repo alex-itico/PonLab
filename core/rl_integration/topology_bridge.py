@@ -16,10 +16,11 @@ try:
     if os.path.exists(netponpy_path) and netponpy_path not in sys.path:
         sys.path.append(netponpy_path)
 
-    from netPonPy.pon.pon_rl_env_v2 import create_pon_rl_env_v2
+    from netPonPy.pon.pon_rl_env_v2 import create_pon_rl_env_v2  # type: ignore
     NETPONPY_AVAILABLE = True
 except ImportError:
     NETPONPY_AVAILABLE = False
+    create_pon_rl_env_v2 = None  # type: ignore
 
 
 class TopologyBridge(QObject):
