@@ -30,11 +30,15 @@ class IncrementalDataWriter:
         self.use_compression = use_compression
         self.active = False
 
-        # Archivos
+        # Archivos - usar nombres sin .tmp internamente para gzip
         if use_compression:
+            # Archivo temporal externo
             self.temp_file = os.path.join(session_dir, "datos_simulacion.json.gz.tmp")
+            # Nombre interno del archivo JSON (sin .gz, sin .tmp)
+            self.internal_json_name = "datos_simulacion.json"
         else:
             self.temp_file = os.path.join(session_dir, "datos_simulacion.json.tmp")
+            self.internal_json_name = None
 
         self.file_handle = None
 
@@ -59,8 +63,12 @@ class IncrementalDataWriter:
         """
         try:
             # Abrir archivo
+            # NOTA: Para gzip, necesitamos escribir al JSON sin comprimir primero
+            # y luego comprimir al finalizar para controlar el nombre interno
             if self.use_compression:
-                self.file_handle = gzip.open(self.temp_file, 'wt', encoding='utf-8', compresslevel=6)
+                # Crear archivo JSON temporal sin comprimir
+                self.json_temp_file = os.path.join(self.session_dir, "datos_simulacion.json.writing")
+                self.file_handle = open(self.json_temp_file, 'w', encoding='utf-8')
             else:
                 self.file_handle = open(self.temp_file, 'w', encoding='utf-8')
 
@@ -132,9 +140,10 @@ class IncrementalDataWriter:
             self.file_handle.flush()
             self.last_flush_time = current_time
 
-            # Obtener tamaño del archivo
-            if os.path.exists(self.temp_file):
-                self.bytes_written = os.path.getsize(self.temp_file)
+            # Obtener tamaño del archivo (JSON temporal si usamos compresión)
+            temp_to_check = self.json_temp_file if self.use_compression else self.temp_file
+            if os.path.exists(temp_to_check):
+                self.bytes_written = os.path.getsize(temp_to_check)
 
     def close_section(self, section_name: str):
         """
@@ -200,24 +209,82 @@ class IncrementalDataWriter:
             Ruta del archivo final, o None si hubo error
         """
         if not self.active:
+            print("⚠️ Writer no está activo, no se puede finalizar")
             return None
 
+        final_file = None
+
         try:
+            print("🔄 Finalizando escritura incremental...")
+
             # Hacer flush final antes de cerrar
-            self.file_handle.flush()
+            if self.file_handle:
+                self.file_handle.flush()
+                print("  ✓ Flush realizado")
 
             # Cerrar JSON
-            self.file_handle.write('\n}\n')
-            self.file_handle.flush()
-            self.file_handle.close()
+            if self.file_handle:
+                self.file_handle.write('\n}\n')
+                self.file_handle.flush()
+                print("  ✓ JSON cerrado")
+
+            # Cerrar archivo
+            if self.file_handle:
+                self.file_handle.close()
+                print("  ✓ Archivo cerrado")
+
+            # Si usamos compresión, comprimir el JSON ahora
+            if self.use_compression:
+                # Verificar que el JSON temporal existe
+                if not os.path.exists(self.json_temp_file):
+                    print(f"❌ Archivo JSON temporal no existe: {self.json_temp_file}")
+                    return None
+
+                print("  🗜️ Comprimiendo JSON con gzip...")
+
+                # Leer JSON sin comprimir
+                with open(self.json_temp_file, 'rb') as f_in:
+                    json_data = f_in.read()
+
+                # Escribir a archivo gzip con nombre interno correcto
+                final_file = self.temp_file.replace('.tmp', '')
+
+                # Si el archivo final ya existe, eliminarlo
+                if os.path.exists(final_file):
+                    print(f"  ⚠️ Archivo final ya existe, eliminando: {final_file}")
+                    os.remove(final_file)
+
+                # Comprimir con nombre interno correcto
+                with gzip.open(final_file, 'wb', compresslevel=6) as f_out:
+                    f_out.write(json_data)
+
+                # Eliminar archivo JSON temporal
+                os.remove(self.json_temp_file)
+                print(f"  ✓ JSON comprimido: {os.path.basename(final_file)}")
+
+                # Calcular tamaño final
+                final_size_mb = os.path.getsize(final_file) / (1024 * 1024)
+
+            else:
+                # Sin compresión, solo renombrar
+                if not os.path.exists(self.temp_file):
+                    print(f"❌ Archivo temporal no existe: {self.temp_file}")
+                    return None
+
+                final_file = self.temp_file.replace('.tmp', '')
+
+                # Si el archivo final ya existe, eliminarlo primero
+                if os.path.exists(final_file):
+                    print(f"  ⚠️ Archivo final ya existe, eliminando: {final_file}")
+                    os.remove(final_file)
+
+                os.rename(self.temp_file, final_file)
+                print(f"  ✓ Archivo renombrado: {os.path.basename(final_file)}")
+
+                final_size_mb = os.path.getsize(final_file) / (1024 * 1024)
 
             # Calcular estadísticas finales
             elapsed_time = time.time() - self.start_time
-            final_size_mb = os.path.getsize(self.temp_file) / (1024 * 1024)
-
-            # Renombrar archivo temporal a final
-            final_file = self.temp_file.replace('.tmp', '')
-            os.rename(self.temp_file, final_file)
 
             self.active = False
 
@@ -226,11 +293,23 @@ class IncrementalDataWriter:
             print(f"   💾 Tamaño final: {final_size_mb:.2f} MB")
             print(f"   ⏱️  Tiempo total: {elapsed_time:.2f}s")
             print(f"   📈 Velocidad: {self.chunks_written/elapsed_time:.0f} items/s")
+            print(f"   📄 Archivo: {final_file}")
 
             return final_file
 
         except Exception as e:
             print(f"❌ Error finalizando escritura: {e}")
+            import traceback
+            traceback.print_exc()
+
+            # Intentar cerrar el archivo si está abierto
+            try:
+                if self.file_handle:
+                    self.file_handle.close()
+            except:
+                pass
+
+            self.active = False
             return None
 
     def abort(self):
@@ -238,8 +317,16 @@ class IncrementalDataWriter:
         if self.active and self.file_handle:
             try:
                 self.file_handle.close()
+
+                # Eliminar archivo JSON temporal si existe
+                if self.use_compression and hasattr(self, 'json_temp_file'):
+                    if os.path.exists(self.json_temp_file):
+                        os.remove(self.json_temp_file)
+
+                # Eliminar archivo .tmp si existe
                 if os.path.exists(self.temp_file):
                     os.remove(self.temp_file)
+
                 print(f"⚠️ Escritura incremental abortada")
             except Exception as e:
                 print(f"❌ Error abortando escritura: {e}")
