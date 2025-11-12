@@ -1,5 +1,5 @@
 # === BEGIN USER_ALGO: TODO_ReplaceWithYourAlgoName (NO BORRAR ESTA LINEA)===
-class TESTB(DBAAlgorithmInterface):
+class TEST_EDU(DBAAlgorithmInterface):
     """
     Algoritmo DBA con prioridad estricta y garantías mínimas.
     Asegura mínimos por tipo de tráfico y luego reparte sobrante por prioridad.
@@ -116,5 +116,5 @@ class TESTB(DBAAlgorithmInterface):
         return final_allocations
     
     def get_algorithm_name(self) -> str:
-        return "TEST_B"
+        return "TEST_EDU"
 # === END USER_ALGO: TODO_ReplaceWithYourAlgoName (NO BORRAR ESTA LINEA) ===

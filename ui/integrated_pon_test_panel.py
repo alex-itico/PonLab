@@ -11,9 +11,9 @@ from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel,
                              QPushButton, QComboBox, QSpinBox, QTextEdit,
                              QGroupBox, QGridLayout, QSizePolicy, QProgressBar,
                              QCheckBox, QSlider, QSplitter, QFileDialog, QMessageBox,
-                             QFrame, QDialog)
-from PyQt5.QtCore import Qt, QTimer, pyqtSignal, QObject, QEvent, QThread
-from PyQt5.QtGui import QFont, QColor
+                             QFrame, QDialog, QListView, QStyledItemDelegate)
+from PyQt5.QtCore import Qt, QTimer, pyqtSignal, QObject, QEvent, QThread, QModelIndex
+from PyQt5.QtGui import QFont, QColor, QStandardItemModel, QStandardItem
 from core import PONAdapter
 from .pon_simulation_results_panel import PONResultsPanel
 from .auto_graphics_saver import AutoGraphicsSaver
@@ -26,6 +26,115 @@ tr = translation_manager.get_text
 
 # Model Bridge no disponible - eliminado para independencia
 MODEL_BRIDGE_AVAILABLE = False
+
+
+class AlgorithmItemDelegate(QStyledItemDelegate):
+    """Delegado personalizado para mostrar botones en algoritmos personalizados"""
+    
+    edit_clicked = pyqtSignal(str)  # Señal cuando se hace clic en Editar
+    delete_clicked = pyqtSignal(str)  # Señal cuando se hace clic en Eliminar
+    
+    def __init__(self, parent=None, custom_algorithms=None):
+        super().__init__(parent)
+        self.custom_algorithms = custom_algorithms or []
+        self.edit_buttons = {}
+        self.delete_buttons = {}
+    
+    def paint(self, painter, option, index):
+        """Pintar el item (delegamos al padre para items normales)"""
+        super().paint(painter, option, index)
+    
+    def createEditor(self, parent, option, index):
+        """No queremos edición de texto"""
+        return None
+    
+    def sizeHint(self, option, index):
+        """Tamaño del item"""
+        size = super().sizeHint(option, index)
+        algorithm = index.data(Qt.DisplayRole)
+        
+        # Si es algoritmo personalizado, aumentar altura para botones
+        if algorithm in self.custom_algorithms:
+            size.setHeight(35)
+        return size
+
+
+class CustomComboBoxView(QListView):
+    """Vista personalizada para QComboBox que permite widgets personalizados"""
+    
+    edit_algorithm = pyqtSignal(str)
+    delete_algorithm = pyqtSignal(str)
+    
+    def __init__(self, parent=None, custom_algorithms=None):
+        super().__init__(parent)
+        self.custom_algorithms = custom_algorithms or []
+        self.button_widgets = {}
+    
+    def setModel(self, model):
+        super().setModel(model)
+        self._create_button_widgets()
+    
+    def _create_button_widgets(self):
+        """Crear widgets con botones para algoritmos personalizados"""
+        if not self.model():
+            return
+        
+        for row in range(self.model().rowCount()):
+            index = self.model().index(row, 0)
+            algorithm = index.data(Qt.DisplayRole)
+            
+            if algorithm in self.custom_algorithms:
+                # Crear widget con botones
+                widget = QWidget()
+                layout = QHBoxLayout(widget)
+                layout.setContentsMargins(5, 2, 5, 2)
+                layout.setSpacing(5)
+                
+                # Etiqueta del algoritmo
+                label = QLabel(algorithm)
+                layout.addWidget(label)
+                layout.addStretch()
+                
+                # Botón Editar
+                edit_btn = QPushButton("Editar")
+                edit_btn.setMaximumSize(55, 22)
+                edit_btn.setStyleSheet("""
+                    QPushButton {
+                        background-color: #3b82f6;
+                        color: white;
+                        border: none;
+                        border-radius: 3px;
+                        padding: 2px 6px;
+                        font-size: 9px;
+                    }
+                    QPushButton:hover {
+                        background-color: #2563eb;
+                    }
+                """)
+                edit_btn.clicked.connect(lambda checked, a=algorithm: self.edit_algorithm.emit(a))
+                layout.addWidget(edit_btn)
+                
+                # Botón Eliminar
+                delete_btn = QPushButton("Eliminar")
+                delete_btn.setMaximumSize(55, 22)
+                delete_btn.setStyleSheet("""
+                    QPushButton {
+                        background-color: #ef4444;
+                        color: white;
+                        border: none;
+                        border-radius: 3px;
+                        padding: 2px 6px;
+                        font-size: 9px;
+                    }
+                    QPushButton:hover {
+                        background-color: #dc2626;
+                    }
+                """)
+                delete_btn.clicked.connect(lambda checked, a=algorithm: self.delete_algorithm.emit(a))
+                layout.addWidget(delete_btn)
+                
+                self.setIndexWidget(index, widget)
+                self.button_widgets[algorithm] = widget
 
 
 class SimulationWorker(QThread):
@@ -200,6 +309,10 @@ class IntegratedPONTestPanel(QWidget):
             # --- Geometría base (área útil) ---
             probe = QDialog(self)
             work = probe.screen().availableGeometry()
+            
+            # Calcular dimensiones dejando margen para botones y barra de tareas
+            window_height = work.height() - 80  # Reducir 80px para ver botones
+            window_width = work.width() // 2
 
             # =========================
             #  Ventana IZQUIERDA (RO)
@@ -224,7 +337,7 @@ class IntegratedPONTestPanel(QWidget):
                 QPushButton:pressed { background-color: #2a3341; }
             """)
             # mitad izquierda
-            left.setGeometry(work.x(), work.y(), work.width() // 2, work.height())
+            left.setGeometry(work.x(), work.y(), window_width, window_height)
 
             l_root = QVBoxLayout(left); l_root.setContentsMargins(8, 8, 8, 8); l_root.setSpacing(8)
             l_view = QTextEdit(); l_view.setReadOnly(True); l_view.setLineWrapMode(QTextEdit.NoWrap)
@@ -254,8 +367,8 @@ class IntegratedPONTestPanel(QWidget):
             right.setAttribute(Qt.WA_DeleteOnClose, True)
             right.setStyleSheet(left.styleSheet())
             # mitad derecha
-            right.setGeometry(work.x() + work.width() // 2, work.y(),
-                            work.width() // 2, work.height())
+            right.setGeometry(work.x() + window_width, work.y(),
+                            window_width, window_height)
 
             r_root = QVBoxLayout(right); r_root.setContentsMargins(8, 8, 8, 8); r_root.setSpacing(8)
             r_edit = QTextEdit(); r_edit.setLineWrapMode(QTextEdit.NoWrap)
@@ -465,16 +578,63 @@ class IntegratedPONTestPanel(QWidget):
                     except Exception as ee:
                         QMessageBox.critical(right, "Error al copiar implementación", str(ee))
 
-                    # 11) Mensaje final
-                    QMessageBox.information(
-                        right, "Guardado",
-                        f"Archivo guardado correctamente.\n\n"
-                        f"Clase agregada a import: {class_name}\n"
-                        f"Algoritmo agregado (lista y diccionario): {algo_name}\n"
-                        f"Fallback en except ImportError: {class_name} = None\n"
-                        f"Implementación añadida a pon_dba.py (si no existía).\n\n"
-                        "Vuelve a ejecutar la simulación para aplicar los cambios."
+                    # 11) Mensaje final con opción de reinicio
+                    msg = QMessageBox(right)
+                    msg.setIcon(QMessageBox.Information)
+                    msg.setWindowTitle("Algoritmo Creado Exitosamente")
+                    msg.setText(f"✅ El algoritmo '{algo_name}' ha sido creado correctamente.")
+                    
+                    # Detalles formateados
+                    details = (
+                        f"<b>📋 Detalles de los cambios:</b><br><br>"
+                        f"<b>• Clase agregada:</b> {class_name}<br>"
+                        f"<b>• Algoritmo:</b> {algo_name}<br>"
+                        f"<b>• Archivos modificados:</b><br>"
+                        f"&nbsp;&nbsp;- pon_adapter.py (import, lista, diccionario)<br>"
+                        f"&nbsp;&nbsp;- pon_dba.py (implementación)<br><br>"
+                        f"La aplicación se reiniciará automáticamente para aplicar los cambios."
                     )
+                    msg.setInformativeText(details)
+                    msg.setTextFormat(Qt.RichText)
+                    
+                    # Estilo personalizado para mejor legibilidad
+                    msg.setStyleSheet("""
+                        QMessageBox {
+                            background-color: #f8f9fa;
+                        }
+                        QMessageBox QLabel {
+                            color: #1a1a1a;
+                            background-color: transparent;
+                            font-size: 11pt;
+                            padding: 8px;
+                        }
+                        QMessageBox QPushButton {
+                            background-color: #0d6efd;
+                            color: white;
+                            border: none;
+                            border-radius: 4px;
+                            padding: 8px 16px;
+                            font-weight: bold;
+                            min-width: 80px;
+                        }
+                        QMessageBox QPushButton:hover {
+                            background-color: #0b5ed7;
+                        }
+                        QMessageBox QPushButton:pressed {
+                            background-color: #0a58ca;
+                        }
+                    """)
+                    
+                    msg.setStandardButtons(QMessageBox.Ok)
+                    msg.exec_()
+                    
+                    # Cerrar las ventanas sin confirmación
+                    _closing_state["active"] = True
+                    right.close()
+                    left.close()
+                    
+                    # Reiniciar la aplicación
+                    QTimer.singleShot(300, self._restart_application)
 
                 except Exception as e:
                     QMessageBox.critical(right, "Error al guardar", str(e))
@@ -488,7 +648,7 @@ class IntegratedPONTestPanel(QWidget):
             def snap_right():
                 frame_tl = right.frameGeometry().topLeft(); geom_tl = right.geometry().topLeft()
                 dx = frame_tl.x() - geom_tl.x(); dy = frame_tl.y() - geom_tl.y()
-                right.move(work.x() + work.width() // 2 - dx, work.y() - dy)
+                right.move(work.x() + window_width - dx, work.y() - dy)
 
             # === CIERRE COORDINADO (una sola confirmación) ===
             # Usamos un flag compartido para evitar doble diálogo al cerrar la otra ventana.
@@ -602,12 +762,19 @@ class IntegratedPONTestPanel(QWidget):
         self.dba_label = QLabel(tr("integrated_pon_panel.dba"))
         config_layout.addWidget(self.dba_label, 1, 0)
         self.algorithm_combo = QComboBox()
+        
         if self.adapter.is_pon_available():
             algorithms = self.adapter.get_available_algorithms()
             
             # Separar algoritmos convencionales y personalizados
             conventional = ["FCFS", "Priority", "RL-DBA", "SDN", "SP-MINSHARE"]
-            custom_algorithms = [algo for algo in algorithms if algo not in conventional and algo not in ["Smart-RL", "Smart-RL-SDN"]]
+            self.custom_algorithms = [algo for algo in algorithms if algo not in conventional and algo not in ["Smart-RL", "Smart-RL-SDN"]]
+            
+            # Crear vista personalizada para el dropdown con botones
+            custom_view = CustomComboBoxView(custom_algorithms=self.custom_algorithms)
+            custom_view.edit_algorithm.connect(self.on_edit_custom_algorithm)
+            custom_view.delete_algorithm.connect(self.on_delete_custom_algorithm)
+            self.algorithm_combo.setView(custom_view)
             
             # Agregar header y algoritmos convencionales
             self.algorithm_combo.addItem("━━━ Algoritmos Convencionales ━━━")
@@ -628,19 +795,22 @@ class IntegratedPONTestPanel(QWidget):
                         self.algorithm_combo.addItem(algo)
             
             # Agregar header y algoritmos personalizados si existen
-            if custom_algorithms:
+            if self.custom_algorithms:
                 self.algorithm_combo.addItem("━━━ Algoritmos Personalizados ━━━")
                 item = model.item(self.algorithm_combo.count() - 1)
                 item.setEnabled(False)
                 item.setFont(QFont("Arial", 9, QFont.Bold))
                 item.setBackground(QColor(240, 240, 240, 50))
                 
-                for algo in custom_algorithms:
+                for algo in self.custom_algorithms:
                     self.algorithm_combo.addItem(algo)
             
             # Agregar opción de agente RL si está disponible
             if MODEL_BRIDGE_AVAILABLE:
                 self.algorithm_combo.addItem("RL Agent")
+            
+            # Actualizar los widgets de botones en la vista personalizada
+            custom_view._create_button_widgets()
         
         self.algorithm_combo.currentTextChanged.connect(self.on_algorithm_changed)
         config_layout.addWidget(self.algorithm_combo, 1, 1)
@@ -1024,6 +1194,636 @@ class IntegratedPONTestPanel(QWidget):
         if self.orchestrator_initialized and duration != self.last_duration:
             self.auto_reinitialize(f"tiempo de simulación ({duration}s)")
         self.last_duration = duration
+    
+    def on_edit_custom_algorithm(self, algorithm_name):
+        """Editar un algoritmo personalizado - Abre editor dual"""
+        try:
+            import os
+            import re
+            from PyQt5.QtWidgets import QDialog, QTextEdit, QVBoxLayout, QHBoxLayout, QPushButton, QMessageBox
+            from PyQt5.QtGui import QFont
+            from PyQt5.QtCore import Qt
+
+            # --- Rutas ---
+            ui_dir = os.path.dirname(os.path.abspath(__file__))
+            algo_dir = os.path.abspath(os.path.join(ui_dir, "..", "core", "algorithms"))
+            template_path = os.path.join(algo_dir, "template_Algo_DBA.txt")
+            pon_dba_path = os.path.join(algo_dir, "pon_dba.py")
+
+            if not os.path.exists(template_path):
+                QMessageBox.warning(self, "Archivo no encontrado",
+                                    f"No se encontró el archivo de guía:\n{template_path}")
+                return
+            
+            if not os.path.exists(pon_dba_path):
+                QMessageBox.warning(self, "Error", f"No se encontró el archivo:\n{pon_dba_path}")
+                return
+
+            # Leer el template
+            with open(template_path, "r", encoding="utf-8") as f:
+                template_content = f.read()
+            
+            # Leer pon_dba.py y extraer el código del algoritmo específico
+            with open(pon_dba_path, "r", encoding="utf-8") as f:
+                pon_dba_content = f.read()
+            
+            # Buscar la clase del algoritmo (nombre de clase, no nombre del algoritmo)
+            # Primero necesitamos encontrar la clase que corresponde a este algoritmo
+            # Buscar todas las clases y sus métodos get_algorithm_name
+            class_pattern = r'class\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(\s*DBAAlgorithmInterface\s*\)\s*:(.*?)(?=\nclass\s|\Z)'
+            classes = re.finditer(class_pattern, pon_dba_content, re.DOTALL)
+            
+            algorithm_code = None
+            class_name_found = None
+            
+            for match in classes:
+                class_name = match.group(1)
+                class_body = match.group(2)
+                
+                # Buscar get_algorithm_name en esta clase
+                name_match = re.search(
+                    r'def\s+get_algorithm_name\s*\([^)]*\)\s*(?:->\s*[A-Za-z_][A-Za-z0-9_\[\],\s]*)?\s*:[\s\S]*?return\s*[\'"]([^\'"]+)[\'"]',
+                    class_body
+                )
+                
+                if name_match and name_match.group(1).strip() == algorithm_name:
+                    # Encontramos la clase correcta
+                    algorithm_code = match.group(0)
+                    class_name_found = class_name
+                    break
+            
+            if not algorithm_code:
+                QMessageBox.warning(self, "Error", 
+                    f"No se encontró el código del algoritmo '{algorithm_name}' en pon_dba.py")
+                return
+
+            # --- Geometría base (área útil) ---
+            probe = QDialog(self)
+            work = probe.screen().availableGeometry()
+            
+            # Calcular dimensiones dejando margen para botones y barra de tareas
+            window_height = work.height() - 80  # Reducir 80px para ver botones
+            window_width = work.width() // 2
+
+            # =========================
+            #  Ventana IZQUIERDA (Template - solo lectura)
+            # =========================
+            left = QDialog(None)
+            left.setWindowTitle("Template de Algoritmo DBA (Guía)")
+            left.setModal(False)
+            left.setWindowFlags(Qt.Window | Qt.WindowTitleHint |
+                                Qt.WindowMinMaxButtonsHint | Qt.WindowCloseButtonHint)
+            left.setAttribute(Qt.WA_DeleteOnClose, True)
+            left.setStyleSheet("""
+                QDialog { background-color: #1f1f1f; }
+                QTextEdit {
+                    background-color: #232629; color: #e0e0e0; border: none;
+                    padding: 10px; selection-background-color: #3b82f6; selection-color: #ffffff;
+                }
+                QPushButton {
+                    background-color: #2d3748; color: #e2e8f0; border: 1px solid #3a3f44;
+                    border-radius: 6px; padding: 6px 10px;
+                }
+                QPushButton:hover { background-color: #3b495c; }
+                QPushButton:pressed { background-color: #2a3341; }
+            """)
+            left.setGeometry(work.x(), work.y(), window_width, window_height)
+
+            l_root = QVBoxLayout(left)
+            l_root.setContentsMargins(8, 8, 8, 8)
+            l_root.setSpacing(8)
+            l_view = QTextEdit()
+            l_view.setReadOnly(True)
+            l_view.setLineWrapMode(QTextEdit.NoWrap)
+            l_view.setFont(QFont("Consolas", 10))
+            l_view.setPlainText(template_content)
+            l_root.addWidget(l_view)
+
+            l_btns = QHBoxLayout()
+            l_btns.addStretch(1)
+            l_copy = QPushButton("Copiar todo")
+            l_copy.clicked.connect(lambda: (l_view.selectAll(), l_view.copy(),
+                                            QMessageBox.information(left, "Copiado", "Template copiado al portapapeles.")))
+            l_btns.addWidget(l_copy)
+            l_root.addLayout(l_btns)
+
+            # =========================
+            #  Ventana DERECHA (Algoritmo - editable)
+            # =========================
+            right = QDialog(None)
+            right.setWindowTitle(f"Editando: {algorithm_name} (clase {class_name_found})")
+            right.setModal(False)
+            right.setWindowFlags(Qt.Window | Qt.WindowTitleHint |
+                                Qt.WindowMinMaxButtonsHint | Qt.WindowCloseButtonHint)
+            right.setAttribute(Qt.WA_DeleteOnClose, True)
+            right.setStyleSheet(left.styleSheet())
+            right.setGeometry(work.x() + window_width, work.y(),
+                            window_width, window_height)
+
+            r_root = QVBoxLayout(right)
+            r_root.setContentsMargins(8, 8, 8, 8)
+            r_root.setSpacing(8)
+            r_edit = QTextEdit()
+            r_edit.setLineWrapMode(QTextEdit.NoWrap)
+            r_edit.setFont(QFont("Consolas", 10))
+            r_edit.setPlainText(algorithm_code)
+            r_root.addWidget(r_edit)
+
+            r_btns = QHBoxLayout()
+            r_btns.addStretch(1)
+            
+            # === CIERRE COORDINADO (una sola confirmación) ===
+            # Usamos un flag compartido para evitar doble diálogo al cerrar la otra ventana.
+            _closing_state = {"active": False}
+
+            def _confirm_close():
+                resp = QMessageBox.question(
+                    None,
+                    "Cerrar Editor",
+                    "¿Estás seguro de que deseas cerrar el editor?\n\n"
+                    "Si no has guardado, perderás los cambios realizados.",
+                    QMessageBox.Yes | QMessageBox.No,
+                    QMessageBox.No
+                )
+                return resp == QMessageBox.Yes
+            
+            r_save = QPushButton("Guardar Cambios")
+
+            def _save_edit():
+                try:
+                    new_code = r_edit.toPlainText()
+                    
+                    # Validar que sigue siendo la misma clase
+                    new_class_match = re.search(r'class\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(\s*DBAAlgorithmInterface\s*\)\s*:', new_code)
+                    if not new_class_match:
+                        QMessageBox.warning(right, "Error de Sintaxis",
+                            "No se encontró una clase que herede de DBAAlgorithmInterface")
+                        return
+                    
+                    new_class_name = new_class_match.group(1)
+                    
+                    # Extraer el NUEVO nombre del algoritmo
+                    new_name_match = re.search(
+                        r'def\s+get_algorithm_name\s*\([^)]*\)\s*(?:->\s*[A-Za-z_][A-Za-z0-9_\[\],\s]*)?\s*:[\s\S]*?return\s*[\'"]([^\'"]+)[\'"]',
+                        new_code
+                    )
+                    new_algorithm_name = new_name_match.group(1).strip() if new_name_match else algorithm_name
+                    
+                    # Reemplazar el código antiguo con el nuevo en pon_dba.py
+                    updated_content = pon_dba_content.replace(algorithm_code, new_code)
+                    
+                    # Guardar en pon_dba.py
+                    with open(pon_dba_path, "w", encoding="utf-8") as f:
+                        f.write(updated_content)
+                    
+                    # Actualizar pon_adapter.py si cambió el nombre de la clase o el nombre del algoritmo
+                    modified_files = ["pon_dba.py"]
+                    if new_class_name != class_name_found or new_algorithm_name != algorithm_name:
+                        adapter_path = os.path.join(algo_dir, "..", "pon", "pon_adapter.py")
+                        if os.path.exists(adapter_path):
+                            with open(adapter_path, "r", encoding="utf-8") as f:
+                                adapter_content = f.read()
+                            
+                            # 1. Reemplazar nombre de clase en imports si cambió
+                            if new_class_name != class_name_found:
+                                adapter_content = adapter_content.replace(class_name_found, new_class_name)
+                            
+                            # 2. Actualizar el nombre del algoritmo en la lista
+                            if new_algorithm_name != algorithm_name:
+                                # Reemplazar en la lista de algoritmos
+                                list_pattern = rf'"{re.escape(algorithm_name)}"'
+                                adapter_content = re.sub(list_pattern, f'"{new_algorithm_name}"', adapter_content)
+                                
+                                # Reemplazar la clave del diccionario
+                                dict_pattern = rf'"{re.escape(algorithm_name)}"(\s*:\s*){re.escape(class_name_found if new_class_name == class_name_found else new_class_name)}'
+                                adapter_content = re.sub(dict_pattern, f'"{new_algorithm_name}"\\1{new_class_name}', adapter_content)
+                            
+                            with open(adapter_path, "w", encoding="utf-8") as f:
+                                f.write(adapter_content)
+                            
+                            modified_files.append("pon_adapter.py")
+                    
+                    # Mensaje final con opción de reinicio
+                    msg = QMessageBox(right)
+                    msg.setIcon(QMessageBox.Information)
+                    msg.setWindowTitle("Algoritmo Editado Exitosamente")
+                    msg.setText(f"✅ El algoritmo '{algorithm_name}' ha sido editado correctamente.")
+                    
+                    # Detalles formateados
+                    details = (
+                        f"<b>📋 Detalles de los cambios:</b><br><br>"
+                        f"<b>• Clase:</b> {new_class_name}<br>"
+                        f"<b>• Archivos modificados:</b><br>"
+                        + "<br>".join(f"&nbsp;&nbsp;- {f}" for f in modified_files)
+                        + "<br><br>La aplicación se reiniciará automáticamente para aplicar los cambios."
+                    )
+                    msg.setInformativeText(details)
+                    msg.setTextFormat(Qt.RichText)
+                    
+                    # Estilo personalizado para mejor legibilidad
+                    msg.setStyleSheet("""
+                        QMessageBox {
+                            background-color: #f8f9fa;
+                        }
+                        QMessageBox QLabel {
+                            color: #1a1a1a;
+                            background-color: transparent;
+                            font-size: 11pt;
+                            padding: 8px;
+                        }
+                        QMessageBox QPushButton {
+                            background-color: #0d6efd;
+                            color: white;
+                            border: none;
+                            border-radius: 4px;
+                            padding: 8px 16px;
+                            font-weight: bold;
+                            min-width: 80px;
+                        }
+                        QMessageBox QPushButton:hover {
+                            background-color: #0b5ed7;
+                        }
+                        QMessageBox QPushButton:pressed {
+                            background-color: #0a58ca;
+                        }
+                    """)
+                    
+                    msg.setStandardButtons(QMessageBox.Ok)
+                    msg.exec_()
+                    
+                    # Cerrar sin confirmación después de guardar exitosamente
+                    _closing_state["active"] = True
+                    right.close()
+                    left.close()
+                    
+                    # Reiniciar la aplicación
+                    from PyQt5.QtCore import QTimer
+                    QTimer.singleShot(300, self._restart_application)
+                    
+                except Exception as e:
+                    QMessageBox.critical(right, "Error al Guardar",
+                        f"Error al guardar cambios: {str(e)}")
+
+            r_save.clicked.connect(_save_edit)
+            r_btns.addWidget(r_save)
+            
+            r_cancel = QPushButton("Cancelar")
+            
+            def _cancel_edit():
+                # Activar el flag y cerrar ambas ventanas
+                # Esto disparará _confirm_close() solo una vez
+                if _confirm_close():
+                    _closing_state["active"] = True
+                    right.close()
+                    left.close()
+            
+            r_cancel.clicked.connect(_cancel_edit)
+            r_btns.addWidget(r_cancel)
+            
+            r_root.addLayout(r_btns)
+
+            def _left_close(ev):
+                # Si ya estamos cerrando (por la otra ventana), no preguntar de nuevo.
+                if _closing_state["active"]:
+                    ev.accept()
+                    return
+
+                if _confirm_close():
+                    _closing_state["active"] = True
+                    try:
+                        # Cerrar la otra SIN volver a preguntar
+                        right.close()
+                    finally:
+                        ev.accept()
+                else:
+                    ev.ignore()
+
+            def _right_close(ev):
+                # Si ya estamos cerrando (por la otra ventana), no preguntar de nuevo.
+                if _closing_state["active"]:
+                    ev.accept()
+                    return
+
+                if _confirm_close():
+                    _closing_state["active"] = True
+                    try:
+                        # Cerrar la otra SIN volver a preguntar
+                        left.close()
+                    finally:
+                        ev.accept()
+                else:
+                    ev.ignore()
+
+            left.closeEvent = _left_close
+            right.closeEvent = _right_close
+            # === FIN CIERRE COORDINADO ===
+
+            # Mostrar ventanas
+            left.show()
+            right.show()
+
+            # Ajustar posición para snap
+            def snap_windows():
+                frame_tl = left.frameGeometry().topLeft()
+                geom_tl = left.geometry().topLeft()
+                dx = frame_tl.x() - geom_tl.x()
+                dy = frame_tl.y() - geom_tl.y()
+                left.move(work.x() - dx, work.y() - dy)
+                right.move(work.x() + window_width - dx, work.y() - dy)
+
+            QTimer.singleShot(100, snap_windows)
+
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Error al editar algoritmo: {str(e)}")
+            import traceback
+            traceback.print_exc()
+
+    
+    def on_delete_custom_algorithm(self, algorithm_name):
+        """Eliminar un algoritmo personalizado"""
+        try:
+            import os
+            import re
+            import sys
+            
+            # Confirmar eliminación
+            reply = QMessageBox.question(
+                self, 
+                "Confirmar Eliminación",
+                f"¿Estás seguro de que deseas eliminar el algoritmo '{algorithm_name}'?\n\n"
+                f"Esta acción no se puede deshacer.\n"
+                f"La aplicación se reiniciará automáticamente después de eliminar.",
+                QMessageBox.Yes | QMessageBox.No,
+                QMessageBox.No
+            )
+            
+            if reply != QMessageBox.Yes:
+                return
+            
+            # Obtener rutas
+            ui_dir = os.path.dirname(os.path.abspath(__file__))
+            algo_dir = os.path.abspath(os.path.join(ui_dir, "..", "core", "algorithms"))
+            pon_dba_path = os.path.join(algo_dir, "pon_dba.py")
+            adapter_path = os.path.join(algo_dir, "..", "pon", "pon_adapter.py")
+            
+            # =========================================================
+            # PASO 1: Encontrar la clase correcta en pon_dba.py
+            # =========================================================
+            with open(pon_dba_path, "r", encoding="utf-8") as f:
+                pon_dba_content = f.read()
+            
+            # Buscar la clase que corresponde a este algoritmo
+            class_pattern = r'class\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(\s*DBAAlgorithmInterface\s*\)\s*:(.*?)(?=\nclass\s|\Z)'
+            classes = re.finditer(class_pattern, pon_dba_content, re.DOTALL)
+            
+            class_name_found = None
+            algorithm_code = None
+            
+            for match in classes:
+                class_name = match.group(1)
+                class_body = match.group(2)
+                
+                # Buscar get_algorithm_name en esta clase
+                name_match = re.search(
+                    r'def\s+get_algorithm_name\s*\([^)]*\)\s*(?:->\s*[A-Za-z_][A-Za-z0-9_\[\],\s]*)?\s*:[\s\S]*?return\s*[\'"]([^\'"]+)[\'"]',
+                    class_body
+                )
+                
+                if name_match and name_match.group(1).strip() == algorithm_name:
+                    # Encontramos la clase correcta
+                    algorithm_code = match.group(0)
+                    class_name_found = class_name
+                    break
+            
+            if not class_name_found:
+                QMessageBox.warning(self, "Error", 
+                    f"No se encontró la clase del algoritmo '{algorithm_name}' en pon_dba.py")
+                return
+            
+            # =========================================================
+            # PASO 2: Eliminar clase de pon_dba.py
+            # =========================================================
+            new_pon_dba_content = pon_dba_content.replace(algorithm_code, '')
+            
+            # Limpiar líneas en blanco múltiples (más de 2 líneas vacías → 2 líneas vacías)
+            new_pon_dba_content = re.sub(r'\n{3,}', '\n\n', new_pon_dba_content)
+            
+            # Guardar pon_dba.py
+            with open(pon_dba_path, "w", encoding="utf-8") as f:
+                f.write(new_pon_dba_content)
+            
+            # =========================================================
+            # PASO 3: Actualizar pon_adapter.py
+            # =========================================================
+            with open(adapter_path, "r", encoding="utf-8") as f:
+                adapter_content = f.read()
+            
+            # 3.1 - ELIMINAR DEL IMPORT
+            # Buscar el bloque de import completo
+            import_match = re.search(
+                r'(from\s+\.\.algorithms\.pon_dba\s+import\s+\(\s*)(.*?)(\s*\))',
+                adapter_content,
+                re.DOTALL
+            )
+            
+            if import_match:
+                import_prefix = import_match.group(1)
+                import_body = import_match.group(2)
+                import_suffix = import_match.group(3)
+                
+                # Dividir en líneas y procesar
+                import_lines = import_body.split('\n')
+                new_import_lines = []
+                
+                for line in import_lines:
+                    # Verificar si esta línea contiene SOLO el nombre de clase a eliminar
+                    # Buscar identificadores en la línea
+                    identifiers = re.findall(r'\b([A-Za-z_][A-Za-z0-9_]*)\b', line)
+                    
+                    # Si la línea contiene el nombre de clase a eliminar, omitirla
+                    if class_name_found not in identifiers:
+                        new_import_lines.append(line)
+                
+                # Reconstruir el import
+                new_import_body = '\n'.join(new_import_lines)
+                
+                # Limpiar comas problemáticas
+                # Eliminar comas al inicio o final de líneas
+                new_import_body = re.sub(r'^\s*,\s*', '', new_import_body, flags=re.MULTILINE)
+                new_import_body = re.sub(r',\s*$', '', new_import_body, flags=re.MULTILINE)
+                # Eliminar comas duplicadas
+                new_import_body = re.sub(r',\s*,', ',', new_import_body)
+                # Asegurar que cada entrada excepto la última tenga coma
+                lines = [l.strip() for l in new_import_body.split('\n') if l.strip()]
+                for i in range(len(lines) - 1):
+                    if lines[i] and not lines[i].endswith(','):
+                        lines[i] = lines[i] + ','
+                new_import_body = '\n        '.join(lines)
+                
+                # Reemplazar en el contenido
+                new_import_block = import_prefix + new_import_body + import_suffix
+                adapter_content = adapter_content[:import_match.start()] + new_import_block + adapter_content[import_match.end():]
+            
+            # 3.2 - ELIMINAR DE LA LISTA algorithms = [...]
+            # Buscar y modificar la lista
+            list_match = re.search(
+                r'(algorithms\s*=\s*\[)([^\]]*?)(\])',
+                adapter_content,
+                re.DOTALL
+            )
+            
+            if list_match:
+                list_prefix = list_match.group(1)
+                list_body = list_match.group(2)
+                list_suffix = list_match.group(3)
+                
+                # Eliminar el algoritmo de la lista
+                # Buscar el patrón exacto: "algorithm_name" o 'algorithm_name' con posible coma
+                list_body = re.sub(
+                    rf'["\']' + re.escape(algorithm_name) + rf'["\'],?\s*',
+                    '',
+                    list_body
+                )
+                
+                # Limpiar comas duplicadas y espacios
+                list_body = re.sub(r',\s*,', ',', list_body)
+                list_body = re.sub(r'\[\s*,', '[', list_body)
+                list_body = re.sub(r',\s*\]', ']', list_body)
+                
+                # Reconstruir la lista
+                new_list_block = list_prefix + list_body + list_suffix
+                adapter_content = adapter_content[:list_match.start()] + new_list_block + adapter_content[list_match.end():]
+            
+            # 3.3 - ELIMINAR DEL DICCIONARIO algorithms = {...}
+            # Buscar y modificar el diccionario
+            dict_match = re.search(
+                r'(algorithms\s*=\s*\{)([^\}]*?)(\})',
+                adapter_content,
+                re.DOTALL
+            )
+            
+            if dict_match:
+                dict_prefix = dict_match.group(1)
+                dict_body = dict_match.group(2)
+                dict_suffix = dict_match.group(3)
+                
+                # Eliminar la entrada del diccionario
+                # Patrón: "algorithm_name": ClassName,
+                dict_body = re.sub(
+                    rf'["\']' + re.escape(algorithm_name) + rf'["\']\s*:\s*{re.escape(class_name_found)}\s*,?\s*\n?',
+                    '',
+                    dict_body
+                )
+                
+                # Limpiar comas duplicadas
+                dict_body = re.sub(r',\s*,', ',', dict_body)
+                dict_body = re.sub(r'\{\s*,', '{', dict_body)
+                dict_body = re.sub(r',\s*\}', '}', dict_body)
+                
+                # Reconstruir el diccionario
+                new_dict_block = dict_prefix + dict_body + dict_suffix
+                adapter_content = adapter_content[:dict_match.start()] + new_dict_block + adapter_content[dict_match.end():]
+            
+            # Guardar pon_adapter.py
+            with open(adapter_path, "w", encoding="utf-8") as f:
+                f.write(adapter_content)
+            
+            # =========================================================
+            # PASO 4: Confirmar y reiniciar
+            # =========================================================
+            msg = QMessageBox(self)
+            msg.setIcon(QMessageBox.Information)
+            msg.setWindowTitle("Algoritmo Eliminado")
+            msg.setText(f"✅ El algoritmo '{algorithm_name}' ha sido eliminado correctamente.")
+            
+            # Detalles formateados
+            details = (
+                f"<b>📋 Detalles de los cambios:</b><br><br>"
+                f"<b>• Clase eliminada:</b> {class_name_found}<br>"
+                f"<b>• Archivos modificados:</b><br>"
+                f"&nbsp;&nbsp;- pon_dba.py (clase eliminada)<br>"
+                f"&nbsp;&nbsp;- pon_adapter.py (referencias eliminadas)<br><br>"
+                f"La aplicación se reiniciará automáticamente para aplicar los cambios."
+            )
+            msg.setInformativeText(details)
+            msg.setTextFormat(Qt.RichText)
+            
+            # Estilo personalizado para mejor legibilidad
+            msg.setStyleSheet("""
+                QMessageBox {
+                    background-color: #f8f9fa;
+                }
+                QMessageBox QLabel {
+                    color: #1a1a1a;
+                    background-color: transparent;
+                    font-size: 11pt;
+                    padding: 8px;
+                }
+                QMessageBox QPushButton {
+                    background-color: #0d6efd;
+                    color: white;
+                    border: none;
+                    border-radius: 4px;
+                    padding: 8px 16px;
+                    font-weight: bold;
+                    min-width: 80px;
+                }
+                QMessageBox QPushButton:hover {
+                    background-color: #0b5ed7;
+                }
+                QMessageBox QPushButton:pressed {
+                    background-color: #0a58ca;
+                }
+            """)
+            
+            msg.setStandardButtons(QMessageBox.Ok)
+            msg.exec_()
+            
+            # Reiniciar la aplicación
+            QTimer.singleShot(500, lambda: self._restart_application())
+            
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Error al eliminar algoritmo: {str(e)}")
+            import traceback
+            traceback.print_exc()
+
+    
+    def _restart_application(self):
+        """Reiniciar la aplicación"""
+        try:
+            import sys
+            import os
+            import subprocess
+            from PyQt5.QtWidgets import QApplication
+            from PyQt5.QtCore import QTimer
+            
+            # Obtener el ejecutable de Python y el script principal
+            python = sys.executable
+            script = os.path.abspath(sys.argv[0])
+            args = [python, script] + sys.argv[1:]
+            
+            # Función para iniciar nuevo proceso y cerrar actual
+            def start_new_instance():
+                # Iniciar nuevo proceso de forma independiente
+                if sys.platform == 'win32':
+                    # En Windows, usar DETACHED_PROCESS para independizar el proceso
+                    DETACHED_PROCESS = 0x00000008
+                    subprocess.Popen(args, creationflags=DETACHED_PROCESS)
+                else:
+                    # En Unix-like systems
+                    subprocess.Popen(args, start_new_session=True)
+                
+                # Cerrar la aplicación actual completamente
+                QApplication.instance().quit()
+            
+            # Dar un pequeño delay para asegurar que los archivos se guarden
+            QTimer.singleShot(200, start_new_instance)
+            
+        except Exception as e:
+            QMessageBox.critical(self, "Error al Reiniciar", 
+                f"No se pudo reiniciar la aplicación automáticamente.\n\n"
+                f"Por favor, reinicia manualmente.\n\nError: {str(e)}")
+
 
     def load_smart_rl_model(self):
         """Cargar modelo RL entrenado para Smart RL DBA"""
