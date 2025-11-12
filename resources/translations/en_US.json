@@ -8,9 +8,11 @@
       "title": "&File",
       "open": "&Open file...",
       "save": "&Save file...",
+      "open_simulation": "Open &simulation...",
       "close": "&Close",
       "open_tip": "Open a project file",
       "save_tip": "Save current project",
+      "open_simulation_tip": "Open saved simulation results",
       "close_tip": "Close the application"
     },
     "view": {
