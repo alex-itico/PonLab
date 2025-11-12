@@ -944,9 +944,27 @@ class PONAdapter:
             return final_file
 
         except Exception as e:
-            self._log_event("ERROR", f"Error finalizando escritura incremental: {e}")
+            print(f"❌ Error en finalize_incremental_data_writing: {e}")
+            import traceback
+            traceback.print_exc()
+
+            # CRÍTICO: Intentar finalizar archivo incluso con errores parciales
+            try:
+                print("⚠️ Intentando finalizar archivo a pesar del error...")
+                if self.incremental_writer and self.incremental_writer.active:
+                    final_file = self.incremental_writer.finalize()
+                    if final_file:
+                        print(f"✅ Archivo salvado parcialmente: {final_file}")
+                        self.incremental_writing_enabled = False
+                        return final_file
+            except Exception as e2:
+                print(f"❌ Error al intentar salvar archivo: {e2}")
+
+            # Solo abortar si realmente no se puede salvar nada
             if self.incremental_writer:
                 self.incremental_writer.abort()
+
+            self._log_event("ERROR", f"Error finalizando escritura incremental: {e}")
             return None
 
     def _get_olt_stats_without_large_arrays(self) -> dict:
