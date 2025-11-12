@@ -2434,7 +2434,7 @@ class IntegratedPONTestPanel(QWidget):
             self.saving_progress_widget.setWindowFlags(
                 Qt.Window | Qt.WindowStaysOnTopHint
             )
-            self.saving_progress_widget.resize(500, 400)
+            self.saving_progress_widget.resize(450, 250)  # Tamaño reducido para modo simple
 
             # Conectar señal de cerrar
             self.saving_progress_widget.close_requested.connect(
