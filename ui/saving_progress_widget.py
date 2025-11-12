@@ -22,11 +22,12 @@ class SavingProgressWidget(QWidget):
     # Señales
     close_requested = pyqtSignal()
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, simple_mode=False):
         super().__init__(parent)
         self.adapter = None
         self.update_timer = None
         self.total_snapshots_estimate = 0
+        self.simple_mode = simple_mode  # Modo simple para guardado post-simulación
         self.setup_ui()
 
     def setup_ui(self):
@@ -105,55 +106,57 @@ class SavingProgressWidget(QWidget):
 
         frame_layout.addLayout(progress_layout)
 
-        # Estadísticas detalladas
-        stats_layout = QVBoxLayout()
-        stats_layout.setSpacing(8)
+        # Estadísticas detalladas (solo en modo normal, no en modo simple)
+        self.stats_layout = QVBoxLayout()
+        self.stats_layout.setSpacing(8)
 
         # Snapshots escritos
-        snapshots_layout = QHBoxLayout()
-        snapshots_icon = QLabel("📊")
-        snapshots_icon.setStyleSheet("font-size: 16pt;")
+        self.snapshots_layout = QHBoxLayout()
+        self.snapshots_icon = QLabel("📊")
+        self.snapshots_icon.setStyleSheet("font-size: 16pt;")
         self.snapshots_label = QLabel("Snapshots: 0 / ?")
         self.snapshots_label.setStyleSheet("color: #495057;")
-        snapshots_layout.addWidget(snapshots_icon)
-        snapshots_layout.addWidget(self.snapshots_label)
-        snapshots_layout.addStretch()
-        stats_layout.addLayout(snapshots_layout)
+        self.snapshots_layout.addWidget(self.snapshots_icon)
+        self.snapshots_layout.addWidget(self.snapshots_label)
+        self.snapshots_layout.addStretch()
+        self.stats_layout.addLayout(self.snapshots_layout)
 
         # Tamaño del archivo
-        size_layout = QHBoxLayout()
-        size_icon = QLabel("💾")
-        size_icon.setStyleSheet("font-size: 16pt;")
+        self.size_layout = QHBoxLayout()
+        self.size_icon = QLabel("💾")
+        self.size_icon.setStyleSheet("font-size: 16pt;")
         self.size_label = QLabel("Tamaño: 0.00 MB (comprimido)")
         self.size_label.setStyleSheet("color: #495057;")
-        size_layout.addWidget(size_icon)
-        size_layout.addWidget(self.size_label)
-        size_layout.addStretch()
-        stats_layout.addLayout(size_layout)
+        self.size_layout.addWidget(self.size_icon)
+        self.size_layout.addWidget(self.size_label)
+        self.size_layout.addStretch()
+        self.stats_layout.addLayout(self.size_layout)
 
         # Velocidad de escritura
-        speed_layout = QHBoxLayout()
-        speed_icon = QLabel("⏱️")
-        speed_icon.setStyleSheet("font-size: 16pt;")
+        self.speed_layout = QHBoxLayout()
+        self.speed_icon = QLabel("⏱️")
+        self.speed_icon.setStyleSheet("font-size: 16pt;")
         self.speed_label = QLabel("Velocidad: 0 items/s")
         self.speed_label.setStyleSheet("color: #495057;")
-        speed_layout.addWidget(speed_icon)
-        speed_layout.addWidget(self.speed_label)
-        speed_layout.addStretch()
-        stats_layout.addLayout(speed_layout)
+        self.speed_layout.addWidget(self.speed_icon)
+        self.speed_layout.addWidget(self.speed_label)
+        self.speed_layout.addStretch()
+        self.stats_layout.addLayout(self.speed_layout)
 
         # Tiempo transcurrido
-        time_layout = QHBoxLayout()
-        time_icon = QLabel("🕐")
-        time_icon.setStyleSheet("font-size: 16pt;")
+        self.time_layout = QHBoxLayout()
+        self.time_icon = QLabel("🕐")
+        self.time_icon.setStyleSheet("font-size: 16pt;")
         self.time_label = QLabel("Tiempo: 0.0s")
         self.time_label.setStyleSheet("color: #495057;")
-        time_layout.addWidget(time_icon)
-        time_layout.addWidget(self.time_label)
-        time_layout.addStretch()
-        stats_layout.addLayout(time_layout)
+        self.time_layout.addWidget(self.time_icon)
+        self.time_layout.addWidget(self.time_label)
+        self.time_layout.addStretch()
+        self.stats_layout.addLayout(self.time_layout)
 
-        frame_layout.addLayout(stats_layout)
+        # Solo agregar estadísticas si NO está en modo simple
+        if not self.simple_mode:
+            frame_layout.addLayout(self.stats_layout)
 
         # Separador
         separator2 = QFrame()
@@ -189,14 +192,20 @@ class SavingProgressWidget(QWidget):
 
         layout.addWidget(main_frame)
 
-    def start_monitoring(self, adapter, total_snapshots_estimate: int):
+    def start_monitoring(self, adapter=None, total_snapshots_estimate: int = 0):
         """
         Iniciar monitoreo de progreso
 
         Args:
-            adapter: Instancia de PONAdapter
+            adapter: Instancia de PONAdapter (opcional en modo simple)
             total_snapshots_estimate: Estimación de snapshots totales
         """
+        if self.simple_mode:
+            # Modo simple: solo mostrar mensaje de guardando sin estadísticas
+            self.progress_bar.setRange(0, 0)  # Modo indeterminado (spinner)
+            return
+
+        # Modo normal con estadísticas
         self.adapter = adapter
         self.total_snapshots_estimate = total_snapshots_estimate
 
@@ -249,7 +258,10 @@ class SavingProgressWidget(QWidget):
         if self.update_timer:
             self.update_timer.stop()
 
+        # Restaurar barra de progreso y mostrar completado
+        self.progress_bar.setRange(0, 100)
         self.progress_bar.setValue(100)
+
         self.title_label.setText(tr('saving_progress.completed_title'))
         self.title_label.setStyleSheet("color: #28a745; font-weight: bold;")
         self.subtitle_label.setText(tr('saving_progress.completed_subtitle'))
