@@ -7,7 +7,6 @@ from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional
 from ..data.pon_request import Request
 
-
 class DBAAlgorithmInterface(ABC):
     """
     Interface para algoritmos DBA configurables.
@@ -60,7 +59,6 @@ class DBAAlgorithmInterface(ABC):
         """
         pass
 
-
 class FCFSDBAAlgorithm(DBAAlgorithmInterface):
     """Algoritmo DBA First-Come-First-Served - selecciona solicitud más antigua"""
     
@@ -105,7 +103,6 @@ class FCFSDBAAlgorithm(DBAAlgorithmInterface):
     
     def get_algorithm_name(self) -> str:
         return "FCFS"
-
 
 class PriorityDBAAlgorithm(DBAAlgorithmInterface):
     """Algoritmo DBA basado en prioridades - prioriza por tipo de tráfico con prevención de inanición"""
@@ -186,7 +183,6 @@ class PriorityDBAAlgorithm(DBAAlgorithmInterface):
     
     def get_algorithm_name(self) -> str:
         return "Priority"
-
 
 class RLDBAAlgorithm(DBAAlgorithmInterface):
     """Algoritmo DBA controlado por RL"""
@@ -752,7 +748,6 @@ class IPACTDBAAlgorithm(DBAAlgorithmInterface):
     def get_algorithm_name(self) -> str:
         # Mantener el nombre exactamente como en tu template/base
         return "IPACT"
-
 
 class GIANTDBAAlgorithm(DBAAlgorithmInterface):
     """

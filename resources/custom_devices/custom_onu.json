@@ -1,1 +1,68 @@
-[]
+[
+  {
+    "name": "Eduardo",
+    "color": "#8a2be2",
+    "traffic_scenario": "residential_medium",
+    "sla": 200.0,
+    "buffer_size": 512,
+    "id": "CUSTOM_ONU_20251112_162645",
+    "type": "CUSTOM_ONU",
+    "created_at": "2025-11-12T16:26:45.223073",
+    "modified_at": "2025-11-12T16:26:45.223078"
+  },
+  {
+    "name": "Jesus",
+    "color": "#ff6b00",
+    "traffic_scenario": "residential_light",
+    "sla": 200.0,
+    "buffer_size": 512,
+    "id": "CUSTOM_ONU_20251112_162658",
+    "type": "CUSTOM_ONU",
+    "created_at": "2025-11-12T16:26:58.445597",
+    "modified_at": "2025-11-12T16:26:58.445601"
+  },
+  {
+    "name": "Jorge",
+    "color": "#32cd32",
+    "traffic_scenario": "residential_heavy",
+    "sla": 200.0,
+    "buffer_size": 512,
+    "id": "CUSTOM_ONU_20251112_162710",
+    "type": "CUSTOM_ONU",
+    "created_at": "2025-11-12T16:27:10.236056",
+    "modified_at": "2025-11-12T16:27:10.236062"
+  },
+  {
+    "name": "profe Patricia",
+    "color": "#ffb5ff",
+    "traffic_scenario": "residential_light",
+    "sla": 200.0,
+    "buffer_size": 512,
+    "id": "CUSTOM_ONU_20251112_162729",
+    "type": "CUSTOM_ONU",
+    "created_at": "2025-11-12T16:27:29.963314",
+    "modified_at": "2025-11-12T16:27:29.963319"
+  },
+  {
+    "name": "profe Nicolas",
+    "color": "#1c2126",
+    "traffic_scenario": "residential_medium",
+    "sla": 200.0,
+    "buffer_size": 512,
+    "id": "CUSTOM_ONU_20251112_162753",
+    "type": "CUSTOM_ONU",
+    "created_at": "2025-11-12T16:27:53.902885",
+    "modified_at": "2025-11-12T16:27:53.902890"
+  },
+  {
+    "name": "profe Luis",
+    "color": "#ffd700",
+    "traffic_scenario": "residential_light",
+    "sla": 200.0,
+    "buffer_size": 512,
+    "id": "CUSTOM_ONU_20251112_162849",
+    "type": "CUSTOM_ONU",
+    "created_at": "2025-11-12T16:28:49.462194",
+    "modified_at": "2025-11-12T16:28:49.462199"
+  }
+]

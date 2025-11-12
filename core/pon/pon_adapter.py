@@ -38,6 +38,7 @@ except ImportError as e:
     ThreePhasesDBAAlgorithm = None
     TEST_A = None
     TEST_EDU = None
+    TEST_Profesora = None
     get_available_scenarios = lambda: []
     print_scenario_info = lambda x: None
 
@@ -558,7 +559,7 @@ class PONAdapter:
             "IPACT": IPACTDBAAlgorithm,
             "GIANT": GIANTDBAAlgorithm,
             "3-Phases DBA": ThreePhasesDBAAlgorithm,
-                }
+                    }
 
         if algorithm_name not in algorithms:
             raise ValueError(f"Algoritmo desconocido: {algorithm_name}")
