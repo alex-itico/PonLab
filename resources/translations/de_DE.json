@@ -8,9 +8,11 @@
       "title": "&Datei",
       "open": "&Datei öffnen...",
       "save": "Datei &speichern...",
+      "open_simulation": "&Simulation öffnen...",
       "close": "&Schließen",
       "open_tip": "Eine Projektdatei öffnen",
       "save_tip": "Aktuelles Projekt speichern",
+      "open_simulation_tip": "Gespeicherte Simulationsergebnisse öffnen",
       "close_tip": "Anwendung schließen"
     },
     "view": {

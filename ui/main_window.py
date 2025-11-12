@@ -52,6 +52,7 @@ class MainWindow(QMainWindow, MainWindowSDNMixin):
         self.sdn_dashboard = None
         self.sdn_dock = None
         self.sdn_dashboard_connector = SDNDashboardConnector()  # Conector SDN
+        self.graphics_popup = None  # Ventana de resultados de simulación
         
         # Inicializar ventana principal
         self.setup_ui()
@@ -185,6 +186,14 @@ class MainWindow(QMainWindow, MainWindowSDNMixin):
         save_action.setStatusTip(tr('menu.file.save_tip'))
         save_action.triggered.connect(self.save_file)
         file_menu.addAction(save_action)
+        
+        file_menu.addSeparator()
+        
+        # Abrir simulación
+        open_simulation_action = QAction(tr('menu.file.open_simulation'), self)
+        open_simulation_action.setStatusTip(tr('menu.file.open_simulation_tip'))
+        open_simulation_action.triggered.connect(self.open_simulation)
+        file_menu.addAction(open_simulation_action)
         
         file_menu.addSeparator()
         
@@ -503,6 +512,90 @@ class MainWindow(QMainWindow, MainWindowSDNMixin):
                 self,
                 'Error al guardar',
                 f'No se pudo guardar el proyecto en:\n{file_path}\n\nVerifica los permisos de escritura.',
+                QMessageBox.Ok
+            )
+    
+    def open_simulation(self):
+        """Abrir archivo de simulación guardado"""
+        from PyQt5.QtWidgets import QFileDialog, QMessageBox
+        import gzip
+        import json
+        import os
+        
+        # 1. Diálogo para seleccionar archivo
+        file_path, _ = QFileDialog.getOpenFileName(
+            self,
+            tr('menu.file.open_simulation'),
+            'simulation_results',  # Directorio por defecto
+            'Archivos de Simulación (*.json.gz);;Todos los archivos (*.*)'
+        )
+        
+        if not file_path:
+            return  # Usuario canceló
+        
+        try:
+            # 2. Descomprimir y cargar JSON
+            self.statusBar().showMessage('Cargando simulación...', 2000)
+            
+            with gzip.open(file_path, 'rt', encoding='utf-8') as f:
+                simulation_data = json.load(f)
+            
+            # 3. Validar que tenga la estructura esperada
+            if 'simulation_summary' not in simulation_data:
+                QMessageBox.warning(
+                    self,
+                    'Archivo Inválido',
+                    'El archivo seleccionado no contiene datos de simulación válidos.\n\n'
+                    'Se requiere la clave "simulation_summary" en el JSON.',
+                    QMessageBox.Ok
+                )
+                return
+            
+            # 4. Obtener directorio de la simulación (para archivos relacionados)
+            session_directory = os.path.dirname(file_path)
+            
+            # 5. Extraer session_info si existe
+            session_info = simulation_data.get('session_info', {})
+            
+            # 6. Crear y mostrar ventana de gráficos directamente
+            from .graphics_popup_window import GraphicsPopupWindow
+            
+            # Crear ventana si no existe o fue cerrada
+            if not hasattr(self, 'graphics_popup') or self.graphics_popup is None:
+                self.graphics_popup = GraphicsPopupWindow(parent=self)
+            
+            # Mostrar resultados en la ventana
+            self.graphics_popup.show_simulation_results(
+                simulation_data,
+                session_directory,
+                session_info
+            )
+            
+            self.statusBar().showMessage(
+                f'✅ Simulación cargada: {os.path.basename(file_path)}', 
+                5000
+            )
+        
+        except json.JSONDecodeError as e:
+            QMessageBox.critical(
+                self,
+                'Error de Formato',
+                f'El archivo no contiene JSON válido:\n\n{str(e)}',
+                QMessageBox.Ok
+            )
+        except gzip.BadGzipFile:
+            QMessageBox.critical(
+                self,
+                'Error de Compresión',
+                'El archivo no es un archivo GZIP válido.\n\n'
+                'Asegúrate de seleccionar un archivo *.json.gz',
+                QMessageBox.Ok
+            )
+        except Exception as e:
+            QMessageBox.critical(
+                self,
+                'Error al Abrir Simulación',
+                f'No se pudo cargar el archivo:\n\n{str(e)}',
                 QMessageBox.Ok
             )
     

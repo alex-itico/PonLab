@@ -2510,6 +2510,39 @@ class IntegratedPONTestPanel(QWidget):
         """Callback cuando se exportan gráficos adicionales"""
         self.results_panel.add_log_message(f"Graficos adicionales exportados a: {directory}")
     
+    def show_saved_simulation_results(self, 
+                                      simulation_data: dict, 
+                                      session_directory: str, 
+                                      session_info: dict):
+        """
+        Mostrar resultados de una simulación guardada (sin simular)
+        
+        Esta función permite abrir y visualizar resultados de simulaciones
+        previamente guardadas sin necesidad de ejecutar la simulación nuevamente.
+        
+        Args:
+            simulation_data: Datos completos de la simulación desde JSON
+            session_directory: Directorio donde está el archivo
+            session_info: Información de sesión (configuración usada)
+        """
+        try:
+            # Log de inicio
+            self.results_panel.add_log_message("📂 Cargando simulación desde archivo guardado...")
+            
+            # Reutilizar el método existente para mostrar ventana
+            self.show_graphics_popup_window(
+                simulation_data,
+                session_directory,
+                session_info
+            )
+            
+            # Log de éxito
+            self.results_panel.add_log_message("✅ Simulación cargada exitosamente")
+            
+        except Exception as e:
+            self.results_panel.add_log_message(f"❌ ERROR cargando simulación: {e}")
+            print(f"ERROR en show_saved_simulation_results: {e}")
+    
     def on_results_updated(self, results):
         """Callback cuando se actualizan los resultados"""
         # Aquí se pueden agregar acciones adicionales cuando se actualicen los resultados
