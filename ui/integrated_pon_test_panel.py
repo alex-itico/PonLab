@@ -764,7 +764,7 @@ class IntegratedPONTestPanel(QWidget):
             algorithms = self.adapter.get_available_algorithms()
             
             # Separar algoritmos convencionales y personalizados
-            conventional = ["FCFS", "Priority", "RL-DBA", "SDN", "SP-MINSHARE"]
+            conventional = ["FCFS", "Priority", "RL-DBA", "SDN", "SP-MINSHARE", "IPACT", "GIANT", "3-Phases DBA"]
             self.custom_algorithms = [algo for algo in algorithms if algo not in conventional and algo not in ["Smart-RL", "Smart-RL-SDN"]]
             
             # Crear vista personalizada para el dropdown con botones

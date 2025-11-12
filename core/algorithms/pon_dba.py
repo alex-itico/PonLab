@@ -340,7 +340,7 @@ class StrictPriorityMinShareDBA(DBAAlgorithmInterface):
     def get_algorithm_name(self) -> str:
         return "SP-MINSHARE"
 
-class StrictPriorityMinShareDBA2(DBAAlgorithmInterface):
+class TEST(DBAAlgorithmInterface):
     """
     Algoritmo DBA con prioridad estricta y garantías mínimas.
     Asegura mínimos por tipo de tráfico y luego reparte sobrante por prioridad.
@@ -457,5 +457,797 @@ class StrictPriorityMinShareDBA2(DBAAlgorithmInterface):
         return final_allocations
     
     def get_algorithm_name(self) -> str:
-        return "SP-MINSHARE"
+        return "TEST_A"
+
+class TESTB(DBAAlgorithmInterface):
+    """
+    Algoritmo DBA con prioridad estricta y garantías mínimas.
+    Asegura mínimos por tipo de tráfico y luego reparte sobrante por prioridad.
+    """
+    def __init__(self):
+        """Constructor simplificado"""
+        pass
+
+    def allocate_bandwidth(self, onu_requests, total_bandwidth, action=None):
+        # Convertir formato de entrada si es necesario
+        if isinstance(next(iter(onu_requests.values()), None), (int, float)):
+            # Formato simple {onu_id: bandwidth} - convertir a formato TCONT
+            converted_requests = {}
+            for onu_id, bandwidth in onu_requests.items():
+                # Distribuir la demanda entre TCONTs con prioridad decreciente
+                converted_requests[onu_id] = {
+                    'highest': bandwidth * 0.4,  # 40% a highest priority
+                    'high': bandwidth * 0.3,     # 30% a high priority  
+                    'medium': bandwidth * 0.2,   # 20% a medium priority
+                    'low': bandwidth * 0.1,      # 10% a low priority
+                    'lowest': 0                  # 0% a lowest priority
+                }
+            onu_requests = converted_requests
+        
+        # Asegura tipos
+        budget_bytes = int(total_bandwidth * 1024 * 1024)  # MB to bytes
+        allocations = {}
+
+        # Demanda total por TCONT y por ONU/TCONT  
+        tcont_priorities = ['highest', 'high', 'medium', 'low', 'lowest']
+        demand_per_tcont = {t: 0 for t in tcont_priorities}
+        
+        for onu_id, tdict in onu_requests.items():
+            for tcont_id, req_bytes in tdict.items():
+                if tcont_id in demand_per_tcont:
+                    demand_per_tcont[tcont_id] += max(0, int((req_bytes or 0) * 1024 * 1024))  # MB to bytes
+
+        # 1) Asignar mínimos por TCONT (si hay demanda)
+        assigned = 0
+        min_shares = {
+            'highest': 0.25,  # 25%
+            'high': 0.20,     # 20%  
+            'medium': 0.15,   # 15%
+            'low': 0.10,      # 10%
+            'lowest': 0.00    # 0%
+        }
+        
+        for tcont_id in tcont_priorities:
+            min_bytes = int(min_shares.get(tcont_id, 0.0) * budget_bytes)
+            if min_bytes <= 0 or demand_per_tcont[tcont_id] <= 0:
+                continue
+            # repartir min_bytes proporcional a la demanda de cada ONU en ese TCONT
+            total_dem_t = demand_per_tcont[tcont_id]
+            for onu_id, tdict in onu_requests.items():
+                req = max(0, int((tdict.get(tcont_id, 0) or 0) * 1024 * 1024))  # MB to bytes
+                if req <= 0: 
+                    continue
+                share = int(min_bytes * (req / total_dem_t))
+                if share <= 0:
+                    continue
+                # asignar sin exceder request ni budget
+                give = min(share, req, budget_bytes - assigned)
+                if give <= 0:
+                    continue
+                allocations.setdefault(onu_id, {})[tcont_id] = allocations.get(onu_id, {}).get(tcont_id, 0) + give
+                assigned += give
+                if assigned >= budget_bytes:
+                    break
+            if assigned >= budget_bytes:
+                break
+
+        # 2) Repartir sobrante por prioridad (de arriba hacia abajo) proporcional a demanda remanente
+        if assigned < budget_bytes:
+            for tcont_id in tcont_priorities:
+                # demanda restante en este TCONT
+                rem_total = 0
+                rem_per_onu = {}
+                for onu_id, tdict in onu_requests.items():
+                    req = max(0, int((tdict.get(tcont_id, 0) or 0) * 1024 * 1024))  # MB to bytes
+                    already = allocations.get(onu_id, {}).get(tcont_id, 0)
+                    rem = max(0, req - already)
+                    if rem > 0:
+                        rem_per_onu[onu_id] = rem
+                        rem_total += rem
+                if rem_total <= 0:
+                    continue
+
+                # presupuesto disponible en esta vuelta
+                leftover = budget_bytes - assigned
+                if leftover <= 0:
+                    break
+
+                for onu_id, rem in rem_per_onu.items():
+                    share = int(leftover * (rem / rem_total))
+                    if share <= 0:
+                        continue
+                    give = min(share, rem, budget_bytes - assigned)
+                    if give <= 0:
+                        continue
+                    allocations.setdefault(onu_id, {})[tcont_id] = allocations.get(onu_id, {}).get(tcont_id, 0) + give
+                    assigned += give
+                    if assigned >= budget_bytes:
+                        break
+                if assigned >= budget_bytes:
+                    break
+
+        # 3) Sanitizar y convertir de vuelta a formato simple
+        final_allocations = {}
+        for onu_id, tdict in allocations.items():
+            total_onu_bytes = sum(tdict.values())
+            # Convertir bytes a MB para compatibilidad
+            final_allocations[onu_id] = total_onu_bytes / (1024 * 1024)
+        
+        return final_allocations
+    
+    def get_algorithm_name(self) -> str:
+        return "TEST_B"
+
+class IPACTDBAAlgorithm(DBAAlgorithmInterface):
+    """
+    Implementación de IPACT (Interleaved Polling with Adaptive Cycle Time)
+    con variantes clásicas: 'limited', 'gated' y 'hybrid'.
+
+    Ideas clave:
+      - Interleaving: el puntero de inicio rota cada ciclo para evitar sesgos.
+      - Servicio por variante:
+          * gated  -> atiende todo lo reportado (grant_i = Q_i).
+          * limited-> atiende hasta Wmax      (grant_i = min(Q_i, Wmax)).
+          * hybrid -> hace limited y, si sobra presupuesto, una segunda pasada
+                      para completar hacia Q_i.
+      - “Adaptive cycle time”: se usa sólo el presupuesto del ciclo; lo que no se
+        alcanza queda en backlog para el siguiente ciclo.
+    """
+
+    def __init__(
+        self,
+        max_grant_mb: float = 2.0,
+        mode: str = "limited",         # 'limited' | 'gated' | 'hybrid'
+        delete_epsilon: float = 1e-12  # limpieza de residuos numéricos
+    ):
+        # parámetros
+        self.max_grant_mb = float(max_grant_mb)
+        self.mode = str(mode).lower()
+        if self.mode not in {"limited", "gated", "hybrid"}:
+            raise ValueError("mode debe ser 'limited', 'gated' o 'hybrid'")
+        self.delete_epsilon = float(delete_epsilon)
+
+        # estado persistente
+        self._backlog_mb = {}     # onu_id -> MB pendientes
+        self._polling_order = []  # orden estable de sondeo
+        self._start_index = 0     # índice de inicio para interleaving
+
+    # ------------------------------------------------------------------ #
+    # Helpers internos
+    # ------------------------------------------------------------------ #
+
+    def _normalize_new_requests(self, onu_requests) -> dict:
+        """
+        Convierte onu_requests a {onu_id: nueva_demanda_MB_no_negativa}.
+        Acepta formato simple o por TCONT y suma por ONU.
+        """
+        if not onu_requests:
+            return {}
+        out = {}
+        for onu_id, req in onu_requests.items():
+            if isinstance(req, dict):
+                total = 0.0
+                for _, mb in req.items():
+                    if mb is None:
+                        continue
+                    try:
+                        total += float(mb)
+                    except (TypeError, ValueError):
+                        pass
+                if total > 0.0:
+                    out[onu_id] = total
+            else:
+                try:
+                    val = float(req or 0.0)
+                except (TypeError, ValueError):
+                    val = 0.0
+                if val > 0.0:
+                    out[onu_id] = val
+        return out
+
+    def _update_polling_order(self):
+        """
+        Mantiene una lista estable de ONUs conocidas para el recorrido.
+        (No removemos ONUs automáticamente al quedar en 0; el orden se conserva.)
+        """
+        known = set(self._polling_order)
+        for onu_id in self._backlog_mb.keys():
+            if onu_id not in known:
+                self._polling_order.append(onu_id)
+                known.add(onu_id)
+
+    # ------------------------------------------------------------------ #
+    # Método principal IPACT
+    # ------------------------------------------------------------------ #
+
+    def allocate_bandwidth(self, onu_requests, total_bandwidth, action=None):
+        """
+        Ejecuta un ciclo de IPACT según la variante elegida.
+
+        1) Acumula nuevas demandas en el backlog persistente.
+        2) Recorre las ONUs una vez empezando desde _start_index (interleaving).
+        3) Aplica la política de grant (gated/limited/hybrid) respetando el
+           presupuesto del ciclo (total_bandwidth).
+        4) Avanza el índice de inicio para el próximo ciclo.
+        """
+        # 1) acumular nuevas demandas
+        for onu_id, mb in self._normalize_new_requests(onu_requests).items():
+            self._backlog_mb[onu_id] = self._backlog_mb.get(onu_id, 0.0) + mb
+
+        if not self._backlog_mb:
+            return {}
+
+        # 2) preparar orden y presupuesto
+        self._update_polling_order()
+        try:
+            remaining = float(total_bandwidth or 0.0)
+        except (TypeError, ValueError):
+            remaining = 0.0
+
+        if remaining <= 0.0 or not self._polling_order:
+            # sin capacidad este ciclo: nada se asigna, backlog se conserva
+            return {onu: 0.0 for onu in self._polling_order}
+
+        n = len(self._polling_order)
+        start = self._start_index % n
+        grants = {onu: 0.0 for onu in self._polling_order}
+
+        # función objetivo por variante
+        def target_grant(q_i: float) -> float:
+            if self.mode == "gated":
+                return q_i
+            if self.mode == "limited":
+                return min(q_i, max(self.max_grant_mb, 0.0))
+            # hybrid: inicialmente limited; posible complemento después
+            return min(q_i, max(self.max_grant_mb, 0.0))
+
+        # 3) primera pasada (una visita por ONU)
+        for k in range(n):
+            if remaining <= 0.0:
+                break
+            onu = self._polling_order[(start + k) % n]
+            q = self._backlog_mb.get(onu, 0.0)
+            if q <= 0.0:
+                continue
+
+            g = min(target_grant(q), remaining)
+            if g <= 0.0:
+                continue
+
+            grants[onu] += g
+            self._backlog_mb[onu] = q - g
+            remaining -= g
+
+        # 3b) híbrido: segunda pasada para completar si sobra capacidad
+        if self.mode == "hybrid" and remaining > 0.0:
+            for k in range(n):
+                if remaining <= 0.0:
+                    break
+                onu = self._polling_order[(start + k) % n]
+                q = self._backlog_mb.get(onu, 0.0)
+                if q <= 0.0:
+                    continue
+                g = min(q, remaining)
+                if g <= 0.0:
+                    continue
+                grants[onu] += g
+                self._backlog_mb[onu] = q - g
+                remaining -= g
+
+        # 4) rotación del inicio para interleaving
+        if n > 0:
+            self._start_index = (start + 1) % n
+
+        # limpieza de numéricos muy pequeños
+        to_delete = [onu for onu, q in self._backlog_mb.items() if q < self.delete_epsilon]
+        for onu in to_delete:
+            self._backlog_mb.pop(onu, None)
+
+        return {onu: float(max(g, 0.0)) for onu, g in grants.items()}
+
+    def get_algorithm_name(self) -> str:
+        # Mantener el nombre exactamente como en tu template/base
+        return "IPACT"
+
+class GIANTDBAAlgorithm(DBAAlgorithmInterface):
+    """
+    GIANT para PonLab — implementación fiel y práctica.
+    - Intervalos de servicio por clase (SImin/SImax).
+    - Orden de atención por urgencia temporal: overdue > due > resto.
+    - Mínimos por clase (ABmin) cuando está "due".
+    - Reparto de excedente ponderado (prioridad + déficit + urgencia).
+    - Estado persistente por (ONU, clase): último servicio y déficit.
+    - Topes por clase y (opcional) por ONU para evitar acaparamiento.
+    """
+
+    def __init__(
+        self,
+        class_order=("T1", "T2", "T3", "T4", "BE"),
+        # Mínimos por clase (MB/ciclo)
+        ABmin=None,
+        # Tope de grant por (ONU,clase) en un ciclo (MB)
+        Wmax_class=None,
+        # [Opcional] Tope por ONU en un ciclo (MB). None = sin tope por ONU.
+        Wmax_onu=None,
+        # Intervalos GIANT (segundos) por clase
+        SImin_s=None,
+        SImax_s=None,
+        # Duración del ciclo lógico (segundos) — ajusta a tu "tick"
+        cycle_duration_s=0.000125,  # 125 µs típico PON
+        # Pesos base para repartir excedente (prioridad relativa)
+        surplus_weights=None,
+        # Decaimiento del déficit cuando fue bien atendido
+        deficit_decay=0.5,
+        # Límite al "impulso" del déficit para estabilidad numérica
+        max_deficit_boost=5.0
+    ):
+        self.class_order = list(class_order)
+
+        # Valores de partida (1 Gbps, ciclo ~125 µs). Ajústalos a tu escenario:
+        self.ABmin = dict({
+            "T1": 0.02,  # EF/voz
+            "T2": 0.01,  # AF/video
+            "T3": 0.00,
+            "T4": 0.00,
+            "BE": 0.00
+        } if ABmin is None else ABmin)
+
+        self.Wmax_class = dict({
+            "T1": 2.0, "T2": 2.0, "T3": 2.0, "T4": 2.0, "BE": 2.0
+        } if Wmax_class is None else Wmax_class)
+
+        self.Wmax_onu = None if Wmax_onu is None else float(Wmax_onu)
+
+        self.SImin_s = dict({
+            "T1": 0.00025, "T2": 0.0005, "T3": 0.001, "T4": 0.002, "BE": 0.004
+        } if SImin_s is None else SImin_s)
+
+        self.SImax_s = dict({
+            "T1": 0.0005, "T2": 0.001, "T3": 0.002, "T4": 0.004, "BE": 0.008
+        } if SImax_s is None else SImax_s)
+
+        self.cycle_duration_s = float(cycle_duration_s)
+
+        self.surplus_weights = dict({
+            "T1": 4.0, "T2": 3.0, "T3": 2.0, "T4": 1.0, "BE": 0.5
+        } if surplus_weights is None else surplus_weights)
+
+        self.deficit_decay = float(deficit_decay)
+        self.max_deficit_boost = float(max_deficit_boost)
+
+        # Estado persistente
+        self._t_now = 0.0
+        self.last_served_time = {}  # (onu, clase) -> tiempo_s
+        self.deficit = {}           # (onu, clase) -> MB acumulados (pendientes)
+
+        # Alias típicos para mapear colas a clases GIANT
+        self._aliases = {
+            "EF": "T1", "VOICE": "T1", "HIGH": "T1", "HIGHEST": "T1",
+            "AF": "T2", "VIDEO": "T2",
+            "MEDIUM": "T3", "LOW": "T4",
+            "LOWEST": "BE", "BEST_EFFORT": "BE"
+        }
+
+    # ---------- Normalización de entrada ----------
+    def _norm(self, onu_requests):
+        """Devuelve {onu: {clase: MB>=0}}. Lo desconocido cae en BE."""
+        norm = {}
+        if not onu_requests:
+            return norm
+        for onu, req in onu_requests.items():
+            if isinstance(req, dict):
+                per_c = {}
+                for cname, mb in req.items():
+                    if mb is None:
+                        continue
+                    try:
+                        v = float(mb)
+                    except (TypeError, ValueError):
+                        v = 0.0
+                    if v <= 0:
+                        continue
+                    key = str(cname).upper()
+                    c = self._aliases.get(key, key)
+                    if c not in self.class_order:
+                        c = "BE"
+                    per_c[c] = per_c.get(c, 0.0) + v
+                if per_c:
+                    norm[onu] = per_c
+            else:
+                try:
+                    v = float(req or 0.0)
+                except (TypeError, ValueError):
+                    v = 0.0
+                if v > 0:
+                    norm.setdefault(onu, {})["BE"] = norm.get(onu, {}).get("BE", 0.0) + v
+        return norm
+
+    # ---------- Utilidades de tiempo ----------
+    def _time_since(self, onu, c):
+        last = self.last_served_time.get((onu, c))
+        if last is None:
+            return 1e9  # nunca fue servido: considéralo muy "vencido"
+        return self._t_now - last
+
+    def _mark_served(self, onu, c):
+        self.last_served_time[(onu, c)] = self._t_now
+
+    # ---------- Asignación principal ----------
+    def allocate_bandwidth(self, onu_requests, total_bandwidth, action=None):
+        # Avanza el “reloj” lógico un ciclo
+        self._t_now += self.cycle_duration_s
+
+        total_bw = max(float(total_bandwidth or 0.0), 0.0)
+        demands = self._norm(onu_requests)
+
+        if total_bw <= 0.0 or not demands:
+            return {onu: 0.0 for onu in (onu_requests.keys() if onu_requests else [])}
+
+        # Preparación
+        alloc = {onu: {c: 0.0 for c in self.class_order} for onu in demands.keys()}
+        remaining = total_bw
+        per_onu_total = {onu: 0.0 for onu in demands.keys()}  # si usas Wmax_onu
+
+        # Clasifica cada (ONU,clase) por urgencia temporal
+        overdue, due, others = [], [], []
+        for onu, per_c in demands.items():
+            for c in self.class_order:
+                d = per_c.get(c, 0.0)
+                if d <= 0:
+                    continue
+                t = self._time_since(onu, c)
+                if t >= self.SImax_s.get(c, 0.0):
+                    overdue.append((onu, c, d, t))
+                elif t >= self.SImin_s.get(c, 0.0):
+                    due.append((onu, c, d, t))
+                else:
+                    others.append((onu, c, d, t))
+
+        # ===== Fase A: OVERDUE — prioridad absoluta =====
+        overdue.sort(key=lambda x: (-x[3], self.class_order.index(x[1]) if x[1] in self.class_order else 999))
+        for onu, c, d, _ in overdue:
+            if remaining <= 0:
+                break
+            cap_class = self.Wmax_class.get(c, float("inf"))
+            cap_onu = float("inf") if self.Wmax_onu is None else max(self.Wmax_onu - per_onu_total[onu], 0.0)
+            room_class = max(cap_class - alloc[onu][c], 0.0)
+            g = min(d, room_class, cap_onu, remaining)
+            if g > 0:
+                alloc[onu][c] += g
+                per_onu_total[onu] += g
+                remaining -= g
+                self._mark_served(onu, c)
+            # Si quedó corto (p.ej. por falta de remaining o tope), sumamos déficit mínimo esperado
+            short = max(min(self.ABmin.get(c, 0.0), d) - alloc[onu][c], 0.0)
+            if short > 0:
+                key = (onu, c)
+                self.deficit[key] = self.deficit.get(key, 0.0) + short
+
+        # ===== Fase B: DUE — cubrir mínimos por clase según prioridad =====
+        due.sort(key=lambda x: (self.class_order.index(x[1]) if x[1] in self.class_order else 999, -x[3]))
+        for onu, c, d, _ in due:
+            if remaining <= 0:
+                break
+            target_min = min(self.ABmin.get(c, 0.0), d)
+            if target_min <= 0:
+                continue
+            cap_class = self.Wmax_class.get(c, float("inf"))
+            cap_onu = float("inf") if self.Wmax_onu is None else max(self.Wmax_onu - per_onu_total[onu], 0.0)
+            room_class = max(cap_class - alloc[onu][c], 0.0)
+            g = min(target_min, room_class, cap_onu, remaining)
+            if g > 0:
+                alloc[onu][c] += g
+                per_onu_total[onu] += g
+                remaining -= g
+                self._mark_served(onu, c)
+            # déficit si no alcanzó su mínimo deseado
+            short = max(target_min - g, 0.0)
+            if short > 0:
+                key = (onu, c)
+                self.deficit[key] = self.deficit.get(key, 0.0) + short
+
+        # ===== Fase C: EXCEDENTE — reparto ponderado =====
+        if remaining > 0:
+            # Demanda residual por (ONU,clase)
+            residual = {}
+            for onu, per_c in demands.items():
+                for c in self.class_order:
+                    d = per_c.get(c, 0.0)
+                    left = max(d - alloc[onu].get(c, 0.0), 0.0)
+                    if left > 0:
+                        residual[(onu, c)] = left
+
+            if residual:
+                # Construir pesos efectivos: prioridad base + déficit + urgencia temporal + proporción de demanda
+                weights, total_w = {}, 0.0
+                for (onu, c), left in residual.items():
+                    base = float(self.surplus_weights.get(c, 1.0))
+                    boost = 1.0 + min(self.deficit.get((onu, c), 0.0), self.max_deficit_boost)
+                    t = self._time_since(onu, c)
+                    window = max(self.SImax_s.get(c, 0.001) - self.SImin_s.get(c, 0.0), 1e-6)
+                    urgency = 1.0 + max(min((t - self.SImin_s.get(c, 0.0)) / window, 1.0), 0.0)
+                    w = base * boost * urgency * (1.0 + left / max(self.ABmin.get(c, 0.01), 0.01))
+                    if w > 0:
+                        weights[(onu, c)] = w
+                        total_w += w
+
+                if total_w > 0:
+                    # Una pasada respetando topes por clase y por ONU
+                    for (onu, c), w in sorted(weights.items(), key=lambda kv: -kv[1]):
+                        if remaining <= 0:
+                            break
+                        cap_class = self.Wmax_class.get(c, float("inf"))
+                        room_class = max(cap_class - alloc[onu].get(c, 0.0), 0.0)
+                        if room_class <= 0:
+                            continue
+                        room_onu = float("inf") if self.Wmax_onu is None else max(self.Wmax_onu - per_onu_total[onu], 0.0)
+                        if room_onu <= 0:
+                            continue
+                        share = remaining * (w / total_w)
+                        g = min(share, residual[(onu, c)], room_class, room_onu, remaining)
+                        if g > 0:
+                            alloc[onu][c] += g
+                            per_onu_total[onu] += g
+                            remaining -= g
+                            self._mark_served(onu, c)
+
+        # ===== Actualización de déficit (relaja si se sirvió bien) =====
+        for onu, per_c in demands.items():
+            for c, d in per_c.items():
+                key = (onu, c)
+                g = alloc[onu].get(c, 0.0)
+                # Si al menos llegó a su mínimo o cubriste la demanda, reduce déficit
+                if g >= min(self.ABmin.get(c, 0.0), d):
+                    self.deficit[key] = max(self.deficit.get(key, 0.0) * self.deficit_decay, 0.0)
+
+        # Resultado final: MB por ONU
+        return {onu: float(sum(alloc[onu].values())) for onu in alloc.keys()}
+
+    def get_algorithm_name(self) -> str:
+        return "GIANT"
+
+class ThreePhasesDBAAlgorithm(DBAAlgorithmInterface):
+    """
+    3-Phases DBA (experimental)
+    Fases: (1) mínimos por clase, (2) ventana por ONU (IPACT-like), (3) excedente ponderado con déficit.
+    """
+
+    def __init__(
+        self,
+        ABmin=None,                  # mínimos por clase (MB/ciclo)
+        weights=None,                # pesos por clase para el excedente
+        Wmax_onu: float = 2.0,       # ventana por ONU (MB)
+        Wmax_class=None,             # tope por clase opcional (MB)
+        deficit_decay: float = 0.5,  # relajación del déficit cuando se atiende bien
+        max_deficit_boost: float = 5.0,
+        class_order=("T1", "T2", "BE"),
+    ):
+        self.ABmin = dict({"T1": 0.02, "T2": 0.01, "BE": 0.0} if ABmin is None else ABmin)
+        self.weights = dict({"T1": 4.0, "T2": 2.0, "BE": 1.0} if weights is None else weights)
+
+        self.Wmax_onu = float(Wmax_onu)
+        self.Wmax_class = {} if Wmax_class is None else dict(Wmax_class)
+
+        self.deficit_decay = float(deficit_decay)
+        self.max_deficit_boost = float(max_deficit_boost)
+
+        self.class_order = list(class_order)
+
+        # Estado
+        self.deficit = {}        # (onu, clase) -> MB pendientes históricos
+        self._polling_order = [] # orden estable de ONUs
+        self._start_index = 0    # índice de inicio (interleaving)
+
+        # Aliases -> clases
+        self._aliases = {
+            "EF": "T1", "VOICE": "T1", "HIGH": "T1", "HIGHEST": "T1",
+            "AF": "T2", "VIDEO": "T2", "MEDIUM": "T2",
+            "BE": "BE", "LOW": "BE", "LOWEST": "BE", "BEST_EFFORT": "BE",
+        }
+
+    # ------------------------
+    # Normalización de entrada
+    # ------------------------
+    def _normalize_requests(self, onu_requests):
+        """Devuelve: norm[onu][clase] = demanda_MB>=0 (lo desconocido cae en BE)."""
+        norm = {}
+        if not onu_requests:
+            return norm
+        for onu, req in onu_requests.items():
+            if isinstance(req, dict):
+                per_c = {}
+                for cname, mb in req.items():
+                    if mb is None:
+                        continue
+                    try:
+                        v = float(mb)
+                    except (TypeError, ValueError):
+                        v = 0.0
+                    if v <= 0:
+                        continue
+                    key = str(cname).upper()
+                    c = self._aliases.get(key, key)
+                    if c not in self.class_order:
+                        c = "BE"
+                    per_c[c] = per_c.get(c, 0.0) + v
+                if per_c:
+                    norm[onu] = per_c
+            else:
+                try:
+                    v = float(req or 0.0)
+                except (TypeError, ValueError):
+                    v = 0.0
+                if v > 0:
+                    norm.setdefault(onu, {})["BE"] = norm.get(onu, {}).get("BE", 0.0) + v
+        return norm
+
+    def _update_polling_order(self, all_onus):
+        """Incluye ONUs nuevas y conserva orden estable (no elimina automáticamente)."""
+        known = set(self._polling_order)
+        for onu in all_onus:
+            if onu not in known:
+                self._polling_order.append(onu)
+                known.add(onu)
+
+    # --------------
+    # Fase principal
+    # --------------
+    def allocate_bandwidth(self, onu_requests, total_bandwidth, action=None):
+        # --- conocer a TODAS las ONUs “visibles” este ciclo (o ya conocidas)
+        demands = self._normalize_requests(onu_requests)
+        all_onus = set(self._polling_order) | set(onu_requests.keys()) | set(demands.keys())
+
+        try:
+            remaining = float(total_bandwidth or 0.0)
+        except (TypeError, ValueError):
+            remaining = 0.0
+
+        # Si no hay presupuesto o no hay ONUs conocidas, devolver 0s (¡no dict vacío!)
+        if remaining <= 0.0 or not all_onus:
+            return {onu: 0.0 for onu in all_onus}
+
+        # Actualizar/asegurar orden de polling usando TODAS las ONUs conocidas
+        self._update_polling_order(all_onus)
+        n = len(self._polling_order)
+        if n == 0:
+            return {onu: 0.0 for onu in all_onus}
+
+        start = self._start_index % n
+
+        # Estructuras de trabajo
+        alloc = {onu: {c: 0.0 for c in self.class_order} for onu in all_onus}
+        per_onu_total = {onu: 0.0 for onu in all_onus}
+
+        # ---------------
+        # FASE 1 (QoS min)
+        # ---------------
+        for step in range(n):
+            if remaining <= 0.0:
+                break
+            onu = self._polling_order[(start + step) % n]
+            per_c = demands.get(onu, {})
+            for c in self.class_order:
+                d = per_c.get(c, 0.0)
+                if d <= 0.0:
+                    continue
+                need = min(self.ABmin.get(c, 0.0), d)
+                if need <= 0.0:
+                    continue
+
+                room_class = float("inf")
+                if c in self.Wmax_class:
+                    room_class = max(self.Wmax_class[c] - alloc[onu][c], 0.0)
+                room_onu = max(self.Wmax_onu - per_onu_total[onu], 0.0)
+
+                g = min(need, room_class, room_onu, remaining)
+                if g > 0:
+                    alloc[onu][c] += g
+                    per_onu_total[onu] += g
+                    remaining -= g
+
+                short = max(need - g, 0.0)
+                if short > 0:
+                    key = (onu, c)
+                    self.deficit[key] = self.deficit.get(key, 0.0) + short
+
+        # --------------------------
+        # FASE 2 (ventana por ONU)
+        # --------------------------
+        for step in range(n):
+            if remaining <= 0.0:
+                break
+            onu = self._polling_order[(start + step) % n]
+
+            room_onu = max(self.Wmax_onu - per_onu_total[onu], 0.0)
+            if room_onu <= 0.0:
+                continue
+
+            per_c = demands.get(onu, {})
+            for c in self.class_order:
+                if room_onu <= 0.0 or remaining <= 0.0:
+                    break
+                d = per_c.get(c, 0.0)
+                if d <= 0.0:
+                    continue
+
+                left_c = max(d - alloc[onu][c], 0.0)
+                if left_c <= 0.0:
+                    continue
+
+                room_class = float("inf")
+                if c in self.Wmax_class:
+                    room_class = max(self.Wmax_class[c] - alloc[onu][c], 0.0)
+
+                g = min(left_c, room_class, room_onu, remaining)
+                if g > 0:
+                    alloc[onu][c] += g
+                    per_onu_total[onu] += g
+                    room_onu -= g
+                    remaining -= g
+
+        # -----------------------------
+        # FASE 3 (excedente con déficit)
+        # -----------------------------
+        if remaining > 0.0:
+            residual = {}
+            for onu in all_onus:
+                per_c = demands.get(onu, {})
+                for c in self.class_order:
+                    d = per_c.get(c, 0.0)
+                    left = max(d - alloc[onu][c], 0.0)
+                    if left > 0:
+                        residual[(onu, c)] = left
+
+            if residual:
+                weights_eff = {}
+                total_w = 0.0
+                for (onu, c), left in residual.items():
+                    base = float(self.weights.get(c, 1.0))
+                    boost = 1.0 + min(self.deficit.get((onu, c), 0.0), self.max_deficit_boost)
+                    denom = max(self.ABmin.get(c, 0.01), 0.01)
+                    w = base * boost * (1.0 + left / denom)
+                    if w > 0:
+                        weights_eff[(onu, c)] = w
+                        total_w += w
+
+                if total_w > 0.0:
+                    for (onu, c), w in sorted(weights_eff.items(), key=lambda kv: -kv[1]):
+                        if remaining <= 0.0:
+                            break
+                        room_onu = max(self.Wmax_onu - per_onu_total[onu], 0.0)
+                        if room_onu <= 0.0:
+                            continue
+                        room_class = float("inf")
+                        if c in self.Wmax_class:
+                            room_class = max(self.Wmax_class[c] - alloc[onu][c], 0.0)
+                        if room_class <= 0.0:
+                            continue
+                        share = remaining * (w / total_w)
+                        need = residual[(onu, c)]
+                        g = min(share, need, room_onu, room_class, remaining)
+                        if g > 0:
+                            alloc[onu][c] += g
+                            per_onu_total[onu] += g
+                            remaining -= g
+
+        # -----------------------------
+        # Actualiza déficit (relajación)
+        # -----------------------------
+        for onu in all_onus:
+            per_c = demands.get(onu, {})
+            for c in self.class_order:
+                d = per_c.get(c, 0.0)
+                key = (onu, c)
+                g = alloc[onu][c]
+                if g >= min(self.ABmin.get(c, 0.0), d):
+                    self.deficit[key] = max(self.deficit.get(key, 0.0) * self.deficit_decay, 0.0)
+
+        # Rotación interleaved para próximo ciclo
+        self._start_index = (start + 1) % n
+
+        # Resultado agregado por ONU (¡para TODAS las ONUs conocidas!)
+        return {onu: float(sum(alloc[onu].values())) for onu in all_onus}
+
+    def get_algorithm_name(self) -> str:
+        return "3-Phases DBA"
 
