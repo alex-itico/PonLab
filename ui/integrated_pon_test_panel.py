@@ -74,6 +74,10 @@ class CustomComboBoxView(QListView):
         super().setModel(model)
         self._create_button_widgets()
     
+    def retranslate(self):
+        """Regenerar botones con traducciones actualizadas"""
+        self._create_button_widgets()
+    
     def _create_button_widgets(self):
         """Crear widgets con botones para algoritmos personalizados"""
         if not self.model():
@@ -96,8 +100,8 @@ class CustomComboBoxView(QListView):
                 layout.addStretch()
                 
                 # Botón Editar
-                edit_btn = QPushButton("Editar")
-                edit_btn.setMaximumSize(55, 22)
+                edit_btn = QPushButton(tr("integrated_pon_panel.edit_algorithm"))
+                edit_btn.setMaximumSize(70, 22)
                 edit_btn.setStyleSheet("""
                     QPushButton {
                         background-color: #3b82f6;
@@ -115,8 +119,8 @@ class CustomComboBoxView(QListView):
                 layout.addWidget(edit_btn)
                 
                 # Botón Eliminar
-                delete_btn = QPushButton("Eliminar")
-                delete_btn.setMaximumSize(55, 22)
+                delete_btn = QPushButton(tr("integrated_pon_panel.delete_algorithm"))
+                delete_btn.setMaximumSize(70, 22)
                 delete_btn.setStyleSheet("""
                     QPushButton {
                         background-color: #ef4444;
@@ -345,9 +349,10 @@ class IntegratedPONTestPanel(QWidget):
             l_root.addWidget(l_view)
 
             l_btns = QHBoxLayout(); l_btns.addStretch(1)
-            l_copy = QPushButton("Copiar todo")
+            l_copy = QPushButton(tr("integrated_pon_panel.copy_all"))
             l_copy.clicked.connect(lambda: (l_view.selectAll(), l_view.copy(),
-                                            QMessageBox.information(left, "Copiado", "Template copiado al portapapeles.")))
+                                            QMessageBox.information(left, tr("integrated_pon_panel.copied_title"), 
+                                                                   tr("integrated_pon_panel.template_copied"))))
             l_btns.addWidget(l_copy); l_root.addLayout(l_btns)
 
             # ajuste fino para que el frame quede pegado al borde superior/izq
@@ -376,7 +381,7 @@ class IntegratedPONTestPanel(QWidget):
             r_root.addWidget(r_edit)
 
             r_btns = QHBoxLayout(); r_btns.addStretch(1)
-            r_save = QPushButton("Guardar")
+            r_save = QPushButton(tr("integrated_pon_panel.save"))
 
             def _save():
                 import re, ast, os
@@ -581,19 +586,11 @@ class IntegratedPONTestPanel(QWidget):
                     # 11) Mensaje final con opción de reinicio
                     msg = QMessageBox(right)
                     msg.setIcon(QMessageBox.Information)
-                    msg.setWindowTitle("Algoritmo Creado Exitosamente")
-                    msg.setText(f"✅ El algoritmo '{algo_name}' ha sido creado correctamente.")
+                    msg.setWindowTitle(tr("integrated_pon_panel.algorithm_created_title"))
+                    msg.setText(tr("integrated_pon_panel.algorithm_created_text").format(algo_name))
                     
                     # Detalles formateados
-                    details = (
-                        f"<b>📋 Detalles de los cambios:</b><br><br>"
-                        f"<b>• Clase agregada:</b> {class_name}<br>"
-                        f"<b>• Algoritmo:</b> {algo_name}<br>"
-                        f"<b>• Archivos modificados:</b><br>"
-                        f"&nbsp;&nbsp;- pon_adapter.py (import, lista, diccionario)<br>"
-                        f"&nbsp;&nbsp;- pon_dba.py (implementación)<br><br>"
-                        f"La aplicación se reiniciará automáticamente para aplicar los cambios."
-                    )
+                    details = tr("integrated_pon_panel.algorithm_created_details").format(class_name, algo_name)
                     msg.setInformativeText(details)
                     msg.setTextFormat(Qt.RichText)
                     
@@ -657,8 +654,8 @@ class IntegratedPONTestPanel(QWidget):
             def _confirm_close():
                 resp = QMessageBox.question(
                     None,
-                    "Cerrar sin guardar",
-                    "Estás cerrando sin guardar cambios.\n\n¿Seguro que deseas salir?",
+                    tr("integrated_pon_panel.close_without_saving_title"),
+                    tr("integrated_pon_panel.close_without_saving_confirm"),
                     QMessageBox.Yes | QMessageBox.No,
                     QMessageBox.No
                 )
@@ -771,13 +768,13 @@ class IntegratedPONTestPanel(QWidget):
             self.custom_algorithms = [algo for algo in algorithms if algo not in conventional and algo not in ["Smart-RL", "Smart-RL-SDN"]]
             
             # Crear vista personalizada para el dropdown con botones
-            custom_view = CustomComboBoxView(custom_algorithms=self.custom_algorithms)
-            custom_view.edit_algorithm.connect(self.on_edit_custom_algorithm)
-            custom_view.delete_algorithm.connect(self.on_delete_custom_algorithm)
-            self.algorithm_combo.setView(custom_view)
+            self.custom_combo_view = CustomComboBoxView(custom_algorithms=self.custom_algorithms)
+            self.custom_combo_view.edit_algorithm.connect(self.on_edit_custom_algorithm)
+            self.custom_combo_view.delete_algorithm.connect(self.on_delete_custom_algorithm)
+            self.algorithm_combo.setView(self.custom_combo_view)
             
             # Agregar header y algoritmos convencionales
-            self.algorithm_combo.addItem("━━━ Algoritmos Convencionales ━━━")
+            self.algorithm_combo.addItem(tr("integrated_pon_panel.algorithms_conventional"))
             model = self.algorithm_combo.model()
             item = model.item(self.algorithm_combo.count() - 1)
             item.setEnabled(False)  # Hacer que el header no sea seleccionable
@@ -796,7 +793,7 @@ class IntegratedPONTestPanel(QWidget):
             
             # Agregar header y algoritmos personalizados si existen
             if self.custom_algorithms:
-                self.algorithm_combo.addItem("━━━ Algoritmos Personalizados ━━━")
+                self.algorithm_combo.addItem(tr("integrated_pon_panel.algorithms_custom"))
                 item = model.item(self.algorithm_combo.count() - 1)
                 item.setEnabled(False)
                 item.setFont(QFont("Arial", 9, QFont.Bold))
@@ -810,20 +807,20 @@ class IntegratedPONTestPanel(QWidget):
                 self.algorithm_combo.addItem("RL Agent")
             
             # Actualizar los widgets de botones en la vista personalizada
-            custom_view._create_button_widgets()
+            self.custom_combo_view._create_button_widgets()
         
         self.algorithm_combo.currentTextChanged.connect(self.on_algorithm_changed)
         config_layout.addWidget(self.algorithm_combo, 1, 1)
         
         # --- Nuevo bloque: Botón "Agregar Algoritmo DBA" ---
-        config_layout.addWidget(QLabel("Agregar Algoritmo:"), 2, 0)
+        config_layout.addWidget(QLabel(""), 2, 0)
 
         # --- Botón "Agregar Algoritmo DBA" (mismo estilo que el bloque RL) ---
         algo_btns_layout = QVBoxLayout()
         algo_btns_layout.setSpacing(8)
 
-        self.add_algorithm_btn = QPushButton("📄 Agregar Algoritmo DBA")
-        self.add_algorithm_btn.setToolTip("Crear un nuevo algoritmo DBA (plugin)")
+        self.add_algorithm_btn = QPushButton(tr("integrated_pon_panel.add_custom_algorithm"))
+        self.add_algorithm_btn.setToolTip(tr("integrated_pon_panel.add_custom_algorithm_tooltip"))
         self.add_algorithm_btn.setMinimumHeight(30)
         self.add_algorithm_btn.clicked.connect(self.on_add_algorithm_clicked)  # handler abajo
         algo_btns_layout.addWidget(self.add_algorithm_btn)
@@ -1301,9 +1298,10 @@ class IntegratedPONTestPanel(QWidget):
 
             l_btns = QHBoxLayout()
             l_btns.addStretch(1)
-            l_copy = QPushButton("Copiar todo")
+            l_copy = QPushButton(tr("integrated_pon_panel.copy_all"))
             l_copy.clicked.connect(lambda: (l_view.selectAll(), l_view.copy(),
-                                            QMessageBox.information(left, "Copiado", "Template copiado al portapapeles.")))
+                                            QMessageBox.information(left, tr("integrated_pon_panel.copied_title"), 
+                                                                   tr("integrated_pon_panel.template_copied"))))
             l_btns.addWidget(l_copy)
             l_root.addLayout(l_btns)
 
@@ -1339,15 +1337,14 @@ class IntegratedPONTestPanel(QWidget):
             def _confirm_close():
                 resp = QMessageBox.question(
                     None,
-                    "Cerrar Editor",
-                    "¿Estás seguro de que deseas cerrar el editor?\n\n"
-                    "Si no has guardado, perderás los cambios realizados.",
+                    tr("integrated_pon_panel.close_editor_title"),
+                    tr("integrated_pon_panel.close_editor_confirm"),
                     QMessageBox.Yes | QMessageBox.No,
                     QMessageBox.No
                 )
                 return resp == QMessageBox.Yes
             
-            r_save = QPushButton("Guardar Cambios")
+            r_save = QPushButton(tr("integrated_pon_panel.save_changes"))
 
             def _save_edit():
                 try:
@@ -1406,17 +1403,12 @@ class IntegratedPONTestPanel(QWidget):
                     # Mensaje final con opción de reinicio
                     msg = QMessageBox(right)
                     msg.setIcon(QMessageBox.Information)
-                    msg.setWindowTitle("Algoritmo Editado Exitosamente")
-                    msg.setText(f"✅ El algoritmo '{algorithm_name}' ha sido editado correctamente.")
+                    msg.setWindowTitle(tr("integrated_pon_panel.algorithm_edited_title"))
+                    msg.setText(tr("integrated_pon_panel.algorithm_edited_text").format(algorithm_name))
                     
                     # Detalles formateados
-                    details = (
-                        f"<b>📋 Detalles de los cambios:</b><br><br>"
-                        f"<b>• Clase:</b> {new_class_name}<br>"
-                        f"<b>• Archivos modificados:</b><br>"
-                        + "<br>".join(f"&nbsp;&nbsp;- {f}" for f in modified_files)
-                        + "<br><br>La aplicación se reiniciará automáticamente para aplicar los cambios."
-                    )
+                    files_list = "<br>".join(f"&nbsp;&nbsp;- {f}" for f in modified_files)
+                    details = tr("integrated_pon_panel.algorithm_edited_details").format(new_class_name, files_list)
                     msg.setInformativeText(details)
                     msg.setTextFormat(Qt.RichText)
                     
@@ -1467,7 +1459,7 @@ class IntegratedPONTestPanel(QWidget):
             r_save.clicked.connect(_save_edit)
             r_btns.addWidget(r_save)
             
-            r_cancel = QPushButton("Cancelar")
+            r_cancel = QPushButton(tr("integrated_pon_panel.cancel"))
             
             def _cancel_edit():
                 # Activar el flag y cerrar ambas ventanas
@@ -1733,18 +1725,11 @@ class IntegratedPONTestPanel(QWidget):
             # =========================================================
             msg = QMessageBox(self)
             msg.setIcon(QMessageBox.Information)
-            msg.setWindowTitle("Algoritmo Eliminado")
-            msg.setText(f"✅ El algoritmo '{algorithm_name}' ha sido eliminado correctamente.")
+            msg.setWindowTitle(tr("integrated_pon_panel.algorithm_deleted_title"))
+            msg.setText(tr("integrated_pon_panel.algorithm_deleted_text").format(algorithm_name))
             
             # Detalles formateados
-            details = (
-                f"<b>📋 Detalles de los cambios:</b><br><br>"
-                f"<b>• Clase eliminada:</b> {class_name_found}<br>"
-                f"<b>• Archivos modificados:</b><br>"
-                f"&nbsp;&nbsp;- pon_dba.py (clase eliminada)<br>"
-                f"&nbsp;&nbsp;- pon_adapter.py (referencias eliminadas)<br><br>"
-                f"La aplicación se reiniciará automáticamente para aplicar los cambios."
-            )
+            details = tr("integrated_pon_panel.algorithm_deleted_details").format(class_name_found)
             msg.setInformativeText(details)
             msg.setTextFormat(Qt.RichText)
             
@@ -2757,6 +2742,29 @@ class IntegratedPONTestPanel(QWidget):
             self.duration_spinbox.setToolTip(tr("integrated_pon_panel.time_tooltip"))
         if hasattr(self, 'steps_spinbox'):
             self.steps_spinbox.setToolTip(tr("integrated_pon_panel.steps_tooltip"))
+        
+        # Actualizar combo de algoritmos (headers y botones)
+        if hasattr(self, 'algorithm_combo'):
+            # Actualizar headers del combo
+            model = self.algorithm_combo.model()
+            # Buscar y actualizar el header de algoritmos convencionales
+            for i in range(self.algorithm_combo.count()):
+                item = model.item(i)
+                if item and not item.isEnabled():  # Es un header
+                    text = item.text()
+                    if "Convencional" in text or "Conventional" in text or "Konventionell" in text or "Conventionnel" in text:
+                        item.setText(tr("integrated_pon_panel.algorithms_conventional"))
+                    elif "Personalizado" in text or "Custom" in text or "Benutzerdefiniert" in text or "Personnalisé" in text:
+                        item.setText(tr("integrated_pon_panel.algorithms_custom"))
+            
+            # Regenerar botones del dropdown con traducciones
+            if hasattr(self, 'custom_combo_view'):
+                self.custom_combo_view.retranslate()
+        
+        # Actualizar botón de agregar algoritmo
+        if hasattr(self, 'add_algorithm_btn'):
+            self.add_algorithm_btn.setText(tr("integrated_pon_panel.add_custom_algorithm"))
+            self.add_algorithm_btn.setToolTip(tr("integrated_pon_panel.add_custom_algorithm_tooltip"))
         
         # Labels del panel de info RL
         if hasattr(self, 'rl_model_info_label'):

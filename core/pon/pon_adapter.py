@@ -13,8 +13,7 @@ try:
         PriorityDBAAlgorithm,
         RLDBAAlgorithm,
         StrictPriorityMinShareDBA,
-        StrictPriorityMinShareDBA2,
-        TEST_EDU,
+        StrictPriorityMinShareDBA2
 )
     from ..smart_rl_dba import SmartRLDBAAlgorithm
     from ..simulation.pon_simulator import PONSimulator, EventEvaluator
@@ -33,7 +32,7 @@ except ImportError as e:
     RLDBAAlgorithm = None
     StrictPriorityMinShareDBA = None
     StrictPriorityMinShareDBA2 = None
-    TEST_EDU = None
+    TEST_A = None
     get_available_scenarios = lambda: []
     print_scenario_info = lambda x: None
 
@@ -555,8 +554,7 @@ class PONAdapter:
             "RL-DBA": RLDBAAlgorithm,
             "SDN": FCFSDBAAlgorithm,  # Usar FCFS como base para SDN
             "SP-MINSHARE": StrictPriorityMinShareDBA,
-            "TEST_EDU": TEST_EDU,
-        }
+            }
 
         if algorithm_name not in algorithms:
             raise ValueError(f"Algoritmo desconocido: {algorithm_name}")
@@ -581,7 +579,7 @@ class PONAdapter:
     
     def get_available_algorithms(self):
         """Obtener lista de algoritmos DBA disponibles"""
-        algorithms = ["FCFS", "Priority", "RL-DBA", "SDN", "SP-MINSHARE", "TEST_EDU"]
+        algorithms = ["FCFS", "Priority", "RL-DBA", "SDN", "SP-MINSHARE", ]
 
         # Agregar Smart RL DBA si hay modelo cargado
         if self.smart_rl_algorithm:
