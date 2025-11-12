@@ -1068,7 +1068,21 @@ class PONSDNDashboard(QWidget):
             for legend_item, key in self.legend_items:
                 label_text = f"{tr(f'sdn_dashboard.health.status_labels.{key}')}: {tr(f'sdn_dashboard.health.status_ranges.{key}')}"
                 legend_item.setText(label_text)
-    
+
+    def set_load_button_enabled(self, enabled: bool):
+        """
+        Habilitar o deshabilitar el botón de cargar simulación
+
+        Args:
+            enabled: True para habilitar, False para deshabilitar
+        """
+        if hasattr(self, 'test_button'):
+            self.test_button.setEnabled(enabled)
+            if not enabled:
+                self.test_button.setText(tr('sdn_dashboard.saving_in_progress'))
+            else:
+                self.test_button.setText(tr('sdn_dashboard.load_simulation'))
+
     def load_latest_simulation(self):
         """Cargar datos desde el último archivo de simulación guardado"""
         try:
@@ -1109,7 +1123,16 @@ class PONSDNDashboard(QWidget):
             print("⏳ Cargando datos de simulación...")
             if not processor.load_simulation_data(str(latest_file)):
                 print("❌ Error: El archivo no contiene datos de simulación válidos")
-                self._show_error_message("El archivo de simulación no contiene datos válidos.")
+                # Verificar si el error fue por archivo incompleto (guardado en progreso)
+                import time
+                file_age = time.time() - latest_file.stat().st_mtime
+                if file_age < 60:  # Si el archivo es muy reciente (menos de 60 segundos)
+                    self._show_error_message(
+                        "⏳ El archivo de simulación se está guardando en este momento.\n\n"
+                        "Por favor espera unos segundos y vuelve a intentar."
+                    )
+                else:
+                    self._show_error_message("El archivo de simulación no contiene datos válidos.")
                 return
             
             print("⚙️ Calculando métricas SDN desde datos reales...")

@@ -2148,16 +2148,6 @@ class IntegratedPONTestPanel(QWidget):
         self.start_btn.setEnabled(False)
         self.simulation_running = True
 
-        # NUEVO: Habilitar escritura incremental
-        session_dir = self.graphics_saver.create_session_directory()
-        if self.adapter.enable_incremental_data_writing(session_dir):
-            self.results_panel.add_log_message(f"💾 Escritura incremental habilitada: {session_dir}")
-
-            # Mostrar widget de progreso
-            self._show_saving_progress_widget(use_hybrid)
-        else:
-            self.results_panel.add_log_message("⚠️ No se pudo habilitar escritura incremental (usando modo legacy)")
-
         # Configurar barra de progreso
         self.progress_bar.setVisible(True)
         self.progress_bar.setValue(0)
@@ -2321,18 +2311,6 @@ class IntegratedPONTestPanel(QWidget):
         # Ocultar barra de progreso
         self.progress_bar.setVisible(False)
 
-        # NUEVO: Finalizar escritura incremental
-        self.results_panel.add_log_message("💾 Finalizando escritura de datos...")
-        final_file = self.adapter.finalize_incremental_data_writing()
-        if final_file:
-            self.results_panel.add_log_message(f"✅ Archivo guardado: {final_file}")
-
-            # Marcar widget de progreso como completado
-            if self.saving_progress_widget:
-                self.saving_progress_widget.set_completed()
-        else:
-            self.results_panel.add_log_message("⚠️ Error finalizando escritura incremental")
-
         # Actualizar resultados finales
         self.results_panel.refresh_results()
         
@@ -2388,9 +2366,6 @@ class IntegratedPONTestPanel(QWidget):
     def handle_automatic_graphics_processing(self):
         """Manejar el procesamiento automático de gráficos al finalizar simulación"""
         try:
-            # NOTA: Los datos ya fueron guardados incremental mente durante la simulación
-            # Solo necesitamos mostrar la ventana emergente si está habilitada
-
             # Obtener datos completos de la simulación
             simulation_data = self.adapter.get_simulation_summary()
 
@@ -2409,12 +2384,14 @@ class IntegratedPONTestPanel(QWidget):
                 'detailed_logging': self.detailed_log_checkbox.isChecked()
             }
 
+            # Guardar datos de simulación asíncronamente
+            self._save_simulation_async(simulation_data, session_info)
+
             # Mostrar ventana emergente si está habilitada
             should_popup = self.popup_window_checkbox.isChecked()
             if should_popup:
-                # Obtener directorio de sesión (ya creado por escritura incremental)
-                session_dir = self.adapter.incremental_writer.session_dir if self.adapter.incremental_writer else ""
-                self.show_graphics_popup_window(simulation_data, session_dir, session_info)
+                # El directorio será actualizado por el callback cuando termine el guardado
+                self.show_graphics_popup_window(simulation_data, "", session_info)
 
         except Exception as e:
             self.results_panel.add_log_message(f"❌ Error en procesamiento automático: {e}")
@@ -2423,6 +2400,14 @@ class IntegratedPONTestPanel(QWidget):
     def _save_simulation_async(self, simulation_data: dict, session_info: dict):
         """Guardar datos de simulación usando QThread (verdaderamente asíncrono)"""
         try:
+            # Deshabilitar botón de cargar simulación en el dashboard mientras se guarda
+            main_window = self.parent()
+            if hasattr(main_window, 'sdn_dashboard_tab'):
+                main_window.sdn_dashboard_tab.set_load_button_enabled(False)
+
+            # Mostrar widget de progreso de guardado
+            self._show_saving_progress_widget_simple()
+
             # El método ahora retorna el directorio inmediatamente y guarda en background
             session_directory = self.graphics_saver.save_simulation_graphics_and_data(
                 self.results_panel.charts_panel,
@@ -2438,14 +2423,57 @@ class IntegratedPONTestPanel(QWidget):
                 self.results_panel.add_log_message(f"💾 Guardando datos en segundo plano: {session_directory}")
             else:
                 self.results_panel.add_log_message("❌ Error iniciando guardado")
+                # Re-habilitar botón si hubo error
+                if hasattr(main_window, 'sdn_dashboard_tab'):
+                    main_window.sdn_dashboard_tab.set_load_button_enabled(True)
+                # Cerrar widget de progreso
+                if self.saving_progress_widget:
+                    self.saving_progress_widget.close()
 
         except Exception as e:
             self.results_panel.add_log_message(f"❌ Error guardando datos: {e}")
             print(f"❌ Error en _save_simulation_async: {e}")
 
+    def _show_saving_progress_widget_simple(self):
+        """Mostrar widget de progreso de guardado en modo simple (sin estadísticas)"""
+        try:
+            # Cerrar widget anterior si existe
+            if self.saving_progress_widget:
+                self.saving_progress_widget.close()
+                self.saving_progress_widget = None
+
+            # Crear widget en modo simple
+            self.saving_progress_widget = SavingProgressWidget(simple_mode=True)
+            self.saving_progress_widget.setWindowTitle(tr('saving_progress.window_title'))
+            self.saving_progress_widget.setWindowFlags(
+                Qt.Window | Qt.WindowStaysOnTopHint
+            )
+            self.saving_progress_widget.resize(450, 250)  # Tamaño reducido para modo simple
+
+            # Conectar señal de cerrar
+            self.saving_progress_widget.close_requested.connect(
+                self.saving_progress_widget.hide
+            )
+
+            # Mostrar widget y comenzar monitoreo en modo simple
+            self.saving_progress_widget.show()
+            self.saving_progress_widget.start_monitoring()  # No necesita adapter en modo simple
+
+        except Exception as e:
+            print(f"❌ Error mostrando widget de progreso: {e}")
+
     def _on_save_complete(self, session_directory: str):
         """Callback cuando el guardado se completa (conectado a graphics_saver.graphics_saved)"""
         self.results_panel.add_log_message(f"✅ Datos guardados completamente: {session_directory}")
+
+        # Marcar widget de progreso como completado
+        if self.saving_progress_widget:
+            self.saving_progress_widget.set_completed()
+
+        # Re-habilitar botón de cargar simulación en el dashboard
+        main_window = self.parent()
+        if hasattr(main_window, 'sdn_dashboard_tab'):
+            main_window.sdn_dashboard_tab.set_load_button_enabled(True)
     
     def show_graphics_popup_window(self, 
                                  simulation_data: dict, 
@@ -2620,10 +2648,17 @@ class IntegratedPONTestPanel(QWidget):
                 self.popup_window.close()
                 self.popup_window = None
 
+            # Limpiar widget de progreso de guardado
             if hasattr(self, 'saving_progress_widget') and self.saving_progress_widget:
                 self.saving_progress_widget.stop_monitoring()
                 self.saving_progress_widget.close()
                 self.saving_progress_widget = None
+
+            # REMOVED: Incremental writing disabled
+            # if hasattr(self, 'saving_progress_widget') and self.saving_progress_widget:
+            #     self.saving_progress_widget.stop_monitoring()
+            #     self.saving_progress_widget.close()
+            #     self.saving_progress_widget = None
 
             print("Panel PON integrado limpiado")
             
@@ -2648,49 +2683,49 @@ class IntegratedPONTestPanel(QWidget):
         # pero se mantiene como stub para evitar errores de atributo
         pass
 
-    def _show_saving_progress_widget(self, use_hybrid: bool):
-        """
-        Mostrar widget de progreso de guardado incremental
-
-        Args:
-            use_hybrid: Si es simulación híbrida (para estimar snapshots)
-        """
-        try:
-            # Crear widget de progreso si no existe
-            if not self.saving_progress_widget:
-                self.saving_progress_widget = SavingProgressWidget()
-                self.saving_progress_widget.setWindowTitle(tr("saving_progress.window_title"))
-                self.saving_progress_widget.setMinimumWidth(450)
-                self.saving_progress_widget.setMinimumHeight(400)
-
-                # Conectar señal de cerrar
-                self.saving_progress_widget.close_requested.connect(
-                    lambda: self.saving_progress_widget.hide()
-                )
-
-            # Estimar número total de snapshots
-            if use_hybrid:
-                duration = self.duration_spinbox.value()
-                # Cada ciclo = 125us, calcular cuántos ciclos en la duración
-                cycles_per_second = 1 / 125e-6  # ~8000 ciclos/segundo
-                total_snapshots = int(duration * cycles_per_second)
-            else:
-                # Simulación clásica
-                total_snapshots = self.steps_spinbox.value()
-
-            # Iniciar monitoreo
-            self.saving_progress_widget.start_monitoring(self.adapter, total_snapshots)
-
-            # Mostrar widget
-            self.saving_progress_widget.show()
-            self.saving_progress_widget.raise_()
-            self.saving_progress_widget.activateWindow()
-
-            self.results_panel.add_log_message(f"📊 Widget de progreso mostrado (estimando {total_snapshots:,} snapshots)")
-
-        except Exception as e:
-            self.results_panel.add_log_message(f"⚠️ Error mostrando widget de progreso: {e}")
-            print(f"Error en _show_saving_progress_widget: {e}")
+    # REMOVED:     def _show_saving_progress_widget(self, use_hybrid: bool):
+    # REMOVED:         """
+    # REMOVED:         Mostrar widget de progreso de guardado incremental
+    # REMOVED: 
+    # REMOVED:         Args:
+    # REMOVED:             use_hybrid: Si es simulación híbrida (para estimar snapshots)
+    # REMOVED:         """
+    # REMOVED:         try:
+    # REMOVED:             # Crear widget de progreso si no existe
+    # REMOVED:             if not self.saving_progress_widget:
+    # REMOVED:                 self.saving_progress_widget = SavingProgressWidget()
+    # REMOVED:                 self.saving_progress_widget.setWindowTitle(tr("saving_progress.window_title"))
+    # REMOVED:                 self.saving_progress_widget.setMinimumWidth(450)
+    # REMOVED:                 self.saving_progress_widget.setMinimumHeight(400)
+    # REMOVED: 
+    # REMOVED:                 # Conectar señal de cerrar
+    # REMOVED:                 self.saving_progress_widget.close_requested.connect(
+    # REMOVED:                     lambda: self.saving_progress_widget.hide()
+    # REMOVED:                 )
+    # REMOVED: 
+    # REMOVED:             # Estimar número total de snapshots
+    # REMOVED:             if use_hybrid:
+    # REMOVED:                 duration = self.duration_spinbox.value()
+    # REMOVED:                 # Cada ciclo = 125us, calcular cuántos ciclos en la duración
+    # REMOVED:                 cycles_per_second = 1 / 125e-6  # ~8000 ciclos/segundo
+    # REMOVED:                 total_snapshots = int(duration * cycles_per_second)
+    # REMOVED:             else:
+    # REMOVED:                 # Simulación clásica
+    # REMOVED:                 total_snapshots = self.steps_spinbox.value()
+    # REMOVED: 
+    # REMOVED:             # Iniciar monitoreo
+    # REMOVED:             self.saving_progress_widget.start_monitoring(self.adapter, total_snapshots)
+    # REMOVED: 
+    # REMOVED:             # Mostrar widget
+    # REMOVED:             self.saving_progress_widget.show()
+    # REMOVED:             self.saving_progress_widget.raise_()
+    # REMOVED:             self.saving_progress_widget.activateWindow()
+    # REMOVED: 
+    # REMOVED:             self.results_panel.add_log_message(f"📊 Widget de progreso mostrado (estimando {total_snapshots:,} snapshots)")
+    # REMOVED: 
+    # REMOVED:         except Exception as e:
+    # REMOVED:             self.results_panel.add_log_message(f"⚠️ Error mostrando widget de progreso: {e}")
+    # REMOVED:             print(f"Error en _show_saving_progress_widget: {e}")
 
     def retranslate_ui(self):
         """Actualizar todos los textos traducibles del panel"""
@@ -2804,10 +2839,10 @@ class IntegratedPONTestPanel(QWidget):
         # Actualizar ventana popup de gráficos si existe
         if hasattr(self, 'popup_window') and self.popup_window:
             self.popup_window.retranslate_ui()
-        
+
         # Actualizar widget de progreso de guardado si existe
         if hasattr(self, 'saving_progress_widget') and self.saving_progress_widget:
             self.saving_progress_widget.retranslate_ui()
-        
+
         # Recargar estado (si está disponible, mantiene el estado traducido)
         self.check_pon_status()
