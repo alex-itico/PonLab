@@ -1,12 +1,21 @@
+# GUI Framework
 PyQt5>=5.15.0
 PyQtWebEngine>=5.15.0
 PyQtChart>=5.15.0
-numpy>=1.21.0
-matplotlib>=3.5.0
 
-# Dependencias para Aprendizaje Reforzado
+# Numerical Computing
+numpy>=1.21.0
+
+# Plotting and Visualization
+matplotlib>=3.5.0
+pyqtgraph>=0.12.0
+
+# Reinforcement Learning and Machine Learning
 gymnasium>=0.28.0
 stable-baselines3>=2.0.0
 torch>=1.11.0
-pandas>=1.4.0
-scikit-learn>=1.1.0
+
+# Note: pandas and scikit-learn are dependencies of stable-baselines3
+# and will be installed automatically, but can be specified explicitly if needed:
+# pandas>=1.4.0
+# scikit-learn>=1.1.0
