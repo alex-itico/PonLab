@@ -22,11 +22,12 @@ class SavingProgressWidget(QWidget):
     # Señales
     close_requested = pyqtSignal()
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, simple_mode=False):
         super().__init__(parent)
         self.adapter = None
         self.update_timer = None
         self.total_snapshots_estimate = 0
+        self.simple_mode = simple_mode  # Modo simple para guardado post-simulación
         self.setup_ui()
 
     def setup_ui(self):
@@ -189,14 +190,24 @@ class SavingProgressWidget(QWidget):
 
         layout.addWidget(main_frame)
 
-    def start_monitoring(self, adapter, total_snapshots_estimate: int):
+    def start_monitoring(self, adapter=None, total_snapshots_estimate: int = 0):
         """
         Iniciar monitoreo de progreso
 
         Args:
-            adapter: Instancia de PONAdapter
+            adapter: Instancia de PONAdapter (opcional en modo simple)
             total_snapshots_estimate: Estimación de snapshots totales
         """
+        if self.simple_mode:
+            # Modo simple: solo mostrar mensaje de guardando sin estadísticas
+            self.progress_bar.setRange(0, 0)  # Modo indeterminado (spinner)
+            self.snapshots_label.setText("Guardando archivos...")
+            self.size_label.setText("Por favor espera")
+            self.speed_label.setText("")
+            self.time_label.setText("")
+            return
+
+        # Modo normal con estadísticas
         self.adapter = adapter
         self.total_snapshots_estimate = total_snapshots_estimate
 
@@ -249,7 +260,15 @@ class SavingProgressWidget(QWidget):
         if self.update_timer:
             self.update_timer.stop()
 
-        self.progress_bar.setValue(100)
+        if self.simple_mode:
+            # En modo simple, restaurar barra de progreso y mostrar completado
+            self.progress_bar.setRange(0, 100)
+            self.progress_bar.setValue(100)
+            self.snapshots_label.setText("✅ Archivos guardados")
+            self.size_label.setText("Guardado completado exitosamente")
+        else:
+            self.progress_bar.setValue(100)
+
         self.title_label.setText(tr('saving_progress.completed_title'))
         self.title_label.setStyleSheet("color: #28a745; font-weight: bold;")
         self.subtitle_label.setText(tr('saving_progress.completed_subtitle'))
