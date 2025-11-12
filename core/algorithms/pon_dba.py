@@ -461,7 +461,7 @@ class StrictPriorityMinShareDBA2(DBAAlgorithmInterface):
         return final_allocations
     
     def get_algorithm_name(self) -> str:
-        return "SP-MINSHARE2"
+        return "SP-MINSHARE"
 
 class TEST(DBAAlgorithmInterface):
     """
