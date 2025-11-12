@@ -2386,6 +2386,11 @@ class IntegratedPONTestPanel(QWidget):
     def _save_simulation_async(self, simulation_data: dict, session_info: dict):
         """Guardar datos de simulación usando QThread (verdaderamente asíncrono)"""
         try:
+            # Deshabilitar botón de cargar simulación en el dashboard mientras se guarda
+            main_window = self.parent()
+            if hasattr(main_window, 'sdn_dashboard_tab'):
+                main_window.sdn_dashboard_tab.set_load_button_enabled(False)
+
             # El método ahora retorna el directorio inmediatamente y guarda en background
             session_directory = self.graphics_saver.save_simulation_graphics_and_data(
                 self.results_panel.charts_panel,
@@ -2401,6 +2406,9 @@ class IntegratedPONTestPanel(QWidget):
                 self.results_panel.add_log_message(f"💾 Guardando datos en segundo plano: {session_directory}")
             else:
                 self.results_panel.add_log_message("❌ Error iniciando guardado")
+                # Re-habilitar botón si hubo error
+                if hasattr(main_window, 'sdn_dashboard_tab'):
+                    main_window.sdn_dashboard_tab.set_load_button_enabled(True)
 
         except Exception as e:
             self.results_panel.add_log_message(f"❌ Error guardando datos: {e}")
@@ -2409,6 +2417,11 @@ class IntegratedPONTestPanel(QWidget):
     def _on_save_complete(self, session_directory: str):
         """Callback cuando el guardado se completa (conectado a graphics_saver.graphics_saved)"""
         self.results_panel.add_log_message(f"✅ Datos guardados completamente: {session_directory}")
+
+        # Re-habilitar botón de cargar simulación en el dashboard
+        main_window = self.parent()
+        if hasattr(main_window, 'sdn_dashboard_tab'):
+            main_window.sdn_dashboard_tab.set_load_button_enabled(True)
     
     def show_graphics_popup_window(self, 
                                  simulation_data: dict, 
