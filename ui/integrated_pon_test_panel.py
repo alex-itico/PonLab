@@ -2466,6 +2466,10 @@ class IntegratedPONTestPanel(QWidget):
         """Callback cuando el guardado se completa (conectado a graphics_saver.graphics_saved)"""
         self.results_panel.add_log_message(f"✅ Datos guardados completamente: {session_directory}")
 
+        # Actualizar ventana emergente con el directorio completo
+        if self.popup_window:
+            self.popup_window.update_session_directory(session_directory)
+
         # Marcar widget de progreso como completado
         if self.saving_progress_widget:
             self.saving_progress_widget.set_completed()

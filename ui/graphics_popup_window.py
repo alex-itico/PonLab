@@ -364,8 +364,23 @@ class GraphicsPopupWindow(QDialog):
     def update_files_display(self, session_directory: str):
         """Actualizar display de archivos generados"""
         if not session_directory:
-            self.files_text.setPlainText("⏳ Generando archivos de simulación...")
+            self.files_text.setPlainText(
+                "⏳ Generando archivos de simulación...\n\n"
+                "Los archivos se están guardando en segundo plano.\n"
+                "Esta sección se actualizará automáticamente cuando termine el proceso.\n\n"
+                "Mientras tanto, puedes:\n"
+                "  • Ver los gráficos en la pestaña 'Gráficos'\n"
+                "  • Revisar el resumen en la pestaña 'Resumen'\n"
+                "  • Exportar gráficos adicionales con el botón de abajo"
+            )
+            # Deshabilitar botón de abrir carpeta temporalmente
+            if hasattr(self, 'open_folder_btn'):
+                self.open_folder_btn.setEnabled(False)
             return
+        
+        # Habilitar botón de abrir carpeta
+        if hasattr(self, 'open_folder_btn'):
+            self.open_folder_btn.setEnabled(True)
         
         if not os.path.exists(session_directory):
             self.files_text.setPlainText("❌ Directorio no encontrado")
@@ -378,18 +393,24 @@ class GraphicsPopupWindow(QDialog):
         # Listar archivos generados
         files_info.append("📄 ARCHIVOS GENERADOS:")
         
-        for filename in os.listdir(session_directory):
-            filepath = os.path.join(session_directory, filename)
-            
-            if filename.endswith('.json'):
-                size_kb = os.path.getsize(filepath) / 1024
-                files_info.append(f"  📊 {filename} ({size_kb:.1f} KB)")
-            elif filename.endswith('.txt'):
-                files_info.append(f"  📋 {filename}")
-            elif os.path.isdir(filepath) and filename == 'graficos':
-                # Contar gráficos
-                graphics_count = len([f for f in os.listdir(filepath) if f.endswith('.png')])
-                files_info.append(f"  🖼️ {filename}/ ({graphics_count} gráficos PNG)")
+        try:
+            for filename in os.listdir(session_directory):
+                filepath = os.path.join(session_directory, filename)
+                
+                if filename.endswith('.json.gz'):
+                    size_mb = os.path.getsize(filepath) / (1024 * 1024)
+                    files_info.append(f"  📊 {filename} ({size_mb:.2f} MB)")
+                elif filename.endswith('.json'):
+                    size_kb = os.path.getsize(filepath) / 1024
+                    files_info.append(f"  📊 {filename} ({size_kb:.1f} KB)")
+                elif filename.endswith('.txt'):
+                    files_info.append(f"  📋 {filename}")
+                elif os.path.isdir(filepath) and filename == 'graficos':
+                    # Contar gráficos
+                    graphics_count = len([f for f in os.listdir(filepath) if f.endswith('.png')])
+                    files_info.append(f"  🖼️ {filename}/ ({graphics_count} gráficos PNG)")
+        except Exception as e:
+            files_info.append(f"  ⚠️ Error listando archivos: {e}")
         
         self.files_text.setPlainText("\n".join(files_info))
     
@@ -406,8 +427,22 @@ class GraphicsPopupWindow(QDialog):
     
     def open_session_folder(self):
         """Abrir carpeta de sesión en el explorador"""
-        if not self.session_directory or not os.path.exists(self.session_directory):
-            QMessageBox.warning(self, "Error", "Directorio de sesión no encontrado")
+        if not self.session_directory:
+            QMessageBox.information(
+                self, 
+                "Guardado en Progreso", 
+                "Los archivos se están guardando en segundo plano.\n\n"
+                "Por favor espera unos segundos y vuelve a intentar.\n"
+                "La carpeta se abrirá automáticamente cuando termine el guardado."
+            )
+            return
+        
+        if not os.path.exists(self.session_directory):
+            QMessageBox.warning(
+                self, 
+                "Error", 
+                f"Directorio de sesión no encontrado:\n{self.session_directory}"
+            )
             return
         
         try:
@@ -479,14 +514,24 @@ class GraphicsPopupWindow(QDialog):
     
     def export_additional_graphics(self):
         """Exportar gráficos adicionales o en diferentes formatos"""
-        if not self.charts_panel or not self.session_directory:
+        if not self.charts_panel:
             QMessageBox.warning(self, "Error", "No hay gráficos para exportar")
             return
         
         try:
-            # Crear directorio adicional
-            additional_dir = os.path.join(self.session_directory, "graficos_adicionales")
-            os.makedirs(additional_dir, exist_ok=True)
+            # Si no hay session_directory, usar directorio temporal o predeterminado
+            if not self.session_directory:
+                # Crear directorio en simulation_results con timestamp
+                from datetime import datetime
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                base_dir = "simulation_results"
+                os.makedirs(base_dir, exist_ok=True)
+                additional_dir = os.path.join(base_dir, f"graficos_exportados_{timestamp}")
+                os.makedirs(additional_dir, exist_ok=True)
+            else:
+                # Crear directorio adicional dentro del directorio de sesión
+                additional_dir = os.path.join(self.session_directory, "graficos_adicionales")
+                os.makedirs(additional_dir, exist_ok=True)
             
             # Exportar en diferentes formatos
             success = self.charts_panel.export_charts(additional_dir)
