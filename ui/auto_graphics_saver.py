@@ -167,10 +167,10 @@ class AutoGraphicsSaver(QObject):
     save_error = pyqtSignal(str)      # Error al guardar
     save_progress = pyqtSignal(str)   # Progreso del guardado
 
-    def __init__(self, use_compression: bool = False):
+    def __init__(self, use_compression: bool = True):
         super().__init__()
         self.base_directory = "simulation_results"
-        self.use_compression = use_compression  # Sin compresión por defecto
+        self.use_compression = use_compression  # Usar compresión gzip por defecto
         self.save_thread = None  # Thread actual de guardado
         self.ensure_base_directory()
         
