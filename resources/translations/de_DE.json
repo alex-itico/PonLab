@@ -382,6 +382,38 @@
         "low": "🟢 Niedrig",
         "best_effort": "🔵 Best Effort"
       }
+    },
+    "health": {
+      "tab_title": "🏥 ONU-Gesundheitskarte",
+      "title": "🏥 PON ONUs Gesundheitskarte",
+      "description": "Gesundheitsstatus berechnet basierend auf: Latenz (30%), Jitter (20%), Paketverlust (25%), Überlastung (25%)",
+      "breakdown_title": "📊 Komponentenbewertungen Aufschlüsselung",
+      "legend_title": "📌 Statuslegende",
+      "table_headers": {
+        "onu_id": "ONU ID",
+        "status": "Status",
+        "health_score": "Gesundheitsbewertung",
+        "latency": "Latenz",
+        "jitter": "Jitter",
+        "packet_loss": "Paketverlust",
+        "recommendations": "Empfehlungen",
+        "latency_score": "Latenzbewertung",
+        "jitter_score": "Jitterbewertung",
+        "packet_loss_score": "Paketverlustbewertung",
+        "congestion_score": "Überlastungsbewertung"
+      },
+      "status_labels": {
+        "excellent": "🟢 Ausgezeichnet",
+        "good": "🟡 Gut",
+        "regular": "🟠 Regulär",
+        "critical": "🔴 Kritisch"
+      },
+      "status_ranges": {
+        "excellent": "Bewertung ≥ 80",
+        "good": "Bewertung 60-79",
+        "regular": "Bewertung 40-59",
+        "critical": "Bewertung < 40"
+      }
     }
   },
   "simulation_results": {

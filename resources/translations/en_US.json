@@ -382,6 +382,38 @@
         "low": "🟢 Low",
         "best_effort": "🔵 Best Effort"
       }
+    },
+    "health": {
+      "tab_title": "🏥 ONU Health Map",
+      "title": "🏥 PON ONUs Health Map",
+      "description": "Health status calculated based on: Latency (30%), Jitter (20%), Packet Loss (25%), Congestion (25%)",
+      "breakdown_title": "📊 Component Scores Breakdown",
+      "legend_title": "📌 Status Legend",
+      "table_headers": {
+        "onu_id": "ONU ID",
+        "status": "Status",
+        "health_score": "Health Score",
+        "latency": "Latency",
+        "jitter": "Jitter",
+        "packet_loss": "Packet Loss",
+        "recommendations": "Recommendations",
+        "latency_score": "Latency Score",
+        "jitter_score": "Jitter Score",
+        "packet_loss_score": "Packet Loss Score",
+        "congestion_score": "Congestion Score"
+      },
+      "status_labels": {
+        "excellent": "🟢 Excellent",
+        "good": "🟡 Good",
+        "regular": "🟠 Fair",
+        "critical": "🔴 Critical"
+      },
+      "status_ranges": {
+        "excellent": "Score ≥ 80",
+        "good": "Score 60-79",
+        "regular": "Score 40-59",
+        "critical": "Score < 40"
+      }
     }
   },
   "simulation_results": {
