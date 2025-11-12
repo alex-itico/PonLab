@@ -13,7 +13,7 @@ from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel,
                              QCheckBox, QSlider, QSplitter, QFileDialog, QMessageBox,
                              QFrame, QDialog)
 from PyQt5.QtCore import Qt, QTimer, pyqtSignal, QObject, QEvent, QThread
-from PyQt5.QtGui import QFont
+from PyQt5.QtGui import QFont, QColor
 from core import PONAdapter
 from .pon_simulation_results_panel import PONResultsPanel
 from .auto_graphics_saver import AutoGraphicsSaver
@@ -604,7 +604,39 @@ class IntegratedPONTestPanel(QWidget):
         self.algorithm_combo = QComboBox()
         if self.adapter.is_pon_available():
             algorithms = self.adapter.get_available_algorithms()
-            self.algorithm_combo.addItems(algorithms)
+            
+            # Separar algoritmos convencionales y personalizados
+            conventional = ["FCFS", "Priority", "RL-DBA", "SDN", "SP-MINSHARE"]
+            custom_algorithms = [algo for algo in algorithms if algo not in conventional and algo not in ["Smart-RL", "Smart-RL-SDN"]]
+            
+            # Agregar header y algoritmos convencionales
+            self.algorithm_combo.addItem("━━━ Algoritmos Convencionales ━━━")
+            model = self.algorithm_combo.model()
+            item = model.item(self.algorithm_combo.count() - 1)
+            item.setEnabled(False)  # Hacer que el header no sea seleccionable
+            item.setFont(QFont("Arial", 9, QFont.Bold))
+            item.setBackground(QColor(240, 240, 240, 50))
+            
+            for algo in algorithms:
+                if algo in conventional:
+                    self.algorithm_combo.addItem(algo)
+            
+            # Agregar Smart-RL si está disponible
+            if "Smart-RL" in algorithms or "Smart-RL-SDN" in algorithms:
+                for algo in algorithms:
+                    if algo in ["Smart-RL", "Smart-RL-SDN"]:
+                        self.algorithm_combo.addItem(algo)
+            
+            # Agregar header y algoritmos personalizados si existen
+            if custom_algorithms:
+                self.algorithm_combo.addItem("━━━ Algoritmos Personalizados ━━━")
+                item = model.item(self.algorithm_combo.count() - 1)
+                item.setEnabled(False)
+                item.setFont(QFont("Arial", 9, QFont.Bold))
+                item.setBackground(QColor(240, 240, 240, 50))
+                
+                for algo in custom_algorithms:
+                    self.algorithm_combo.addItem(algo)
             
             # Agregar opción de agente RL si está disponible
             if MODEL_BRIDGE_AVAILABLE:
@@ -967,6 +999,15 @@ class IntegratedPONTestPanel(QWidget):
     def on_algorithm_changed(self):
         """Manejar cambio de algoritmo DBA"""
         algorithm = self.algorithm_combo.currentText()
+        
+        # Ignorar si es un header (separador)
+        if "━━━" in algorithm:
+            # Restaurar el último algoritmo válido seleccionado
+            if hasattr(self, 'last_algorithm') and self.last_algorithm:
+                index = self.algorithm_combo.findText(self.last_algorithm)
+                if index >= 0:
+                    self.algorithm_combo.setCurrentIndex(index)
+            return
 
         # Mostrar/ocultar controles de modelo RL
         is_rl_algorithm = (algorithm == "RL Agent")

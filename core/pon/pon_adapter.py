@@ -15,8 +15,8 @@ try:
         StrictPriorityMinShareDBA,
         StrictPriorityMinShareDBA2,
         TEST,
-        TESTB,
-)
+        TESTB
+    )
     from ..smart_rl_dba import SmartRLDBAAlgorithm
     from ..simulation.pon_simulator import PONSimulator, EventEvaluator
     from ..utilities.pon_traffic import get_available_scenarios, print_scenario_info
@@ -554,6 +554,7 @@ class PONAdapter:
         algorithms = {
             "FCFS": FCFSDBAAlgorithm,
             "Priority": PriorityDBAAlgorithm,
+            "RL-DBA": RLDBAAlgorithm,
             "SDN": FCFSDBAAlgorithm,  # Usar FCFS como base para SDN
             "SP-MINSHARE": StrictPriorityMinShareDBA,
             "TEST_A": TEST,
