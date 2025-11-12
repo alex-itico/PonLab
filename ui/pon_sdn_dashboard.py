@@ -172,6 +172,10 @@ class PONSDNDashboard(QWidget):
         self.tab_bandwidth = self._create_bandwidth_tab()
         self.tabs.addTab(self.tab_bandwidth, tr('sdn_dashboard.tabs.bandwidth'))
         
+        # Pestaña 6: Mapa de Salud ONUs
+        self.tab_health = self._create_health_map_tab()
+        self.tabs.addTab(self.tab_health, tr('sdn_dashboard.health.tab_title'))
+        
         main_layout.addWidget(self.tabs)
     
     def _create_global_tab(self):
@@ -436,6 +440,110 @@ class PONSDNDashboard(QWidget):
         layout.addWidget(scroll)
         return tab
     
+    def _create_health_map_tab(self):
+        """Crear pestaña de mapa de salud de ONUs"""
+        tab = QWidget()
+        layout = QVBoxLayout(tab)
+        
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        
+        content = QWidget()
+        content_layout = QVBoxLayout(content)
+        
+        # Título de la sección
+        self.health_title_label = QLabel(tr('sdn_dashboard.health.title'))
+        self.health_title_label.setFont(QFont("Arial", 14, QFont.Bold))
+        self.health_title_label.setAlignment(Qt.AlignCenter)
+        content_layout.addWidget(self.health_title_label)
+        
+        # Descripción
+        self.health_desc_label = QLabel(tr('sdn_dashboard.health.description'))
+        self.health_desc_label.setFont(QFont("Arial", 9))
+        self.health_desc_label.setAlignment(Qt.AlignCenter)
+        self.health_desc_label.setStyleSheet("color: #666; margin-bottom: 10px;")
+        content_layout.addWidget(self.health_desc_label)
+        
+        # Tabla principal de salud de ONUs
+        self.health_table = QTableWidget()
+        self.health_table.setObjectName("HealthTable")
+        self.health_table.setColumnCount(7)
+        self.health_table.setHorizontalHeaderLabels([
+            tr('sdn_dashboard.health.table_headers.onu_id'),
+            tr('sdn_dashboard.health.table_headers.status'),
+            tr('sdn_dashboard.health.table_headers.health_score'),
+            tr('sdn_dashboard.health.table_headers.latency'),
+            tr('sdn_dashboard.health.table_headers.jitter'),
+            tr('sdn_dashboard.health.table_headers.packet_loss'),
+            tr('sdn_dashboard.health.table_headers.recommendations')
+        ])
+        header = self.health_table.horizontalHeader()
+        header.setSectionResizeMode(0, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(1, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(2, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(3, QHeaderView.Stretch)
+        header.setSectionResizeMode(4, QHeaderView.Stretch)
+        header.setSectionResizeMode(5, QHeaderView.Stretch)
+        header.setSectionResizeMode(6, QHeaderView.Stretch)
+        self.health_table.setAlternatingRowColors(True)
+        self.health_table.verticalHeader().setVisible(False)
+        
+        content_layout.addWidget(self.health_table)
+        
+        # Sección de desglose de scores por componente
+        self.breakdown_label = QLabel(tr('sdn_dashboard.health.breakdown_title'))
+        self.breakdown_label.setFont(QFont("Arial", 12, QFont.Bold))
+        self.breakdown_label.setStyleSheet("margin-top: 20px;")
+        content_layout.addWidget(self.breakdown_label)
+        
+        # Tabla de desglose de componentes
+        self.component_table = QTableWidget()
+        self.component_table.setObjectName("ComponentTable")
+        self.component_table.setColumnCount(5)
+        self.component_table.setHorizontalHeaderLabels([
+            tr('sdn_dashboard.health.table_headers.onu_id'),
+            tr('sdn_dashboard.health.table_headers.latency_score'),
+            tr('sdn_dashboard.health.table_headers.jitter_score'),
+            tr('sdn_dashboard.health.table_headers.packet_loss_score'),
+            tr('sdn_dashboard.health.table_headers.congestion_score')
+        ])
+        header2 = self.component_table.horizontalHeader()
+        header2.setSectionResizeMode(QHeaderView.Stretch)
+        self.component_table.setAlternatingRowColors(True)
+        self.component_table.verticalHeader().setVisible(False)
+        
+        content_layout.addWidget(self.component_table)
+        
+        # Leyenda de estados
+        self.legend_label = QLabel(tr('sdn_dashboard.health.legend_title'))
+        self.legend_label.setFont(QFont("Arial", 12, QFont.Bold))
+        self.legend_label.setStyleSheet("margin-top: 20px;")
+        content_layout.addWidget(self.legend_label)
+        
+        legend_layout = QHBoxLayout()
+        legend_layout.addStretch()
+        
+        # Guardar las leyendas para retranslate
+        self.legend_items = []
+        legend_keys = ['excellent', 'good', 'regular', 'critical']
+        legend_colors = ["#4CAF50", "#FFC107", "#FF9800", "#F44336"]
+        
+        for key, color in zip(legend_keys, legend_colors):
+            label_text = f"{tr(f'sdn_dashboard.health.status_labels.{key}')}: {tr(f'sdn_dashboard.health.status_ranges.{key}')}"
+            legend_item = QLabel(label_text)
+            legend_item.setStyleSheet(f"background-color: {color}; color: white; padding: 5px 10px; border-radius: 3px; font-weight: bold;")
+            legend_layout.addWidget(legend_item)
+            self.legend_items.append((legend_item, key))
+        
+        legend_layout.addStretch()
+        content_layout.addLayout(legend_layout)
+        
+        content_layout.addStretch()
+        
+        scroll.setWidget(content)
+        layout.addWidget(scroll)
+        return tab
+    
     def set_theme(self, dark_mode):
         """Aplicar tema al dashboard y todos sus componentes"""
         self.dark_theme = dark_mode
@@ -509,6 +617,10 @@ class PONSDNDashboard(QWidget):
             self.sla_table.setStyleSheet(table_style)
         if hasattr(self, 'service_table'):
             self.service_table.setStyleSheet(table_style)
+        if hasattr(self, 'health_table'):
+            self.health_table.setStyleSheet(table_style)
+        if hasattr(self, 'component_table'):
+            self.component_table.setStyleSheet(table_style)
     
     def _apply_light_theme(self):
         """Aplicar tema claro al dashboard"""
@@ -574,6 +686,10 @@ class PONSDNDashboard(QWidget):
             self.sla_table.setStyleSheet(table_style)
         if hasattr(self, 'service_table'):
             self.service_table.setStyleSheet(table_style)
+        if hasattr(self, 'health_table'):
+            self.health_table.setStyleSheet(table_style)
+        if hasattr(self, 'component_table'):
+            self.component_table.setStyleSheet(table_style)
     
     def update_metrics(self, sdn_metrics: dict):
         """Actualizar todas las métricas avanzadas del dashboard"""
@@ -585,6 +701,7 @@ class PONSDNDashboard(QWidget):
         controller_metrics = sdn_metrics.get('controller_metrics', {})
         service_metrics = sdn_metrics.get('service_metrics', {})
         sla_metrics = sdn_metrics.get('sla_metrics', {})
+        health_map = sdn_metrics.get('health_map', {})
         
         # ===== PESTAÑA GLOBAL =====
         self.reconfig_card.update_value(str(global_metrics.get('reconfigurations', 0)))
@@ -677,18 +794,17 @@ class PONSDNDashboard(QWidget):
                     self.sla_table.setItem(current_row, 1, tcont_item)
                     
                     # Cumplidos
-                    met = QTableWidgetItem(str(compliance.get('met', 0)))
+                    met = QTableWidgetItem(str(compliance.get('packets_met', 0)))
                     met.setTextAlignment(Qt.AlignCenter)
                     self.sla_table.setItem(current_row, 2, met)
                     
                     # Violados
-                    violated = QTableWidgetItem(str(compliance.get('violated', 0)))
+                    violated = QTableWidgetItem(str(compliance.get('packets_violated', 0)))
                     violated.setTextAlignment(Qt.AlignCenter)
                     self.sla_table.setItem(current_row, 3, violated)
                     
                     # % Cumplimiento
-                    total = compliance.get('met', 0) + compliance.get('violated', 0)
-                    percentage = (compliance.get('met', 0) / total * 100) if total > 0 else 0
+                    percentage = compliance.get('compliance', 0)
                     percent_item = QTableWidgetItem(f"{percentage:.1f}%")
                     percent_item.setTextAlignment(Qt.AlignCenter)
                     
@@ -725,10 +841,20 @@ class PONSDNDashboard(QWidget):
             service_classes = ['highest', 'high', 'medium', 'low', 'lowest']
             priorities = ['1 (Máxima)', '2', '3', '4', '5 (Mínima)']
             
-            total_bw = sum(service_metrics.values())
+            # Calcular total de ancho de banda
+            total_bw = sum(
+                service_metrics.get(sc, {}).get('bandwidth', 0) 
+                for sc in service_classes
+            )
             
             for row, (service_class, priority) in enumerate(zip(service_classes, priorities)):
-                bw_assigned = service_metrics.get(service_class, 0)
+                service_data = service_metrics.get(service_class, {})
+                
+                # Extraer datos
+                bw_assigned = service_data.get('bandwidth', 0) if isinstance(service_data, dict) else service_data
+                packets = service_data.get('packets', 0) if isinstance(service_data, dict) else 0
+                avg_latency = service_data.get('avg_latency', 0) if isinstance(service_data, dict) else 0
+                
                 percentage = (bw_assigned / total_bw * 100) if total_bw > 0 else 0
                 
                 # BW Asignado
@@ -741,13 +867,13 @@ class PONSDNDashboard(QWidget):
                 percent_item.setTextAlignment(Qt.AlignCenter)
                 self.service_table.setItem(row, 2, percent_item)
                 
-                # Paquetes (placeholder - se puede agregar después)
-                packets_item = QTableWidgetItem("N/A")
+                # Paquetes - ahora con valores reales
+                packets_item = QTableWidgetItem(str(packets))
                 packets_item.setTextAlignment(Qt.AlignCenter)
                 self.service_table.setItem(row, 3, packets_item)
                 
-                # Latencia Prom. (placeholder - se puede agregar después)
-                latency_item = QTableWidgetItem("N/A")
+                # Latencia Promedio - ahora con valores reales (en ms)
+                latency_item = QTableWidgetItem(f"{avg_latency * 1000:.2f} ms" if avg_latency > 0 else "0.00 ms")
                 latency_item.setTextAlignment(Qt.AlignCenter)
                 self.service_table.setItem(row, 4, latency_item)
                 
@@ -755,6 +881,83 @@ class PONSDNDashboard(QWidget):
                 priority_item = QTableWidgetItem(priority)
                 priority_item.setTextAlignment(Qt.AlignCenter)
                 self.service_table.setItem(row, 5, priority_item)
+        
+        # ===== PESTAÑA MAPA DE SALUD ONUs =====
+        try:
+            if health_map:
+                onu_ids = list(health_map.keys())
+                self.health_table.setRowCount(len(onu_ids))
+                self.component_table.setRowCount(len(onu_ids))
+
+                for row, onu_id in enumerate(onu_ids):
+                    entry = health_map.get(onu_id, {})
+
+                    # Health table columns: ONU ID, Estado, Score Salud, Latencia, Jitter, Pérdidas, Recomendaciones
+                    onu_item = QTableWidgetItem(str(onu_id))
+                    onu_item.setTextAlignment(Qt.AlignCenter)
+                    self.health_table.setItem(row, 0, onu_item)
+
+                    status_text = f"{entry.get('emoji', '')} {entry.get('status', '')}"
+                    status_item = QTableWidgetItem(status_text)
+                    status_item.setTextAlignment(Qt.AlignCenter)
+                    self.health_table.setItem(row, 1, status_item)
+
+                    score_item = QTableWidgetItem(f"{entry.get('score', 0):.1f}")
+                    score_item.setTextAlignment(Qt.AlignCenter)
+                    # Color background según score
+                    score_val = entry.get('score', 0)
+                    if score_val >= 80:
+                        score_item.setBackground(QColor('#4CAF50'))
+                    elif score_val >= 60:
+                        score_item.setBackground(QColor('#FFC107'))
+                    elif score_val >= 40:
+                        score_item.setBackground(QColor('#FF9800'))
+                    else:
+                        score_item.setBackground(QColor('#F44336'))
+                    self.health_table.setItem(row, 2, score_item)
+
+                    metrics = entry.get('metrics', {})
+                    latency_item = QTableWidgetItem(f"{metrics.get('latency_ms', 0):.3f} ms")
+                    latency_item.setTextAlignment(Qt.AlignCenter)
+                    self.health_table.setItem(row, 3, latency_item)
+
+                    jitter_item = QTableWidgetItem(f"{metrics.get('jitter_ms', 0):.3f} ms")
+                    jitter_item.setTextAlignment(Qt.AlignCenter)
+                    self.health_table.setItem(row, 4, jitter_item)
+
+                    loss_item = QTableWidgetItem(f"{metrics.get('packet_loss_pct', 0):.2f}%")
+                    loss_item.setTextAlignment(Qt.AlignCenter)
+                    self.health_table.setItem(row, 5, loss_item)
+
+                    recs = entry.get('recommendations', [])
+                    recs_text = ", ".join(recs)
+                    rec_item = QTableWidgetItem(recs_text)
+                    rec_item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+                    self.health_table.setItem(row, 6, rec_item)
+
+                    # Component breakdown table
+                    comp = entry.get('component_scores', {})
+                    comp_onu_item = QTableWidgetItem(str(onu_id))
+                    comp_onu_item.setTextAlignment(Qt.AlignCenter)
+                    self.component_table.setItem(row, 0, comp_onu_item)
+
+                    lat_score_item = QTableWidgetItem(f"{comp.get('latency', 0):.1f}")
+                    lat_score_item.setTextAlignment(Qt.AlignCenter)
+                    self.component_table.setItem(row, 1, lat_score_item)
+
+                    jit_score_item = QTableWidgetItem(f"{comp.get('jitter', 0):.1f}")
+                    jit_score_item.setTextAlignment(Qt.AlignCenter)
+                    self.component_table.setItem(row, 2, jit_score_item)
+
+                    loss_score_item = QTableWidgetItem(f"{comp.get('packet_loss', 0):.1f}")
+                    loss_score_item.setTextAlignment(Qt.AlignCenter)
+                    self.component_table.setItem(row, 3, loss_score_item)
+
+                    cong_score_item = QTableWidgetItem(f"{comp.get('congestion', 0):.1f}")
+                    cong_score_item.setTextAlignment(Qt.AlignCenter)
+                    self.component_table.setItem(row, 4, cong_score_item)
+        except Exception as e:
+            print(f"❌ Error actualizando Mapa de Salud ONUs: {e}")
     
     def retranslate_ui(self):
         """Actualizar todos los textos traducibles del dashboard"""
@@ -826,7 +1029,45 @@ class PONSDNDashboard(QWidget):
                 item = self.service_table.item(row, 0)
                 if item:
                     item.setText(tr(service_key))
-
+        
+        # Pestaña de Salud
+        self.tabs.setTabText(5, tr('sdn_dashboard.health.tab_title'))
+        
+        if hasattr(self, 'health_title_label'):
+            self.health_title_label.setText(tr('sdn_dashboard.health.title'))
+        if hasattr(self, 'health_desc_label'):
+            self.health_desc_label.setText(tr('sdn_dashboard.health.description'))
+        if hasattr(self, 'breakdown_label'):
+            self.breakdown_label.setText(tr('sdn_dashboard.health.breakdown_title'))
+        if hasattr(self, 'legend_label'):
+            self.legend_label.setText(tr('sdn_dashboard.health.legend_title'))
+        
+        # Tablas de salud
+        if hasattr(self, 'health_table'):
+            self.health_table.setHorizontalHeaderLabels([
+                tr('sdn_dashboard.health.table_headers.onu_id'),
+                tr('sdn_dashboard.health.table_headers.status'),
+                tr('sdn_dashboard.health.table_headers.health_score'),
+                tr('sdn_dashboard.health.table_headers.latency'),
+                tr('sdn_dashboard.health.table_headers.jitter'),
+                tr('sdn_dashboard.health.table_headers.packet_loss'),
+                tr('sdn_dashboard.health.table_headers.recommendations')
+            ])
+        
+        if hasattr(self, 'component_table'):
+            self.component_table.setHorizontalHeaderLabels([
+                tr('sdn_dashboard.health.table_headers.onu_id'),
+                tr('sdn_dashboard.health.table_headers.latency_score'),
+                tr('sdn_dashboard.health.table_headers.jitter_score'),
+                tr('sdn_dashboard.health.table_headers.packet_loss_score'),
+                tr('sdn_dashboard.health.table_headers.congestion_score')
+            ])
+        
+        # Actualizar leyendas
+        if hasattr(self, 'legend_items'):
+            for legend_item, key in self.legend_items:
+                label_text = f"{tr(f'sdn_dashboard.health.status_labels.{key}')}: {tr(f'sdn_dashboard.health.status_ranges.{key}')}"
+                legend_item.setText(label_text)
     
     def load_latest_simulation(self):
         """Cargar datos desde el último archivo de simulación guardado"""

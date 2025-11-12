@@ -382,6 +382,38 @@
         "low": "🟢 Faible",
         "best_effort": "🔵 Best Effort"
       }
+    },
+    "health": {
+      "tab_title": "🏥 Carte de Santé ONU",
+      "title": "🏥 Carte de Santé des ONUs PON",
+      "description": "État de santé calculé selon : Latence (30%), Gigue (20%), Pertes (25%), Congestion (25%)",
+      "breakdown_title": "📊 Détails des Scores par Composant",
+      "legend_title": "📌 Légende des États",
+      "table_headers": {
+        "onu_id": "ONU ID",
+        "status": "État",
+        "health_score": "Score de Santé",
+        "latency": "Latence",
+        "jitter": "Gigue",
+        "packet_loss": "Pertes de Paquets",
+        "recommendations": "Recommandations",
+        "latency_score": "Score Latence",
+        "jitter_score": "Score Gigue",
+        "packet_loss_score": "Score Pertes",
+        "congestion_score": "Score Congestion"
+      },
+      "status_labels": {
+        "excellent": "🟢 Excellent",
+        "good": "🟡 Bon",
+        "regular": "🟠 Moyen",
+        "critical": "🔴 Critique"
+      },
+      "status_ranges": {
+        "excellent": "Score ≥ 80",
+        "good": "Score 60-79",
+        "regular": "Score 40-59",
+        "critical": "Score < 40"
+      }
     }
   },
   "simulation_results": {
