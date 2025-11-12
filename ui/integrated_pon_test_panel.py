@@ -808,6 +808,20 @@ class IntegratedPONTestPanel(QWidget):
             
             # Actualizar los widgets de botones en la vista personalizada
             self.custom_combo_view._create_button_widgets()
+            
+            # Seleccionar FCFS por defecto (primer algoritmo real después del header)
+            # Buscar el índice de FCFS en el ComboBox
+            fcfs_index = self.algorithm_combo.findText("FCFS")
+            if fcfs_index != -1:
+                self.algorithm_combo.setCurrentIndex(fcfs_index)
+                print("✅ Algoritmo FCFS seleccionado por defecto")
+            else:
+                # Si FCFS no está disponible, seleccionar el primer algoritmo válido
+                for i in range(self.algorithm_combo.count()):
+                    if self.algorithm_combo.model().item(i).isEnabled():
+                        self.algorithm_combo.setCurrentIndex(i)
+                        print(f"✅ Algoritmo '{self.algorithm_combo.currentText()}' seleccionado por defecto")
+                        break
         
         self.algorithm_combo.currentTextChanged.connect(self.on_algorithm_changed)
         config_layout.addWidget(self.algorithm_combo, 1, 1)
