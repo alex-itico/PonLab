@@ -94,12 +94,14 @@ _Una aplicación de escritorio avanzada para la simulación, diseño y análisis
 PonLab cuenta con un **agente RL completamente interno** que no requiere dependencias externas:
 
 **Políticas Inteligentes:**
+
 - `prioritize_low_buffer` (0.7) - Prioriza ONUs cerca de saturación de buffer
 - `balance_throughput` (0.6) - Balancea distribución de throughput
 - `minimize_delay` (0.8) - Optimiza latencia promedio
 - `fairness_factor` (0.5) - Garantiza asignación equitativa de recursos
 
 **Mecanismo de Aprendizaje:**
+
 - Tabla-Q interna con espacio de estados discreto
 - Observación dinámica de red (niveles de buffer, solicitudes, throughput)
 - Mejora adaptativa de políticas con cada ciclo de simulación
@@ -108,11 +110,13 @@ PonLab cuenta con un **agente RL completamente interno** que no requiere depende
 ### **🌐 Controlador SDN (OLT_SDN)**
 
 **Control Centralizado:**
+
 - Gestión unificada con visibilidad del estado global de la red
 - Implementación dinámica de políticas y monitoreo continuo
 - Métricas en tiempo real: latencia por ONU, throughput agregado, ocupación de buffer, utilización de enlaces, índice de Jain
 
 **Dashboard Interactivo (Ctrl+D):**
+
 - Visualización en vivo de todas las métricas de red
 - Cálculos automatizados de equidad
 - Seguimiento histórico de rendimiento
@@ -126,12 +130,14 @@ PonLab cuenta con un **agente RL completamente interno** que no requiere depende
 3. **Bucle de Retroalimentación Inteligente**: Optimización continua basada en resultados en tiempo real
 
 **Ventajas:**
+
 - 🎯 Precisión RL + ⚡ Velocidad SDN
 - 🔄 Adaptabilidad a cambios en patrones de tráfico
 - 📊 Análisis completo de métricas de ambos sistemas
 - 🚀 Rendimiento óptimo combinando flexibilidad y control
 
 **Inicio Rápido:**
+
 - Seleccionar algoritmo en panel de simulación (Ctrl+N)
 - Configurar políticas en panel RL (Ctrl+T)
 - Monitorear en dashboard SDN (Ctrl+D)
@@ -142,12 +148,14 @@ PonLab cuenta con un **agente RL completamente interno** que no requiere depende
 ## 🛠️ Tecnologías y Arquitectura
 
 **Stack Tecnológico:**
+
 - **Python 3.8+** con PyQt5, PyQtWebEngine, Matplotlib, NumPy
 - **IA/ML**: Stable-Baselines3, PyTorch, Gymnasium, Scikit-learn
 - **Datos**: Pandas para análisis, JSON para configuración
 - **Gráficos**: Iconos SVG vectoriales, temas QSS
 
 **Arquitectura:**
+
 - Diseño modular con separación de responsabilidades (core, ui, utils)
 - Simulación basada en eventos con temporización precisa
 - Comunicación entre componentes basada en señales
@@ -204,16 +212,16 @@ python main.py
 
 ### **⌨️ Atajos Esenciales**
 
-| Atajo    | Función               | Descripción                          |
-| -------- | --------------------- | ------------------------------------ |
-| `L`      | Modo Conexión         | Activar/desactivar modo conexión     |
-| `C` / `R`| Centrar / Resetear    | Controles de navegación              |
-| `Ctrl+N` | Panel Simulación      | Abrir controles de simulación        |
-| `Ctrl+D` | Dashboard SDN         | Métricas SDN en tiempo real ⭐       |
-| `Ctrl+T` | Panel RL              | Configuración RL ⭐                  |
-| `Ctrl+S` | Guardar               | Guardar proyecto actual              |
-| `Ctrl+G` | Toggle Cuadrícula     | Mostrar/ocultar cuadrícula           |
-| `Delete` | Eliminar              | Quitar elementos seleccionados       |
+| Atajo     | Función            | Descripción                      |
+| --------- | ------------------ | -------------------------------- |
+| `L`       | Modo Conexión      | Activar/desactivar modo conexión |
+| `C` / `R` | Centrar / Resetear | Controles de navegación          |
+| `Ctrl+N`  | Panel Simulación   | Abrir controles de simulación    |
+| `Ctrl+D`  | Dashboard SDN      | Métricas SDN en tiempo real ⭐   |
+| `Ctrl+T`  | Panel RL           | Configuración RL ⭐              |
+| `Ctrl+S`  | Guardar            | Guardar proyecto actual          |
+| `Ctrl+G`  | Toggle Cuadrícula  | Mostrar/ocultar cuadrícula       |
+| `Delete`  | Eliminar           | Quitar elementos seleccionados   |
 
 ### **🖱️ Controles del Mouse**
 
@@ -226,6 +234,7 @@ python main.py
 ### **🔧 Flujos de Trabajo Comunes**
 
 **Configuración de Simulación:**
+
 1. Configurar topología PON (OLT + ONUs)
 2. Abrir panel de simulación (Ctrl+N)
 3. Seleccionar algoritmo (Smart-RL-SDN recomendado)
@@ -233,12 +242,14 @@ python main.py
 5. Ver resultados en ventana emergente
 
 **Monitoreo RL/SDN:**
+
 1. Iniciar simulación con algoritmo Smart-RL o SDN
 2. Abrir dashboard SDN (Ctrl+D) para métricas en vivo
 3. Configurar políticas en panel RL (Ctrl+T)
 4. Comparar rendimiento de algoritmos
 
 **Cambio de Idioma:**
+
 - Ayuda → Idioma → Seleccionar idioma preferido
 - La interfaz se actualiza inmediatamente
 
@@ -286,16 +297,19 @@ PonLab/
 ## 📚 Casos de Uso y Aplicaciones
 
 ### **🎓 Investigación Académica**
+
 - Simulación de algoritmos DBA personalizados y análisis comparativo
 - Investigación en Reinforcement Learning para redes ópticas
 - Desarrollo de nuevas políticas de asignación de ancho de banda
 
 ### **🏢 Desarrollo Industrial**
+
 - Prototipado de redes PON antes del despliegue
 - Optimización de configuraciones de red existentes
 - Análisis de capacidad y planificación de crecimiento
 
 ### **📖 Educación y Formación**
+
 - Demostración de conceptos de redes PON
 - Enseñanza práctica de algoritmos DBA
 - Talleres de IA/SDN aplicados a redes
@@ -305,16 +319,19 @@ PonLab/
 ## 🚀 Características Técnicas
 
 ### **Rendimiento**
+
 - Renderizado eficiente de canvas para miles de dispositivos
 - Gestión automática de memoria y recolección de basura
 - Carga progresiva de recursos para inicio rápido
 
 ### **Robustez**
+
 - Manejo exhaustivo de errores y validación
 - Auto-recuperación desde archivos temporales
 - Sistema automático de respaldo de proyectos
 
 ### **Extensibilidad**
+
 - Arquitectura modular para fácil adición de características
 - API interna con sistema de eventos/señales
 - Diseño preparado para plugins
@@ -329,10 +346,10 @@ Propósitos académicos y de investigación. Contactar a los autores para inform
 
 ## 👥 Autores
 
-- **Alex Aravena Tapia** - Desarrollador Principal
-- **Jesús Chaffe González** - Algoritmos Centrales
-- **Eduardo Maldonado Zamora** - Diseño UI/UX
-- **Jorge Barrios Núñez** - Arquitectura de Red
+- **Alex Aravena Tapia** - Desarrollador Principal Diseño UI/UX
+- **Jesús Chaffe González** - Controlador SDN
+- **Eduardo Maldonado Zamora** - Algoritmos Centrales - Heuristicas
+- **Jorge Barrios Núñez** - Arquitectura de Red - Desarrollo RL
 
 **Repositorio**: [github.com/alex-itico/PonLab](https://github.com/alex-itico/PonLab)
 
@@ -341,18 +358,21 @@ Propósitos académicos y de investigación. Contactar a los autores para inform
 ## 📝 Historial de Versiones
 
 ### **v2.1.0** (Actual)
+
 ✨ Soporte multiidioma completo (5 idiomas: ES, EN, FR, PT, DE)
 📊 660+ claves de traducción cubriendo toda la aplicación
 🎨 Gráficos matplotlib y componentes UI traducidos
 📖 README en inglés para visibilidad internacional
 
 ### **v2.0.0**
+
 🤖 Implementación del sistema Smart-RL
 🌐 Integración del controlador SDN
 🚀 Algoritmo híbrido Smart-RL-SDN
 📊 Dashboard avanzado de métricas con índice de equidad de Jain
 
 ### **v1.0.0**
+
 🎨 Interfaz gráfica inicial
 🔧 Gestión básica de dispositivos y conexiones
 🧪 Integración de simulación PON
