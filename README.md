@@ -346,10 +346,10 @@ Academic and research purposes. Contact authors for licensing information.
 
 ## 👥 Authors
 
-- **Alex Aravena Tapia** - Lead Developer
-- **Jesús Chaffe González** - Core Algorithms
-- **Eduardo Maldonado Zamora** - UI/UX Design
-- **Jorge Barrios Núñez** - Network Architecture
+- **Alex Aravena Tapia** - UI/UX Design
+- **Jesús Chaffe González** - Agent SDN
+- **Eduardo Maldonado Zamora** - Heuristics
+- **Jorge Barrios Núñez** - Network Architecture - RL Development
 
 **Repository**: [github.com/alex-itico/PonLab](https://github.com/alex-itico/PonLab)
 
