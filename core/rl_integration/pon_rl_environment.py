@@ -21,21 +21,25 @@ if GYMNASIUM_AVAILABLE:
     class PonRLEnvironment(gym.Env):
         """Entorno RL nativo de PonLab usando Gymnasium"""
 
-        def __init__(self, num_onus=4, traffic_scenario='residential_medium'):
+        def __init__(self, num_onus=4, traffic_scenario='residential_medium', onu_configs=None):
             super().__init__()
-            self.num_onus = num_onus
-            self.traffic_scenario = traffic_scenario
+
+            if onu_configs:
+                self.onu_configs = onu_configs
+                self.num_onus = len(onu_configs)
+                self.traffic_scenario = 'custom' # Escenario mixto basado en topología
+            else:
+                self.onu_configs = None
+                self.num_onus = num_onus
+                self.traffic_scenario = traffic_scenario
 
             # Espacios de observación y acción
-            # Observación: [requests_onu1, requests_onu2, ..., utilization, delays, buffers]
-            obs_size = num_onus * 3 + 1  # requests + delays + buffers + utilization
+            obs_size = self.num_onus * 3 + 1
             self.observation_space = spaces.Box(
                 low=0.0, high=1.0, shape=(obs_size,), dtype=np.float32
             )
-
-            # Acción: distribución de ancho de banda para cada ONU
             self.action_space = spaces.Box(
-                low=0.0, high=1.0, shape=(num_onus,), dtype=np.float32
+                low=0.0, high=1.0, shape=(self.num_onus,), dtype=np.float32
             )
 
             # Estado interno
@@ -44,12 +48,13 @@ if GYMNASIUM_AVAILABLE:
             self.total_bandwidth = 1000.0  # Mbps
 
             # Métricas de red simuladas
-            self.onu_requests = np.zeros(num_onus)
-            self.onu_delays = np.zeros(num_onus)
-            self.onu_buffers = np.zeros(num_onus)
+            self.onu_requests = np.zeros(self.num_onus)
+            self.onu_delays = np.zeros(self.num_onus)
+            self.onu_buffers = np.zeros(self.num_onus)
 
             # Parámetros de escenario de tráfico
-            self.traffic_params = self._get_traffic_params(traffic_scenario)
+            if not self.onu_configs:
+                self.traffic_params = self._get_traffic_params(self.traffic_scenario)
 
         def _get_traffic_params(self, scenario):
             """Obtener parámetros según escenario de tráfico"""
@@ -57,7 +62,8 @@ if GYMNASIUM_AVAILABLE:
                 'residential_light': {'base_demand': 0.2, 'variation': 0.1, 'peak_prob': 0.1},
                 'residential_medium': {'base_demand': 0.4, 'variation': 0.2, 'peak_prob': 0.15},
                 'residential_heavy': {'base_demand': 0.6, 'variation': 0.3, 'peak_prob': 0.2},
-                'business': {'base_demand': 0.7, 'variation': 0.15, 'peak_prob': 0.25},
+                'enterprise': {'base_demand': 0.7, 'variation': 0.15, 'peak_prob': 0.25},
+                'business_standard': {'base_demand': 0.7, 'variation': 0.15, 'peak_prob': 0.25}, # Alias para enterprise
                 'mixed': {'base_demand': 0.5, 'variation': 0.25, 'peak_prob': 0.18}
             }
             return scenarios.get(scenario, scenarios['residential_medium'])
@@ -116,21 +122,36 @@ if GYMNASIUM_AVAILABLE:
             return observation, reward, terminated, truncated, info
 
         def _generate_traffic_demands(self):
-            """Generar demandas de tráfico realistas"""
-            base = self.traffic_params['base_demand']
-            variation = self.traffic_params['variation']
-            peak_prob = self.traffic_params['peak_prob']
-
+            """Generar demandas de tráfico realistas para cada ONU."""
             demands = []
-            for _ in range(self.num_onus):
-                # Demanda base con variación
-                demand = base + np.random.uniform(-variation, variation)
-
-                # Posibilidad de pico de tráfico
-                if np.random.random() < peak_prob:
-                    demand *= np.random.uniform(2.0, 4.0)
-
-                demands.append(np.clip(demand, 0.0, 1.0))
+            if self.onu_configs:
+                # Generar tráfico basado en la configuración individual de cada ONU
+                for i in range(self.num_onus):
+                    onu_config = self.onu_configs[i]
+                    traffic_profile = onu_config.get('traffic_profile', 'residential_medium')
+                    params = self._get_traffic_params(traffic_profile)
+                    
+                    base = params['base_demand']
+                    variation = params['variation']
+                    peak_prob = params['peak_prob']
+                    
+                    demand = base + np.random.uniform(-variation, variation)
+                    if np.random.random() < peak_prob:
+                        demand *= np.random.uniform(2.0, 4.0)
+                    
+                    demands.append(np.clip(demand, 0.0, 1.0))
+            else:
+                # Comportamiento anterior: usar un solo escenario para todas las ONUs
+                params = self.traffic_params
+                base = params['base_demand']
+                variation = params['variation']
+                peak_prob = params['peak_prob']
+                
+                for _ in range(self.num_onus):
+                    demand = base + np.random.uniform(-variation, variation)
+                    if np.random.random() < peak_prob:
+                        demand *= np.random.uniform(2.0, 4.0)
+                    demands.append(np.clip(demand, 0.0, 1.0))
 
             return np.array(demands, dtype=np.float32)
 
@@ -245,13 +266,13 @@ else:
     class PonRLEnvironment:
         """Entorno RL básico sin Gymnasium (fallback)"""
 
-        def __init__(self, num_onus=4, traffic_scenario='residential_medium'):
-            self.num_onus = num_onus
-            self.traffic_scenario = traffic_scenario
+        def __init__(self, num_onus=4, traffic_scenario='residential_medium', onu_configs=None):
+            self.num_onus = len(onu_configs) if onu_configs else num_onus
+            self.traffic_scenario = 'custom' if onu_configs else traffic_scenario
             self.current_step = 0
             self.max_steps = 1000
 
-            print(f"[INFO] Entorno RL básico inicializado (fallback): {num_onus} ONUs, escenario {traffic_scenario}")
+            print(f"[INFO] Entorno RL básico inicializado (fallback): {self.num_onus} ONUs, escenario {self.traffic_scenario}")
 
         def reset(self):
             self.current_step = 0
@@ -266,6 +287,10 @@ else:
             return observation, reward, terminated, False, {}
 
 
-def create_pon_rl_environment(num_onus=4, traffic_scenario='residential_medium', **kwargs):
+def create_pon_rl_environment(num_onus=4, traffic_scenario='residential_medium', onu_configs=None, **kwargs):
     """Factory function para crear entorno RL de PonLab"""
-    return PonRLEnvironment(num_onus=num_onus, traffic_scenario=traffic_scenario)
+    return PonRLEnvironment(
+        num_onus=num_onus,
+        traffic_scenario=traffic_scenario,
+        onu_configs=onu_configs
+    )

@@ -37,6 +37,7 @@ class RLConfigPanel(QWidget):
         self.training_active = False
         self.is_training_paused = False
         self.simulation_active = False
+        self.canvas = None
 
         # Métricas de entrenamiento en tiempo real
         self.current_episode = 0
@@ -104,6 +105,11 @@ class RLConfigPanel(QWidget):
             self.training_start_time = None
             
             print("[OK] Panel RL conectado con TrainingManager")
+
+    def set_canvas_reference(self, canvas):
+        """Establecer referencia al canvas para análisis de topología"""
+        self.canvas = canvas
+        print("[OK] Panel RL conectado con Canvas")
 
     def setup_training_tab(self):
         """Configurar la pestaña de entrenamiento RL"""
@@ -344,55 +350,38 @@ class RLConfigPanel(QWidget):
         layout.addWidget(self.sim_metrics_group)
 
     def setup_environment_section(self, layout):
-        """Configuración del entorno PON"""
+        """Configuración del entorno PON, ahora basada en el canvas"""
         self.pon_environment_group = QGroupBox(tr("rl_config_panel.pon_environment_group"))
         group_layout = QGridLayout(self.pon_environment_group)
         group_layout.setSpacing(8)
+
+        # Nota informativa sobre la configuración automática
+        self.auto_config_label = QLabel(tr("rl_config_panel.auto_config_info"))
+        self.auto_config_label.setWordWrap(True)
+        self.auto_config_label.setStyleSheet("font-style: italic; color: gray; margin-bottom: 10px;")
+        group_layout.addWidget(self.auto_config_label, 0, 0, 1, 2)
         
-        # Número de ONUs
-        self.onus_label = QLabel(tr("rl_config_panel.onus"))
-        group_layout.addWidget(self.onus_label, 0, 0)
-        self.onus_spin = QSpinBox()
-        self.onus_spin.setRange(2, 16)
-        self.onus_spin.setValue(4)
-        self.onus_spin.setToolTip(tr("rl_config_panel.onus_tooltip"))
-        group_layout.addWidget(self.onus_spin, 0, 1)
-        
-        # Escenario de tráfico
-        self.traffic_label = QLabel(tr("rl_config_panel.traffic_label"))
-        group_layout.addWidget(self.traffic_label, 1, 0)
-        self.traffic_combo = QComboBox()
-        self.traffic_combo.addItems([
-            "residential_light",
-            "residential_medium", 
-            "residential_heavy",
-            "business_standard"
-        ])
-        self.traffic_combo.setCurrentText("residential_medium")
-        self.traffic_combo.setToolTip(tr("rl_config_panel.traffic_tooltip"))
-        group_layout.addWidget(self.traffic_combo, 1, 1)
-        
-        # Duración del episodio
+        # Duración del episodio (sigue siendo editable)
         self.duration_episode_label = QLabel(tr("rl_config_panel.duration_episode"))
-        group_layout.addWidget(self.duration_episode_label, 2, 0)
+        group_layout.addWidget(self.duration_episode_label, 1, 0)
         self.duration_spin = QDoubleSpinBox()
         self.duration_spin.setRange(0.1, 60.0)
         self.duration_spin.setValue(1.0)
         self.duration_spin.setSingleStep(0.1)
         self.duration_spin.setDecimals(1)
         self.duration_spin.setToolTip(tr("rl_config_panel.duration_episode_tooltip"))
-        group_layout.addWidget(self.duration_spin, 2, 1)
+        group_layout.addWidget(self.duration_spin, 1, 1)
         
-        # Timestep de simulación
+        # Timestep de simulación (sigue siendo editable)
         self.timestep_label = QLabel(tr("rl_config_panel.timestep_ms"))
-        group_layout.addWidget(self.timestep_label, 3, 0)
+        group_layout.addWidget(self.timestep_label, 2, 0)
         self.timestep_spin = QDoubleSpinBox()
         self.timestep_spin.setRange(0.1, 10.0)
         self.timestep_spin.setValue(0.5)
         self.timestep_spin.setSingleStep(0.1)
         self.timestep_spin.setDecimals(1)
         self.timestep_spin.setToolTip(tr("rl_config_panel.timestep_tooltip"))
-        group_layout.addWidget(self.timestep_spin, 3, 1)
+        group_layout.addWidget(self.timestep_spin, 2, 1)
         
         layout.addWidget(self.pon_environment_group)
         
@@ -734,26 +723,52 @@ class RLConfigPanel(QWidget):
             self.add_log_entry("❌ Error guardando modelo")
         
     def get_training_parameters(self):
-        """Obtener parámetros de entrenamiento configurados"""
-        return {
-            # Entorno
-            'num_onus': self.onus_spin.value(),
-            'traffic_scenario': self.traffic_combo.currentText(),
+        """Obtener parámetros de entrenamiento, usando la topología del canvas si es posible."""
+        
+        # Parámetros comunes
+        base_params = {
             'episode_duration': self.duration_spin.value(),
-            'simulation_timestep': self.timestep_spin.value() / 1000.0,  # Convertir a segundos
-            
-            # Algoritmo
+            'simulation_timestep': self.timestep_spin.value() / 1000.0,
             'algorithm': self.algorithm_combo.currentText(),
             'learning_rate': self.lr_spin.value(),
             'batch_size': self.batch_spin.value(),
             'gamma': self.gamma_spin.value(),
-            
-            # Entrenamiento
             'total_timesteps': self.timesteps_spin.value(),
             'eval_freq': self.eval_freq_spin.value(),
             'auto_save': self.auto_save_check.isChecked(),
             'use_gpu': self.use_gpu_check.isChecked()
         }
+
+        # Intentar obtener configuración de la topología del canvas
+        if self.canvas and hasattr(self.canvas, 'device_manager'):
+            all_devices = self.canvas.device_manager.get_all_devices()
+            
+            # Filtrar solo ONUs que están conectadas
+            onus = [
+                dev for dev in all_devices 
+                if dev.device_type in ["ONU", "CUSTOM_ONU"]
+            ]
+            
+            if onus:
+                onu_configs = []
+                for onu in onus:
+                    # Obtener perfil de tráfico de las propiedades del dispositivo
+                    traffic_profile = onu.properties.get('traffic_scenario', 'residential_medium')
+                    onu_configs.append({
+                        'id': onu.id,
+                        'traffic_profile': traffic_profile
+                    })
+                
+                base_params['onu_configs'] = onu_configs
+                base_params['num_onus'] = len(onu_configs) # Mantener para consistencia
+                self.add_log_entry(f"INFO: Usando {len(onu_configs)} ONUs de la topología del canvas.")
+                return base_params
+
+        # Fallback al comportamiento anterior si el canvas no está disponible o no hay ONUs
+        self.add_log_entry("WARN: No se encontró topología en el canvas, usando configuración manual.")
+        base_params['num_onus'] = self.onus_spin.value()
+        base_params['traffic_scenario'] = self.traffic_combo.currentText()
+        return base_params
 
     # === MÉTODOS DE SIMULACIÓN ===
 
