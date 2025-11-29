@@ -118,15 +118,23 @@ class RLAdapter(QObject):
             try:
                 from .pon_rl_environment import create_pon_rl_environment
 
+                # Parámetros para el entorno
+                env_params = {
+                    'num_onus': params.get('num_onus', 4),
+                    'traffic_scenario': params.get('traffic_scenario', 'residential_medium'),
+                    'onu_configs': params.get('onu_configs') # Puede ser None
+                }
+
                 # Crear entorno nativo usando gymnasium
-                self.env = create_pon_rl_environment(
-                    num_onus=params.get('num_onus', 4),
-                    traffic_scenario=params.get('traffic_scenario', 'residential_medium')
-                )
+                self.env = create_pon_rl_environment(**env_params)
 
                 print("[OK] Entorno RL nativo creado usando gymnasium")
-                print(f"   ONUs: {params.get('num_onus', 4)}")
-                print(f"   Escenario: {params.get('traffic_scenario', 'residential_medium')}")
+                if env_params.get('onu_configs'):
+                    print(f"   ONUs: {len(env_params['onu_configs'])} (desde topología)")
+                else:
+                    print(f"   ONUs: {env_params['num_onus']} (manual)")
+                    print(f"   Escenario: {env_params['traffic_scenario']}")
+                
                 print(f"   Observation Space: {self.env.observation_space}")
                 print(f"   Action Space: {self.env.action_space}")
 

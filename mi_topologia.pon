@@ -1,0 +1,170 @@
+{
+  "format_version": "1.0",
+  "created_with": "PonLab v1.0",
+  "metadata": {
+    "name": "mi_topologia",
+    "created": "2025-11-28T22:48:51.898379",
+    "modified": "2025-11-28T22:49:24.287063"
+  },
+  "canvas": {
+    "zoom": 0.141328657986137,
+    "center": [
+      0,
+      0
+    ],
+    "grid_visible": true,
+    "grid_size": 20
+  },
+  "devices": {
+    "33b390b1-78f6-43dc-9b29-5c02cc259fab": {
+      "id": "33b390b1-78f6-43dc-9b29-5c02cc259fab",
+      "device_type": "OLT",
+      "name": "OLT_1",
+      "x": -116.0,
+      "y": -165.0,
+      "icon_size": 64,
+      "visible": true,
+      "properties": {
+        "model": "OLT-Generic",
+        "status": "online",
+        "location": "",
+        "notes": "",
+        "total_bandwidth": 10000,
+        "allocated_bandwidth": 0,
+        "transmission_rate": 4096.0,
+        "polling_cycle_time": 2.0,
+        "guard_time": 0.1
+      }
+    },
+    "e2a40a9b-fd3f-459e-8a70-8b2da98b4e5b": {
+      "id": "e2a40a9b-fd3f-459e-8a70-8b2da98b4e5b",
+      "device_type": "ONU",
+      "name": "ONU_1",
+      "x": -3.0,
+      "y": -219.0,
+      "icon_size": 64,
+      "visible": true,
+      "properties": {
+        "model": "ONU-Generic",
+        "status": "online",
+        "location": "",
+        "notes": "",
+        "upstream_bandwidth": 1000,
+        "allocated_bandwidth": 0,
+        "transmission_rate": 1024.0,
+        "traffic_profile": "constant",
+        "mean_rate": 500,
+        "burst_size": 100,
+        "response_probability": 0.95,
+        "queue_size": 0,
+        "max_queue_size": 1000,
+        "traffic_scenario": "residential_medium",
+        "sla": 200.0,
+        "buffer_size": 512,
+        "custom_traffic_probs": {
+          "highest": 0.2,
+          "high": 0.3,
+          "medium": 0.4,
+          "low": 0.3,
+          "lowest": 0.1
+        },
+        "custom_traffic_sizes": {
+          "highest": [
+            0.1,
+            0.2
+          ],
+          "high": [
+            0.04,
+            0.08
+          ],
+          "medium": [
+            0.015,
+            0.03
+          ],
+          "low": [
+            0.008,
+            0.02
+          ],
+          "lowest": [
+            0.002,
+            0.008
+          ]
+        },
+        "use_custom_params": false
+      }
+    },
+    "804d40d6-ecda-4bea-9063-566c16f7a39c": {
+      "id": "804d40d6-ecda-4bea-9063-566c16f7a39c",
+      "device_type": "ONU",
+      "name": "ONU_2",
+      "x": 0,
+      "y": -100,
+      "icon_size": 64,
+      "visible": true,
+      "properties": {
+        "model": "ONU-Generic",
+        "status": "online",
+        "location": "",
+        "notes": "",
+        "upstream_bandwidth": 1000,
+        "allocated_bandwidth": 0,
+        "transmission_rate": 1024.0,
+        "traffic_profile": "constant",
+        "mean_rate": 500,
+        "burst_size": 100,
+        "response_probability": 0.95,
+        "queue_size": 0,
+        "max_queue_size": 1000,
+        "traffic_scenario": "residential_medium",
+        "sla": 200.0,
+        "buffer_size": 512,
+        "custom_traffic_probs": {
+          "highest": 0.2,
+          "high": 0.3,
+          "medium": 0.4,
+          "low": 0.3,
+          "lowest": 0.1
+        },
+        "custom_traffic_sizes": {
+          "highest": [
+            0.1,
+            0.2
+          ],
+          "high": [
+            0.04,
+            0.08
+          ],
+          "medium": [
+            0.015,
+            0.03
+          ],
+          "low": [
+            0.008,
+            0.02
+          ],
+          "lowest": [
+            0.002,
+            0.008
+          ]
+        },
+        "use_custom_params": false
+      }
+    }
+  },
+  "connections": {
+    "connection_1": {
+      "device_a_id": "33b390b1-78f6-43dc-9b29-5c02cc259fab",
+      "device_b_id": "e2a40a9b-fd3f-459e-8a70-8b2da98b4e5b",
+      "device_a_name": "OLT_1",
+      "device_b_name": "ONU_1",
+      "distance": 125.23977004130916
+    },
+    "connection_2": {
+      "device_a_id": "33b390b1-78f6-43dc-9b29-5c02cc259fab",
+      "device_b_id": "804d40d6-ecda-4bea-9063-566c16f7a39c",
+      "device_a_name": "OLT_1",
+      "device_b_name": "ONU_2",
+      "distance": 132.9699214108213
+    }
+  }
+}

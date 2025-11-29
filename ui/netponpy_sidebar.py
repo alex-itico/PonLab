@@ -320,6 +320,10 @@ class NetPONPySidebar(QWidget):
         if self.training_manager and hasattr(self.training_manager, 'env_bridge'):
             self.training_manager.env_bridge.set_canvas_reference(canvas)
             print("[OK] Canvas conectado con TrainingManager")
+
+        # Panel RL
+        if hasattr(self, 'rl_panel') and self.rl_panel:
+            self.rl_panel.set_canvas_reference(canvas)
     
     def adjust_width_for_content(self):
         """Ajustar ancho del sidebar según su contenido"""
