@@ -814,7 +814,7 @@ class IntegratedPONTestPanel(QWidget):
             fcfs_index = self.algorithm_combo.findText("FCFS")
             if fcfs_index != -1:
                 self.algorithm_combo.setCurrentIndex(fcfs_index)
-                print("✅ Algoritmo FCFS seleccionado por defecto")
+                print("[OK] Algoritmo FCFS seleccionado por defecto")
             else:
                 # Si FCFS no está disponible, seleccionar el primer algoritmo válido
                 for i in range(self.algorithm_combo.count()):

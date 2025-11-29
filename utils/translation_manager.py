@@ -45,7 +45,7 @@ class TranslationManager:
         """Asegurar que existe el directorio de traducciones"""
         if not os.path.exists(self.translations_dir):
             os.makedirs(self.translations_dir)
-            print(f"📁 Directorio de traducciones creado: {self.translations_dir}")
+            print(f"[OK] Directorio de traducciones creado: {self.translations_dir}")
     
     def _load_available_languages(self):
         """Cargar información de idiomas disponibles"""
@@ -103,20 +103,20 @@ class TranslationManager:
         
         try:
             if not os.path.exists(language_file):
-                print(f"⚠️ Archivo de traducción no encontrado: {language_file}")
+                print(f"[WARNING] Archivo de traduccion no encontrado: {language_file}")
                 # Si no existe el archivo, usar traducciones vacías
                 self.translations = {}
                 return False
-            
+
             with open(language_file, 'r', encoding='utf-8') as f:
                 self.translations = json.load(f)
-            
+
             self.current_language = language_code
-            print(f"✅ Idioma cargado: {self.available_languages[language_code]['native_name']}")
+            print(f"[OK] Idioma cargado: {self.available_languages[language_code]['native_name']}")
             return True
-            
+
         except Exception as e:
-            print(f"❌ Error cargando idioma {language_code}: {e}")
+            print(f"[ERROR] Error cargando idioma {language_code}: {e}")
             self.translations = {}
             return False
     
@@ -147,7 +147,7 @@ class TranslationManager:
             
         except (KeyError, TypeError):
             # Si no se encuentra la traducción, devolver la clave
-            print(f"⚠️ Traducción no encontrada: {key}")
+            print(f"[WARNING] Traduccion no encontrada: {key}")
             return key
     
     def get_current_language(self) -> str:

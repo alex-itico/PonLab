@@ -27,25 +27,25 @@ class CustomDeviceManager:
         """Crear directorio de dispositivos personalizados si no existe"""
         if not os.path.exists(self.custom_devices_dir):
             os.makedirs(self.custom_devices_dir)
-            print(f"📁 Directorio creado: {self.custom_devices_dir}")
+            print(f"[OK] Directorio creado: {self.custom_devices_dir}")
     
     def _initialize_files(self):
         """Inicializar archivos JSON si no existen"""
         if not os.path.exists(self.olt_file):
             self._save_json(self.olt_file, [])
-            print(f"📄 Archivo creado: {self.olt_file}")
-        
+            print(f"[OK] Archivo creado: {self.olt_file}")
+
         if not os.path.exists(self.onu_file):
             self._save_json(self.onu_file, [])
-            print(f"📄 Archivo creado: {self.onu_file}")
-    
+            print(f"[OK] Archivo creado: {self.onu_file}")
+
     def _load_json(self, file_path: str) -> List[Dict]:
         """Cargar datos desde archivo JSON"""
         try:
             with open(file_path, 'r', encoding='utf-8') as f:
                 return json.load(f)
         except Exception as e:
-            print(f"❌ Error cargando {file_path}: {e}")
+            print(f"[ERROR] Error cargando {file_path}: {e}")
             return []
     
     def _save_json(self, file_path: str, data: List[Dict]):
@@ -53,9 +53,9 @@ class CustomDeviceManager:
         try:
             with open(file_path, 'w', encoding='utf-8') as f:
                 json.dump(data, f, indent=2, ensure_ascii=False)
-            print(f"💾 Guardado exitoso: {file_path}")
+            print(f"[OK] Guardado exitoso: {file_path}")
         except Exception as e:
-            print(f"❌ Error guardando {file_path}: {e}")
+            print(f"[ERROR] Error guardando {file_path}: {e}")
     
     def _generate_id(self, device_type: str) -> str:
         """Generar ID único para dispositivo"""
