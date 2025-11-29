@@ -16,6 +16,14 @@ from .data_collector import RealTimeDataCollector
 # RL Adapter integrado nativamente en PonLab
 # Verificar disponibilidad de bibliotecas RL
 RL_AVAILABLE = False
+PPO = None
+DQN = None
+A2C = None
+SAC = None
+gym = None
+make_vec_env = None
+DummyVecEnv = None
+
 try:
     import gymnasium as gym
     from stable_baselines3 import PPO, DQN, A2C, SAC
@@ -23,9 +31,10 @@ try:
     from stable_baselines3.common.vec_env import DummyVecEnv
     RL_AVAILABLE = True
     print("[INFO] RL Adapter: Bibliotecas RL integradas disponibles")
-except ImportError as e:
+except (ImportError, OSError) as e:
     print(f"[WARNING] RL Adapter: Bibliotecas RL no disponibles - {e}")
     print("[INFO] Instale: pip install gymnasium stable-baselines3")
+    print("[INFO] Si el error es sobre DLL, instale Microsoft Visual C++ Redistributable")
 
 # Importaciones condicionales para usar Smart RL interno si no hay bibliotecas
 if not RL_AVAILABLE:
