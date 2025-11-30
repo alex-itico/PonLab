@@ -13,7 +13,9 @@ pyqtgraph>=0.12.0
 # Reinforcement Learning and Machine Learning
 gymnasium>=0.28.0
 stable-baselines3>=2.0.0
-torch>=1.11.0
+torch==2.8.0
+torchvision==0.23.0
+torchaudio==2.8.0
 
 # Note: pandas and scikit-learn are dependencies of stable-baselines3
 # and will be installed automatically, but can be specified explicitly if needed:
