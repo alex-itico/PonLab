@@ -29,7 +29,7 @@ MANIFEST
 
 # Archivos de configuración local
 .env
-.venv
+.venv*
 env/
 venv/
 ENV/

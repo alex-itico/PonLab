@@ -778,8 +778,8 @@ class PONAdapter:
             self.smart_rl_algorithm = SmartRLDBAAlgorithm(model_path)
             self.smart_rl_algorithm.set_environment_params(env_params)
 
-            # Verificar que se cargó correctamente
-            if self.smart_rl_algorithm.agent is None:
+            # Verificar que se cargó correctamente (verificar si tiene modelo cargado)
+            if not hasattr(self.smart_rl_algorithm, 'model') or self.smart_rl_algorithm.model is None:
                 self.smart_rl_algorithm = None
                 return False, f"Error cargando modelo: {model_path}"
 

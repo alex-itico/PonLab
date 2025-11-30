@@ -1,344 +1,323 @@
 """
-Smart RL DBA Algorithm - COMPLETAMENTE INTERNO
-Algoritmo DBA inteligente usando simulación de RL sin dependencias externas
-PROHIBIDAS las referencias a netPONPy u otros proyectos externos
+Smart RL DBA Algorithm - External Model Integration
+Algoritmo DBA que carga y utiliza un modelo entrenado con Stable-Baselines3.
 """
 
 import os
-import sys
+import zipfile
 import json
-import random
+import tempfile
 import numpy as np
-from typing import Dict, List, Any, Optional
+from typing import Dict, Any, Optional
+
 from .algorithms.pon_dba import DBAAlgorithmInterface
 
+# --- Importación condicional de Stable-Baselines3 ---
+RL_AVAILABLE = False
+BaseAlgorithm = None
+PPO = None
+A2C = None
+DQN = None
+SAC = None
 
-class InternalRLAgent:
-    """
-    Agente RL interno simple que simula comportamiento inteligente
-    SIN DEPENDENCIAS EXTERNAS - Completamente interno a PonLab
-    """
+try:
+    from stable_baselines3.common.base_class import BaseAlgorithm
+    from stable_baselines3 import PPO, A2C, DQN, SAC
+    RL_AVAILABLE = True
+    print("[INFO] SmartRLDBA: Bibliotecas de Stable-Baselines3 disponibles.")
+except (ImportError, OSError) as e:
+    # ImportError: bibliotecas no instaladas
+    # OSError: problemas con DLLs de PyTorch en Windows
+    print("[WARNING] SmartRLDBA: 'stable-baselines3' o 'torch' no están disponibles.")
+    print(f"[WARNING] Razón: {type(e).__name__}")
+    print("[INFO] Instale con: pip install stable-baselines3 torch")
+    print("[INFO] En Windows, si hay error de DLL, instale: pip install torch --index-url https://download.pytorch.org/whl/cpu")
+# ---------------------------------------------------
 
-    def __init__(self, num_onus: int = 4):
-        self.num_onus = num_onus
-        self.decision_count = 0
-        self.learning_rate = 0.01
-
-        # Tabla Q simple para decisiones
-        self.q_table = {}
-
-        # Políticas aprendidas simuladas
-        self.policies = {
-            'prioritize_low_buffer': 0.7,
-            'balance_throughput': 0.6,
-            'minimize_delay': 0.8,
-            'fairness_factor': 0.5
-        }
-
-        # Historial para "aprendizaje" simulado
-        self.decision_history = []
-
-    def predict(self, observation: np.ndarray) -> np.ndarray:
-        """
-        Simular predicción de modelo RL
-        Usa lógica interna inteligente sin dependencias externas
-        """
-        # Convertir observación a estado discreto
-        state = self._observation_to_state(observation)
-
-        # Obtener acción basada en políticas internas
-        action = self._get_intelligent_action(state, observation)
-
-        self.decision_count += 1
-        return action
-
-    def _observation_to_state(self, observation: np.ndarray) -> str:
-        """Convertir observación a estado discreto para tabla Q"""
-        # Simplificar observación a categorías
-        if len(observation) >= 4:
-            requests_high = sum(1 for x in observation[:4] if x > 0.7)
-            requests_med = sum(1 for x in observation[:4] if 0.3 <= x <= 0.7)
-            requests_low = sum(1 for x in observation[:4] if x < 0.3)
-
-            return f"h{requests_high}_m{requests_med}_l{requests_low}"
-        else:
-            return "default"
-
-    def _get_intelligent_action(self, state: str, observation: np.ndarray) -> np.ndarray:
-        """
-        Generar acción inteligente basada en políticas internas
-        """
-        action = np.zeros(self.num_onus)
-
-        if len(observation) < self.num_onus:
-            # Distribución equitativa como fallback
-            action.fill(1.0 / self.num_onus)
-            return action
-
-        requests = observation[:self.num_onus]
-        total_requests = np.sum(requests)
-
-        if total_requests == 0:
-            action.fill(1.0 / self.num_onus)
-            return action
-
-        # Aplicar políticas inteligentes internas
-
-        # Política 1: Priorizar solicitudes altas pero con fairness
-        base_allocation = requests / total_requests
-
-        # Política 2: Ajustar según "buffer levels" simulados
-        buffer_simulation = np.random.beta(2, 5, self.num_onus)  # Simular buffers típicos
-        buffer_factor = 1.0 - (buffer_simulation * self.policies['prioritize_low_buffer'])
-
-        # Política 3: Balance de throughput
-        throughput_factor = np.ones(self.num_onus)
-        for i in range(self.num_onus):
-            if requests[i] > 0.8:  # Solicitudes muy altas
-                throughput_factor[i] *= self.policies['balance_throughput']
-
-        # Combinar políticas
-        action = base_allocation * buffer_factor * throughput_factor
-
-        # Normalizar
-        action_sum = np.sum(action)
-        if action_sum > 0:
-            action = action / action_sum
-        else:
-            action.fill(1.0 / self.num_onus)
-
-        # Agregar pequeña variabilidad para simular "exploración"
-        noise = np.random.normal(0, 0.05, self.num_onus)
-        action = np.clip(action + noise, 0.0, 1.0)
-
-        # Renormalizar después del ruido
-        action = action / np.sum(action)
-
-        return action
+# Mapeo de nombres de algoritmos a clases de SB3
+ALGORITHM_MAP = {
+    "PPO": PPO,
+    "A2C": A2C,
+    "DQN": DQN,
+    "SAC": SAC,
+} if RL_AVAILABLE else {}
 
 
 class SmartRLDBAAlgorithm(DBAAlgorithmInterface):
     """
-    Algoritmo DBA inteligente COMPLETAMENTE INTERNO
-    Simula comportamiento RL sin dependencias externas
+    Algoritmo DBA que utiliza un modelo de RL externo entrenado con Stable-Baselines3.
     """
 
-    def __init__(self, model_path: Optional[str] = None):
+    def __init__(self, model_path: Optional[str] = None, num_onus: int = 4):
         """
-        Inicializar algoritmo con agente RL interno
+        Inicializa el algoritmo cargando un modelo de RL externo.
 
         Args:
-            model_path: Ignorado - solo para compatibilidad
+            model_path: Ruta al archivo .zip del modelo entrenado.
+            num_onus: Número de ONUs en la topología (para dimensionar la observación).
         """
         self.model_path = model_path
-        self.agent = InternalRLAgent()
+        self.model: Optional["BaseAlgorithm"] = None
+        self.model_metadata: Dict[str, Any] = {}
+        self.num_onus = num_onus
         self.decision_count = 0
-        self.last_state = None
 
-        # Configuración interna
-        self.config = {
-            'num_onus': 4,
-            'intelligent_mode': True,
-            'learning_enabled': True
-        }
+        if model_path:
+            self._load_external_model(model_path)
+        else:
+            print("[WARNING] SmartRLDBA: No se proporcionó una ruta de modelo (model_path).")
+            print("[INFO] El algoritmo usará fallback equitativo hasta que se entrene un modelo.")
 
-        # "Cargar" modelo simulado
-        self._load_internal_model()
+    def _load_external_model(self, path: str) -> bool:
+        """
+        Carga un modelo de RL desde un archivo .zip compatible.
+        El .zip debe contener 'model.json' (metadatos) y 'sb3_model.zip' (el modelo real).
+        """
+        if not RL_AVAILABLE:
+            print("[ERROR] SmartRLDBA: No se pueden cargar modelos porque 'stable-baselines3' no está disponible.")
+            return False
 
-    def _load_internal_model(self) -> bool:
-        """Simular carga de modelo usando agente interno"""
+        if not os.path.exists(path):
+            print(f"[ERROR] SmartRLDBA: Archivo de modelo no encontrado en '{path}'")
+            return False
+
         try:
-            # Simular diferentes "modelos" según el path
-            if self.model_path:
-                model_name = os.path.basename(self.model_path)
+            with tempfile.TemporaryDirectory() as temp_dir:
+                with zipfile.ZipFile(path, 'r') as zip_ref:
+                    zip_ref.extractall(temp_dir)
 
-                # Ajustar políticas según el "modelo"
-                if "ejemplo" in model_name.lower():
-                    self.agent.policies['prioritize_low_buffer'] = 0.8
-                    self.agent.policies['balance_throughput'] = 0.7
-                elif "advanced" in model_name.lower():
-                    self.agent.policies['prioritize_low_buffer'] = 0.9
-                    self.agent.policies['minimize_delay'] = 0.9
+                # Cargar metadatos
+                metadata_path = os.path.join(temp_dir, 'model.json')
+                if not os.path.exists(metadata_path):
+                    print(f"[ERROR] SmartRLDBA: 'model.json' no encontrado en el archivo zip.")
+                    return False
 
-                print(f"[OK] Modelo interno simulado cargado: {model_name}")
-            else:
-                print("[OK] Agente RL interno inicializado con políticas por defecto")
+                with open(metadata_path, 'r') as f:
+                    self.model_metadata = json.load(f)
 
-            return True
+                # Cargar modelo de Stable-Baselines3
+                sb3_model_path = os.path.join(temp_dir, 'sb3_model.zip')
+                if not os.path.exists(sb3_model_path):
+                    print(f"[ERROR] SmartRLDBA: 'sb3_model.zip' no encontrado en el archivo zip.")
+                    return False
+
+                model_class_name = self.model_metadata.get("algorithm", "PPO")
+                ModelClass = ALGORITHM_MAP.get(model_class_name)
+
+                if not ModelClass:
+                    print(f"[ERROR] SmartRLDBA: Algoritmo '{model_class_name}' no es soportado o es desconocido.")
+                    return False
+
+                self.model = ModelClass.load(sb3_model_path)
+                print(f"[OK] SmartRLDBA: Modelo '{model_class_name}' cargado exitosamente desde '{self.model_path}'")
+                return True
 
         except Exception as e:
-            print(f"[ERROR] Error inicializando agente interno: {str(e)}")
+            print(f"[ERROR] SmartRLDBA: Fallo al cargar el modelo desde '{path}'. Causa: {e}")
+            self.model = None
             return False
 
     def allocate_bandwidth(self, onu_requests: Dict[str, float],
                           total_bandwidth: float, action: Any = None) -> Dict[str, float]:
         """
-        Asignar ancho de banda usando agente RL interno
+        Asigna ancho de banda utilizando el modelo de RL cargado.
+
+        Args:
+            onu_requests: Dict {onu_id: bandwidth_requested_mb}
+            total_bandwidth: float, capacidad total del canal en Mbps
+            action: IGNORADO (el modelo RL genera sus propias acciones)
+
+        Returns:
+            Dict {onu_id: bandwidth_allocated_mb}
         """
+        # Construir el diccionario de estado desde los parámetros
+        state = {
+            'onu_requests': onu_requests,
+            'total_bandwidth': total_bandwidth,
+            'onu_delays': {},  # Será poblado si está disponible
+            'onu_buffers': {}  # Será poblado si está disponible
+        }
+
+        if not self.model:
+            # Si no hay modelo cargado, usar fallback equitativo
+            return self._fallback_allocation(state)
+
         try:
-            # Convertir estado actual a observación
-            observation = self._create_observation(onu_requests, total_bandwidth)
+            # 1. Crear la observación a partir del estado de la red
+            observation = self._create_observation(state)
 
-            # Obtener acción del agente interno
-            action = self.agent.predict(observation)
+            # 2. Obtener la acción del modelo de RL
+            action, _ = self.model.predict(observation, deterministic=True)
 
-            # Convertir acción a asignaciones
-            allocations = self._action_to_allocations(action, onu_requests, total_bandwidth)
+            # 3. Convertir la acción en asignaciones de ancho de banda
+            allocations = self._action_to_allocations(action, state)
 
             self.decision_count += 1
-            self.last_state = {
-                'requests': onu_requests.copy(),
-                'total_bandwidth': total_bandwidth,
-                'action': action.tolist(),
-                'allocations': allocations.copy()
-            }
-
-            # Log periódico
-            if self.decision_count % 50 == 0:
-                print(f"[SMART-RL] {self.decision_count} decisiones inteligentes internas tomadas")
-                self._log_decision_details(onu_requests, action, allocations)
+            if self.decision_count % 100 == 0:
+                print(f"[SmartRL-DBA] Decisiones tomadas: {self.decision_count}")
 
             return allocations
 
         except Exception as e:
-            print(f"[ERROR] Error en decisión RL interna: {str(e)}")
-            return self._fallback_allocation(onu_requests, total_bandwidth)
+            print(f"[ERROR] SmartRLDBA: Error durante la predicción/asignación. Causa: {e}")
+            return self._fallback_allocation(state)
 
-    def _create_observation(self, onu_requests: Dict[str, float],
-                           total_bandwidth: float) -> np.ndarray:
-        """Crear observación para el agente interno"""
-        num_onus = self.config['num_onus']
+    def _create_observation(self, state: Dict[str, Any]) -> np.ndarray:
+        """
+        Construye el vector de observación para el modelo de RL.
+        El formato debe coincidir EXACTAMENTE con el de PonRLEnvironment.
+        IMPORTANTE: Usa self.num_onus del modelo (fijo), NO del estado actual.
+        """
+        onu_requests = state.get('onu_requests', {})
+        onu_delays = state.get('onu_delays', {})
+        onu_buffers = state.get('onu_buffers', {})
+        total_bandwidth = state.get('total_bandwidth', 1.0)
 
-        # Solicitudes normalizadas
-        requests = []
-        onu_ids = sorted(onu_requests.keys()) if onu_requests else []
+        # Asegurar un orden consistente de ONUs
+        sorted_onu_ids = sorted(onu_requests.keys())
+        num_actual_onus = len(sorted_onu_ids)
 
-        for i in range(num_onus):
-            onu_id = f"onu_{i}" if f"onu_{i}" in onu_requests else (onu_ids[i] if i < len(onu_ids) else None)
-            if onu_id and onu_id in onu_requests:
-                normalized_request = min(onu_requests[onu_id] / total_bandwidth, 1.0)
-            else:
-                normalized_request = 0.0
-            requests.append(normalized_request)
+        # IMPORTANTE: NO cambiar self.num_onus - debe coincidir con el modelo entrenado
+        # Si hay menos ONUs en la simulación, rellenamos con ceros
+        # Si hay más, solo usamos las primeras self.num_onus
+
+        # Advertencia si hay desajuste (solo una vez)
+        if not hasattr(self, '_mismatch_warned'):
+            if num_actual_onus != self.num_onus:
+                print(f"[WARNING] SmartRLDBA: Modelo entrenado con {self.num_onus} ONUs, pero la simulación tiene {num_actual_onus} ONUs.")
+                if num_actual_onus < self.num_onus:
+                    print(f"[INFO] Rellenando con ceros para las {self.num_onus - num_actual_onus} ONUs faltantes.")
+                else:
+                    print(f"[INFO] Usando solo las primeras {self.num_onus} ONUs de la simulación.")
+                self._mismatch_warned = True
+
+        requests_norm = np.zeros(self.num_onus, dtype=np.float32)
+        delays_norm = np.zeros(self.num_onus, dtype=np.float32)
+        buffers_norm = np.zeros(self.num_onus, dtype=np.float32)
+
+        # Llenar solo hasta min(len(sorted_onu_ids), self.num_onus)
+        for i in range(min(len(sorted_onu_ids), self.num_onus)):
+            onu_id = sorted_onu_ids[i]
+
+            # Normalizar solicitudes
+            req_bw = onu_requests.get(onu_id, 0.0)
+            requests_norm[i] = min(req_bw / total_bandwidth, 1.0) if total_bandwidth > 0 else 0.0
+
+            # Normalizar delays (ej: suponer que 0.1s es el delay máximo)
+            delay = onu_delays.get(onu_id, 0.0)
+            delays_norm[i] = min(delay / 0.1, 1.0)
+
+            # Los buffers ya están normalizados (0.0 a 1.0)
+            buffers_norm[i] = onu_buffers.get(onu_id, 0.0)
 
         # Utilización total
-        total_requested = sum(onu_requests.values()) if onu_requests else 0
-        utilization = min(total_requested / total_bandwidth, 1.0) if total_bandwidth > 0 else 0
+        total_requested = sum(onu_requests.values())
+        total_utilization = min(total_requested / total_bandwidth, 1.0) if total_bandwidth > 0 else 0.0
 
-        # Simular métricas de red internas
-        simulated_delays = [random.uniform(0.001, 0.05) for _ in range(num_onus)]
-        simulated_buffers = [random.uniform(0.1, 0.9) for _ in range(num_onus)]
-
-        # Combinar características
-        observation = np.array(
-            requests +
-            [utilization] +
-            simulated_delays +
-            simulated_buffers,
-            dtype=np.float32
-        )
+        # Concatenar en el orden correcto: [requests, delays, buffers, utilización]
+        observation = np.concatenate([
+            requests_norm,
+            delays_norm,
+            buffers_norm,
+            np.array([total_utilization], dtype=np.float32)
+        ])
 
         return observation
 
-    def _action_to_allocations(self, action: np.ndarray, onu_requests: Dict[str, float],
-                             total_bandwidth: float) -> Dict[str, float]:
-        """Convertir acción a asignaciones de ancho de banda"""
+    def _action_to_allocations(self, action: np.ndarray, state: Dict[str, Any]) -> Dict[str, float]:
+        """
+        Convierte la acción del modelo (pesos) en asignaciones de ancho de banda.
+        IMPORTANTE: La acción tiene longitud self.num_onus (del modelo),
+        pero la simulación puede tener menos ONUs.
+        """
+        onu_requests = state.get('onu_requests', {})
+        total_bandwidth = state.get('total_bandwidth', 0)
         allocations = {}
 
         if not onu_requests:
             return allocations
 
-        onu_ids = sorted(onu_requests.keys())
+        sorted_onu_ids = sorted(onu_requests.keys())
+        num_actual_onus = len(sorted_onu_ids)
 
-        for i, onu_id in enumerate(onu_ids):
-            if i < len(action):
-                # Asignar según peso, limitado por lo solicitado
-                max_allocation = onu_requests[onu_id]
-                weight_allocation = action[i] * total_bandwidth
+        # La acción viene del modelo con longitud self.num_onus
+        # Solo usamos las primeras num_actual_onus acciones
+        action_slice = action[:num_actual_onus]
 
-                allocated = min(max_allocation, weight_allocation)
-                allocations[onu_id] = allocated
-            else:
-                allocations[onu_id] = 0.0
+        # Normalizar la acción para que sume 1 (distribución de probabilidad)
+        action_sum = np.sum(action_slice)
+        if action_sum > 0:
+            normalized_action = action_slice / action_sum
+        else:
+            # Si la acción es cero, distribuir equitativamente entre ONUs actuales
+            normalized_action = np.ones(num_actual_onus, dtype=np.float32) / num_actual_onus
+
+        for i, onu_id in enumerate(sorted_onu_ids):
+            # La asignación es una proporción del ancho de banda total
+            # No debe exceder lo que la ONU realmente solicitó
+            requested_bw = onu_requests[onu_id]
+            assigned_bw = normalized_action[i] * total_bandwidth
+            allocations[onu_id] = min(requested_bw, assigned_bw)
 
         return allocations
 
-    def _fallback_allocation(self, onu_requests: Dict[str, float],
-                           total_bandwidth: float) -> Dict[str, float]:
-        """Algoritmo de fallback simple"""
+    def _fallback_allocation(self, state: Dict[str, Any]) -> Dict[str, float]:
+        """Algoritmo de fallback simple: FCFS/proporcional."""
+        onu_requests = state.get('onu_requests', {})
+        total_bandwidth = state.get('total_bandwidth', 0)
         allocations = {}
 
         if not onu_requests:
             return allocations
 
         total_requested = sum(onu_requests.values())
-
         if total_requested <= total_bandwidth:
-            allocations = onu_requests.copy()
-        else:
-            for onu_id, requested in onu_requests.items():
-                proportion = requested / total_requested
-                allocations[onu_id] = proportion * total_bandwidth
+            return onu_requests.copy()
+
+        for onu_id, requested in onu_requests.items():
+            proportion = requested / total_requested
+            allocations[onu_id] = proportion * total_bandwidth
 
         return allocations
 
-    def _log_decision_details(self, requests: Dict[str, float], action: np.ndarray,
-                            allocations: Dict[str, float]):
-        """Log detalles de la decisión para debugging"""
-        print(f"[SMART-RL DECISION]")
-        print(f"  Requests: {[(k, f'{v:.1f}') for k, v in requests.items()]}")
-        print(f"  Action weights: {[f'{x:.3f}' for x in action[:4]]}")
-        print(f"  Allocated: {[(k, f'{v:.1f}') for k, v in allocations.items()]}")
-
     def get_algorithm_name(self) -> str:
-        """Obtener nombre del algoritmo"""
-        if self.model_path:
-            model_name = os.path.basename(self.model_path)
-            return f"Smart-RL-Internal ({model_name})"
-        else:
-            return "Smart-RL-Internal"
+        """Retorna el nombre del algoritmo y el modelo cargado."""
+        if self.model:
+            model_name = os.path.basename(self.model_path) if self.model_path else "loaded_model"
+            algo_type = self.model_metadata.get('algorithm', 'RL')
+            return f"Smart-RL ({algo_type} - {model_name})"
+        return "Smart-RL (Fallback)"
 
     def set_environment_params(self, params: Dict[str, Any]):
-        """Actualizar parámetros del entorno"""
-        self.config.update(params)
-
-        # Reconfigurar agente si es necesario
+        """Actualiza parámetros del entorno, como el número de ONUs."""
         if 'num_onus' in params:
-            self.agent.num_onus = params['num_onus']
+            self.num_onus = params['num_onus']
+            print(f"[INFO] SmartRLDBA: Número de ONUs actualizado a {self.num_onus}")
 
     def get_statistics(self) -> Dict[str, Any]:
-        """Obtener estadísticas del algoritmo"""
+        """Obtiene estadísticas del algoritmo."""
         return {
             'name': self.get_algorithm_name(),
-            'model_loaded': True,  # Siempre True para agente interno
-            'model_path': self.model_path or "internal_agent",
+            'model_loaded': self.model is not None,
+            'model_path': self.model_path,
             'decisions_made': self.decision_count,
-            'agent_type': 'internal_simulated',
-            'policies': self.agent.policies.copy(),
-            'configuration': self.config.copy()
+            'agent_type': 'external_stable_baselines3' if self.model else 'fallback',
+            'model_metadata': self.model_metadata,
         }
 
     def cleanup(self):
-        """Limpiar recursos"""
-        self.agent.decision_history.clear()
-        self.agent.q_table.clear()
-        print("[OK] Smart RL DBA interno limpiado")
+        """Limpia recursos."""
+        self.model = None
+        print("[OK] Smart RL DBA (External) limpiado.")
 
 
-# Función helper para crear algoritmo desde archivo de modelo
 def create_smart_rl_dba_from_model(model_path: str,
                                   env_params: Optional[Dict[str, Any]] = None) -> SmartRLDBAAlgorithm:
     """
-    Crear SmartRLDBAAlgorithm usando agente interno
-
-    Args:
-        model_path: Ruta simulada del modelo (solo para configurar políticas)
-        env_params: Parámetros del entorno
-
-    Returns:
-        Instancia configurada de SmartRLDBAAlgorithm
+    Factory function para crear una instancia de SmartRLDBAAlgorithm con un modelo.
     """
-    algorithm = SmartRLDBAAlgorithm(model_path)
+    num_onus = env_params.get('num_onus', 4) if env_params else 4
+    algorithm = SmartRLDBAAlgorithm(model_path=model_path, num_onus=num_onus)
 
     if env_params:
         algorithm.set_environment_params(env_params)
