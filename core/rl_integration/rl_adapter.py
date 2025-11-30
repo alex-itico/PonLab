@@ -399,10 +399,15 @@ class RLAdapter(QObject):
                     'final_policies': {}
                 }
 
-                # Guardar políticas finales del agente entrenado
+                # Guardar políticas finales del agente entrenado (solo si existe - legacy)
                 if 'smart_rl_algorithm' in self.model:
-                    agent = self.model['smart_rl_algorithm'].agent
-                    model_data['final_policies'] = agent.policies.copy()
+                    algorithm = self.model['smart_rl_algorithm']
+                    # Verificar si tiene el atributo 'agent' (modelos legacy)
+                    if hasattr(algorithm, 'agent') and hasattr(algorithm.agent, 'policies'):
+                        model_data['final_policies'] = algorithm.agent.policies.copy()
+                    else:
+                        # Modelo nuevo sin agent interno - no hay políticas que guardar
+                        model_data['final_policies'] = {}
 
                 # Guardar resumen de entrenamiento
                 if self.model.get('training_data'):
@@ -594,38 +599,14 @@ class RLAdapter(QObject):
                 self.training_error.emit(error_msg)
                 return False
 
-            # Cargar modelo interno (fallback o tipo interno)
-            from ..smart_rl_dba import SmartRLDBAAlgorithm
-            algorithm = SmartRLDBAAlgorithm()
+            # Modelo legacy/interno no soportado - solo modelos stable-baselines3
+            print(f"[WARNING] Modelo legacy/interno detectado en: {path}")
+            print("[WARNING] Los modelos internos ya no son soportados.")
+            print("[INFO] Por favor, entrene un nuevo modelo usando stable-baselines3.")
+            print("[INFO] El sistema usará fallback de asignación proporcional.")
 
-            # Aplicar políticas guardadas si existen
-            if 'final_policies' in model_data:
-                algorithm.agent.policies.update(model_data['final_policies'])
-
-            # Recrear estructura de modelo interno
-            self.model = {
-                'type': model_data.get('type', 'internal_smart_rl_model'),
-                'algorithm': model_data.get('algorithm', 'PPO'),
-                'learning_rate': model_data.get('learning_rate', 3e-4),
-                'gamma': model_data.get('gamma', 0.99),
-                'batch_size': model_data.get('batch_size', 64),
-                'smart_rl_algorithm': algorithm,
-                'training_data': [],
-                'trained': model_data.get('trained', True)
-            }
-
-            print(f"[OK] Modelo Smart RL interno cargado exitosamente desde: {path}")
-            print(f"   Algoritmo: {model_data.get('algorithm', 'PPO')}")
-            print(f"   Entrenado: {model_data.get('trained', True)}")
-            print(f"   Pasos originales: {model_data.get('training_steps', 0)}")
-
-            # Mostrar políticas cargadas
-            if 'final_policies' in model_data:
-                print("   Políticas cargadas:")
-                for policy, value in model_data['final_policies'].items():
-                    print(f"     {policy}: {value:.3f}")
-
-            return True
+            # No cargar modelo - dejar self.model como None para usar fallback
+            return False
 
         except Exception as e:
             error_msg = f"Error cargando modelo interno: {str(e)}"

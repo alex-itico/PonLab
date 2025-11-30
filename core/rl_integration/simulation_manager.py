@@ -607,9 +607,16 @@ class SimulationThread(QThread):
                     # Modelo real de stable-baselines3
                     action, _ = self.model.predict(obs, deterministic=True)
                 elif isinstance(self.model, dict) and 'smart_rl_algorithm' in self.model:
-                    # Modelo interno Smart RL
+                    # Modelo Smart RL
                     smart_algorithm = self.model['smart_rl_algorithm']
-                    action = smart_algorithm.agent.predict(obs)
+                    # Verificar si tiene modelo interno de stable-baselines3
+                    if hasattr(smart_algorithm, 'model') and smart_algorithm.model is not None:
+                        action, _ = smart_algorithm.model.predict(obs, deterministic=True)
+                    else:
+                        # Fallback si no hay modelo cargado
+                        action_space_size = self.env.action_space.shape[0] if hasattr(self.env, 'action_space') else 4
+                        action = np.random.uniform(0, 1, action_space_size)
+                        action = action / np.sum(action)  # Normalizar
                 else:
                     # Fallback - acción aleatoria
                     action_space_size = self.env.action_space.shape[0] if hasattr(self.env, 'action_space') else 4
