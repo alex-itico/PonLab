@@ -1,6 +1,6 @@
 """
 Graphics Popup Window
-Ventana emergente que muestra automáticamente los gráficos al finalizar simulación
+Popup window that automatically displays graphics after simulation ends
 """
 
 import os
@@ -17,9 +17,9 @@ from .pon_metrics_charts import PONMetricsChartsPanel
 
 
 class GraphicsPopupWindow(QDialog):
-    """Ventana emergente que muestra gráficos de simulación automáticamente"""
+    """Popup window that automatically displays simulation graphics."""
     
-    # Señales
+    # Signals
     window_closed = pyqtSignal()
     graphics_exported = pyqtSignal(str)
     
@@ -29,39 +29,39 @@ class GraphicsPopupWindow(QDialog):
         self.setWindowFlags(Qt.Window | Qt.WindowMaximizeButtonHint | Qt.WindowCloseButtonHint)
         self.resize(1200, 800)
         
-        # Datos de la simulación
+        # Simulation data
         self.simulation_data = {}
         self.session_directory = ""
         self.session_info = None
         self.charts_panel = None
         
-        # Configurar interfaz
+        # Configure interface
         self.setup_ui()
         
-        # Timer para auto-cerrar (opcional)
+        # Timer for auto-close (optional)
         self.auto_close_timer = QTimer()
         self.auto_close_timer.setSingleShot(True)
         
     def setup_ui(self):
-        """Configurar interfaz de usuario"""
+        """Configure user interface"""
         layout = QVBoxLayout(self)
         
-        # Header con información
+        # Header with information
         self.setup_header(layout)
         
-        # Área principal con tabs
+        # Main area with tabs
         self.setup_main_area(layout)
         
-        # Footer con controles
+        # Footer with controls
         self.setup_footer(layout)
         
     def setup_header(self, layout):
-        """Configurar header con información de la simulación"""
+        """Configure header with simulation information"""
         header_frame = QFrame()
         header_frame.setObjectName("popup_header_frame")  # Identificador para QSS
         header_layout = QHBoxLayout(header_frame)
         
-        # Título principal
+        # Main title
         self.title_label = QLabel(tr('graphics_popup.title_completed'))
         self.title_label.setObjectName("popup_title_label")  # Identificador para QSS
         title_font = QFont()
@@ -72,7 +72,7 @@ class GraphicsPopupWindow(QDialog):
         
         header_layout.addStretch()
         
-        # Información de sesión
+        # Session information
         self.session_info_label = QLabel(tr('graphics_popup.saved_pending'))
         self.session_info_label.setObjectName("popup_session_label")  # Identificador para QSS
         header_layout.addWidget(self.session_info_label)
@@ -80,27 +80,27 @@ class GraphicsPopupWindow(QDialog):
         layout.addWidget(header_frame)
     
     def setup_main_area(self, layout):
-        """Configurar área principal con tabs"""
+        """Configure main area with tabs"""
         self.tabs = QTabWidget()
         self.tabs.setObjectName("popup_tabs")  # Identificador para QSS
         
-        # Tab 1: Gráficos principales
+        # Tab 1: Main graphics
         self.setup_graphics_tab()
         
-        # Tab 2: Resumen de datos
+        # Tab 2: Data summary
         self.setup_summary_tab()
         
-        # Tab 3: Archivos generados
+        # Tab 3: Generated files
         self.setup_files_tab()
         
         layout.addWidget(self.tabs)
     
     def setup_graphics_tab(self):
-        """Configurar tab principal de gráficos"""
-        # Crear panel de gráficos integrado
+        """Configure main graphics tab"""
+        # Create integrated graphics panel
         self.charts_panel = PONMetricsChartsPanel()
         
-        # Agregar scroll por si es necesario
+        # Add scroll if necessary
         scroll_area = QScrollArea()
         scroll_area.setWidget(self.charts_panel)
         scroll_area.setWidgetResizable(True)
@@ -110,11 +110,11 @@ class GraphicsPopupWindow(QDialog):
         self.tabs.addTab(scroll_area, tr('graphics_popup.tab_graphics'))
     
     def setup_summary_tab(self):
-        """Configurar tab de resumen de datos"""
+        """Configure data summary tab"""
         tab = QWidget()
         layout = QVBoxLayout(tab)
         
-        # Resumen textual
+        # Textual summary
         self.summary_group = QGroupBox(tr('graphics_popup.summary_title'))
         self.summary_group.setObjectName("popup_group")  # Identificador para QSS
         summary_layout = QVBoxLayout(self.summary_group)
@@ -127,7 +127,7 @@ class GraphicsPopupWindow(QDialog):
         
         layout.addWidget(self.summary_group)
         
-        # Métricas principales en grid
+        # Main metrics in grid
         self.metrics_group = QGroupBox(tr('graphics_popup.metrics_title'))
         self.metrics_group.setObjectName("popup_group")  # Identificador para QSS
         self.metrics_layout = QGridLayout(self.metrics_group)
@@ -138,11 +138,11 @@ class GraphicsPopupWindow(QDialog):
         self.tabs.addTab(tab, tr('graphics_popup.tab_summary'))
     
     def setup_files_tab(self):
-        """Configurar tab de archivos generados"""
+        """Configure generated files tab"""
         tab = QWidget()
         layout = QVBoxLayout(tab)
         
-        # Información de archivos
+        # File information
         self.files_group = QGroupBox(tr('graphics_popup.files_title'))
         self.files_group.setObjectName("popup_group")  # Identificador para QSS
         files_layout = QVBoxLayout(self.files_group)
@@ -153,7 +153,7 @@ class GraphicsPopupWindow(QDialog):
         self.files_text.setMaximumHeight(150)
         files_layout.addWidget(self.files_text)
         
-        # Botones para abrir directorio
+        # Buttons to open directory
         buttons_layout = QHBoxLayout()
         
         self.open_folder_btn = QPushButton(tr('graphics_popup.open_folder'))
@@ -161,7 +161,7 @@ class GraphicsPopupWindow(QDialog):
         self.open_folder_btn.clicked.connect(self.open_session_folder)
         buttons_layout.addWidget(self.open_folder_btn)
         
-        # Botón "Ver Gráficos Guardados" ELIMINADO (no hay carpeta graficos automática)
+        # "View Saved Graphics" button REMOVED (no automatic graphics folder)
         # self.open_graphics_btn = QPushButton("🖼️ Ver Gráficos Guardados")
         # self.open_graphics_btn.clicked.connect(self.open_graphics_folder)
         # buttons_layout.addWidget(self.open_graphics_btn)
@@ -171,7 +171,7 @@ class GraphicsPopupWindow(QDialog):
         
         layout.addWidget(self.files_group)
         
-        # Instrucciones
+        # Instructions
         self.instructions_group = QGroupBox(tr('graphics_popup.instructions_title'))
         self.instructions_group.setObjectName("popup_group")  # Identificador para QSS
         instructions_layout = QVBoxLayout(self.instructions_group)
@@ -186,10 +186,10 @@ class GraphicsPopupWindow(QDialog):
         self.tabs.addTab(tab, tr('graphics_popup.tab_files'))
     
     def setup_footer(self, layout):
-        """Configurar footer con controles"""
+        """Configure footer with controls"""
         footer_layout = QHBoxLayout()
         
-        # Botón de exportar gráficos
+        # Export graphics button
         self.export_btn = QPushButton(tr('graphics_popup.export_graphics'))
         self.export_btn.setObjectName("popup_button")  # Identificador para QSS
         self.export_btn.clicked.connect(self.export_additional_graphics)
@@ -197,7 +197,7 @@ class GraphicsPopupWindow(QDialog):
         
         footer_layout.addStretch()
         
-        # Botón de cerrar
+        # Close button
         self.close_btn = QPushButton(tr('graphics_popup.close'))
         self.close_btn.setObjectName("popup_button")  # Identificador para QSS
         self.close_btn.clicked.connect(self.accept)
@@ -211,61 +211,61 @@ class GraphicsPopupWindow(QDialog):
                                session_directory: str,
                                session_info: Optional[Dict[str, Any]] = None):
         """
-        Mostrar resultados de simulación en la ventana emergente
+        Displays simulation results in the popup window.
         
         Args:
-            simulation_data: Datos completos de la simulación
-            session_directory: Directorio donde se guardaron los archivos
-            session_info: Información adicional de la sesión
+            simulation_data (Dict[str, Any]): Complete simulation data.
+            session_directory (str): Directory where files were saved.
+            session_info (Optional[Dict[str, Any]]): Additional session information.
         """
         self.simulation_data = simulation_data
         self.session_directory = session_directory
-        self.session_info = session_info  # Guardar para retranslate_ui
+        self.session_info = session_info  # Save for retranslate_ui
         
-        # Mostrar ventana PRIMERO (sin gráficos aún)
+        # Show window FIRST (without graphics yet)
         self.show()
         self.raise_()
         self.activateWindow()
         
-        # Actualizar header
+        # Update header
         if session_directory:
             self.session_info_label.setText(tr('graphics_popup.saved_in').format(session_directory))
         else:
             self.session_info_label.setText(tr('graphics_popup.generating_data'))
         
-        # Actualizar resumen (rápido)
+        # Update summary (quick)
         self.update_summary_display(simulation_data, session_info)
         
-        # Actualizar información de archivos (rápido)
+        # Update file information (quick)
         if session_directory:
             self.update_files_display(session_directory)
         
-        # Actualizar gráficos DESPUÉS con un pequeño delay (permite que la ventana se dibuje primero)
+        # Update graphics AFTER with a small delay (allows window to draw first)
         if self.charts_panel:
             from PyQt5.QtCore import QTimer
             QTimer.singleShot(50, lambda: self._update_charts_async(simulation_data))
         
-        print(f"🎉 Ventana de resultados mostrada, cargando gráficos...")
+        print(f"🎉 Results window shown, loading graphics...")
     
     def _update_charts_async(self, simulation_data: Dict[str, Any]):
-        """Actualizar gráficos de forma asíncrona (no bloquea UI)"""
+        """Update charts asynchronously (does not block UI)"""
         try:
             self.charts_panel.update_charts_with_data(simulation_data)
-            print(f"✅ Gráficos actualizados correctamente")
+            print(f"✅ Graphics updated successfully")
         except Exception as e:
-            print(f"❌ Error actualizando gráficos: {e}")
+            print(f"❌ Error updating graphics: {e}")
     
     def update_summary_display(self, simulation_data: Dict[str, Any], session_info: Optional[Dict[str, Any]]):
-        """Actualizar display de resumen"""
-        # Texto de resumen
+        """Update summary display"""
+        # Summary text
         summary_text = self.generate_summary_text(simulation_data, session_info)
         self.summary_text.setPlainText(summary_text)
         
-        # Métricas en grid
+        # Metrics in grid
         self.update_metrics_grid(simulation_data)
     
     def generate_summary_text(self, simulation_data: Dict[str, Any], session_info: Optional[Dict[str, Any]]) -> str:
-        """Generar texto de resumen legible"""
+        """Generate readable summary text"""
         sim_summary = simulation_data.get('simulation_summary', {})
         sim_stats = sim_summary.get('simulation_stats', {})
         perf_metrics = sim_summary.get('performance_metrics', {})
@@ -299,8 +299,8 @@ class GraphicsPopupWindow(QDialog):
         return "\n".join(summary_lines)
     
     def update_metrics_grid(self, simulation_data: Dict[str, Any]):
-        """Actualizar grid de métricas principales"""
-        # Limpiar grid existente
+        """Update main metrics grid"""
+        # Clear existing grid
         for i in reversed(range(self.metrics_layout.count())): 
             self.metrics_layout.itemAt(i).widget().setParent(None)
         
@@ -308,7 +308,7 @@ class GraphicsPopupWindow(QDialog):
         perf_metrics = sim_summary.get('performance_metrics', {})
         sim_stats = sim_summary.get('simulation_stats', {})
         
-        # Métricas para mostrar
+        # Metrics to display
         metrics = [
             (tr('graphics_popup.metric_steps'), f"{sim_stats.get('total_steps', 0)}", "#e3f2fd"),
             (tr('graphics_popup.metric_delay'), f"{perf_metrics.get('mean_delay', 0):.6f}s", "#fff3e0"), 
@@ -318,17 +318,17 @@ class GraphicsPopupWindow(QDialog):
             (tr('graphics_popup.metric_data'), f"{perf_metrics.get('total_capacity_served', 0):.2f} MB", "#e0f2f1")
         ]
         
-        # Agregar métricas al grid
+        # Add metrics to the grid
         for i, (label_text, value_text, bg_color) in enumerate(metrics):
             row = i // 3
             col = i % 3
             
-            # Crear widget de métrica
+            # Create metric widget
             metric_widget = self.create_metric_widget(label_text, value_text, bg_color)
             self.metrics_layout.addWidget(metric_widget, row, col)
     
     def create_metric_widget(self, label_text: str, value_text: str, bg_color: str) -> QWidget:
-        """Crear widget individual para una métrica"""
+        """Create individual widget for a metric"""
         widget = QFrame()
         widget.setStyleSheet(f"""
             QFrame {{
@@ -343,13 +343,13 @@ class GraphicsPopupWindow(QDialog):
         layout = QVBoxLayout(widget)
         layout.setSpacing(5)
         
-        # Etiqueta
+        # Label
         label = QLabel(label_text)
         label.setAlignment(Qt.AlignCenter)
         label.setStyleSheet("font-weight: bold; color: #333;")
         layout.addWidget(label)
         
-        # Valor
+        # Value
         value = QLabel(value_text)
         value.setAlignment(Qt.AlignCenter)
         value_font = QFont()
@@ -362,36 +362,36 @@ class GraphicsPopupWindow(QDialog):
         return widget
     
     def update_files_display(self, session_directory: str):
-        """Actualizar display de archivos generados"""
+        """Update generated files display"""
         if not session_directory:
             self.files_text.setPlainText(
-                "⏳ Generando archivos de simulación...\n\n"
-                "Los archivos se están guardando en segundo plano.\n"
-                "Esta sección se actualizará automáticamente cuando termine el proceso.\n\n"
-                "Mientras tanto, puedes:\n"
-                "  • Ver los gráficos en la pestaña 'Gráficos'\n"
-                "  • Revisar el resumen en la pestaña 'Resumen'\n"
-                "  • Exportar gráficos adicionales con el botón de abajo"
+                "⏳ Generating simulation files...\n\n"
+                "Files are being saved in the background.\n"
+                "This section will update automatically when the process is complete.\n\n"
+                "Meanwhile, you can:\n"
+                "  • View the graphics in the 'Graphics' tab\n"
+                "  • Review the summary in the 'Summary' tab\n"
+                "  • Export additional graphics with the button below"
             )
-            # Deshabilitar botón de abrir carpeta temporalmente
+            # Disable open folder button temporarily
             if hasattr(self, 'open_folder_btn'):
                 self.open_folder_btn.setEnabled(False)
             return
         
-        # Habilitar botón de abrir carpeta
+        # Enable open folder button
         if hasattr(self, 'open_folder_btn'):
             self.open_folder_btn.setEnabled(True)
         
         if not os.path.exists(session_directory):
-            self.files_text.setPlainText("❌ Directorio no encontrado")
+            self.files_text.setPlainText("❌ Directory not found")
             return
         
         files_info = []
         files_info.append(f"📁 Directorio de sesión: {session_directory}")
         files_info.append("")
         
-        # Listar archivos generados
-        files_info.append("📄 ARCHIVOS GENERADOS:")
+        # List generated files
+        files_info.append("📄 GENERATED FILES:")
         
         try:
             for filename in os.listdir(session_directory):
@@ -406,34 +406,34 @@ class GraphicsPopupWindow(QDialog):
                 elif filename.endswith('.txt'):
                     files_info.append(f"  📋 {filename}")
                 elif os.path.isdir(filepath) and filename == 'graficos':
-                    # Contar gráficos
+                    # Count graphics
                     graphics_count = len([f for f in os.listdir(filepath) if f.endswith('.png')])
-                    files_info.append(f"  🖼️ {filename}/ ({graphics_count} gráficos PNG)")
+                    files_info.append(f"  🖼️ {filename}/ ({graphics_count} PNG graphics)")
         except Exception as e:
-            files_info.append(f"  ⚠️ Error listando archivos: {e}")
+            files_info.append(f"  ⚠️ Error listing files: {e}")
         
         self.files_text.setPlainText("\n".join(files_info))
     
     def update_session_directory(self, session_directory: str):
-        """Actualizar directorio de sesión y refrescar UI"""
+        """Update session directory and refresh UI"""
         self.session_directory = session_directory
         
-        # Actualizar label del header
+        # Update header label
         if session_directory:
             self.session_info_label.setText(tr('graphics_popup.saved_in').format(session_directory))
         
-        # Actualizar información de archivos
+        # Update file information
         self.update_files_display(session_directory)
     
     def open_session_folder(self):
-        """Abrir carpeta de sesión en el explorador"""
+        """Open session folder in explorer"""
         if not self.session_directory:
             QMessageBox.information(
                 self, 
-                "Guardado en Progreso", 
-                "Los archivos se están guardando en segundo plano.\n\n"
-                "Por favor espera unos segundos y vuelve a intentar.\n"
-                "La carpeta se abrirá automáticamente cuando termine el guardado."
+                "Saving in Progress", 
+                "Files are being saved in the background.\n\n"
+                "Please wait a few seconds and try again.\n"
+                "The folder will open automatically when saving is complete."
             )
             return
         
@@ -441,12 +441,12 @@ class GraphicsPopupWindow(QDialog):
             QMessageBox.warning(
                 self, 
                 "Error", 
-                f"Directorio de sesión no encontrado:\n{self.session_directory}"
+                f"Session directory not found:\n{self.session_directory}"
             )
             return
         
         try:
-            # Abrir en explorador según el OS
+            # Open in explorer according to OS
             import subprocess
             import platform
             
@@ -458,21 +458,21 @@ class GraphicsPopupWindow(QDialog):
             else:  # Linux
                 subprocess.run(["xdg-open", self.session_directory])
                 
-            print(f"📂 Carpeta abierta: {self.session_directory}")
+            print(f"📂 Folder opened: {self.session_directory}")
             
         except Exception as e:
-            QMessageBox.warning(self, "Error", f"No se pudo abrir la carpeta: {e}")
+            QMessageBox.warning(self, "Error", f"Could not open folder: {e}")
     
     def open_graphics_folder(self):
-        """Abrir carpeta específica de gráficos"""
+        """Open specific graphics folder"""
         graphics_dir = os.path.join(self.session_directory, "graficos")
         
         if not os.path.exists(graphics_dir):
-            QMessageBox.warning(self, "Error", "Carpeta de gráficos no encontrada")
+            QMessageBox.warning(self, "Error", "Graphics folder not found")
             return
         
         try:
-            # Abrir carpeta de gráficos
+            # Open graphics folder
             import subprocess
             import platform
             
@@ -484,44 +484,44 @@ class GraphicsPopupWindow(QDialog):
             else:  # Linux
                 subprocess.run(["xdg-open", graphics_dir])
                 
-            print(f"🖼️ Carpeta de gráficos abierta: {graphics_dir}")
+            print(f"🖼️ Graphics folder opened: {graphics_dir}")
             
         except Exception as e:
-            QMessageBox.warning(self, "Error", f"No se pudo abrir la carpeta de gráficos: {e}")
+            QMessageBox.warning(self, "Error", f"Could not open graphics folder: {e}")
     
     def set_theme(self, dark_theme):
-        """Aplicar tema QSS a la ventana de gráficos"""
+        """Apply QSS theme to the graphics window"""
         try:
-            # Determinar el archivo de tema
+            # Determine theme file
             if dark_theme:
                 theme_file = os.path.join("resources", "styles", "dark_theme.qss")
             else:
                 theme_file = os.path.join("resources", "styles", "light_theme.qss")
             
-            # Leer el archivo de tema
+            # Read theme file
             with open(theme_file, 'r', encoding='utf-8') as f:
                 theme_content = f.read()
             
-            # Aplicar el tema a la ventana
+            # Apply theme to window
             self.setStyleSheet(theme_content)
             
-            # Aplicar tema al panel de gráficos si existe
+            # Apply theme to charts panel if it exists
             if hasattr(self, 'charts_panel') and self.charts_panel:
                 self.charts_panel.set_theme(dark_theme)
             
         except Exception as e:
-            print(f"Error aplicando tema a ventana de gráficos: {e}")
+            print(f"Error applying theme to graphics window: {e}")
     
     def export_additional_graphics(self):
-        """Exportar gráficos adicionales o en diferentes formatos"""
+        """Export additional graphics or in different formats"""
         if not self.charts_panel:
             QMessageBox.warning(self, "Error", "No hay gráficos para exportar")
             return
         
         try:
-            # Si no hay session_directory, usar directorio temporal o predeterminado
+            # If no session_directory, use temporary or default directory
             if not self.session_directory:
-                # Crear directorio en simulation_results con timestamp
+                # Create directory in simulation_results with timestamp
                 from datetime import datetime
                 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
                 base_dir = "simulation_results"
@@ -529,29 +529,29 @@ class GraphicsPopupWindow(QDialog):
                 additional_dir = os.path.join(base_dir, f"graficos_exportados_{timestamp}")
                 os.makedirs(additional_dir, exist_ok=True)
             else:
-                # Crear directorio adicional dentro del directorio de sesión
+                # Create additional directory inside the session directory
                 additional_dir = os.path.join(self.session_directory, "graficos_adicionales")
                 os.makedirs(additional_dir, exist_ok=True)
             
-            # Exportar en diferentes formatos
+            # Export in different formats
             success = self.charts_panel.export_charts(additional_dir)
             
             if success:
                 QMessageBox.information(
                     self, 
-                    "Éxito", 
-                    f"Gráficos adicionales exportados en:\n{additional_dir}"
+                    "Success", 
+                    f"Additional graphics exported to:\n{additional_dir}"
                 )
                 self.graphics_exported.emit(additional_dir)
             else:
-                QMessageBox.warning(self, "Error", "No se pudieron exportar los gráficos adicionales")
+                QMessageBox.warning(self, "Error", "Could not export additional graphics")
                 
         except Exception as e:
-            QMessageBox.warning(self, "Error", f"Error exportando gráficos: {e}")
+            QMessageBox.warning(self, "Error", f"Error exporting graphics: {e}")
     
     def retranslate_ui(self):
-        """Actualizar textos traducibles de la interfaz"""
-        # Título de la ventana
+        """Update translatable UI texts"""
+        # Window title
         self.setWindowTitle(tr('graphics_popup.window_title'))
         
         # Header
@@ -561,18 +561,18 @@ class GraphicsPopupWindow(QDialog):
         else:
             self.session_info_label.setText(tr('graphics_popup.saved_pending'))
         
-        # Títulos de tabs (obtener los widgets tabs)
+        # Tab titles (get tab widgets)
         self.tabs.setTabText(0, tr('graphics_popup.tab_graphics'))
         self.tabs.setTabText(1, tr('graphics_popup.tab_summary'))
         self.tabs.setTabText(2, tr('graphics_popup.tab_files'))
         
-        # GroupBoxes del tab de resumen
+        # GroupBoxes of the summary tab
         if hasattr(self, 'summary_group'):
             self.summary_group.setTitle(tr('graphics_popup.summary_title'))
         if hasattr(self, 'metrics_group'):
             self.metrics_group.setTitle(tr('graphics_popup.metrics_title'))
         
-        # GroupBoxes del tab de archivos
+        # GroupBoxes of the files tab
         if hasattr(self, 'files_group'):
             self.files_group.setTitle(tr('graphics_popup.files_title'))
         if hasattr(self, 'instructions_group'):
@@ -580,7 +580,7 @@ class GraphicsPopupWindow(QDialog):
         if hasattr(self, 'instructions_label'):
             self.instructions_label.setText(tr('graphics_popup.instructions'))
         
-        # Botones
+        # Buttons
         if hasattr(self, 'open_folder_btn'):
             self.open_folder_btn.setText(tr('graphics_popup.open_folder'))
         if hasattr(self, 'export_btn'):
@@ -588,15 +588,15 @@ class GraphicsPopupWindow(QDialog):
         if hasattr(self, 'close_btn'):
             self.close_btn.setText(tr('graphics_popup.close'))
         
-        # Regenerar resumen y métricas si hay datos disponibles
+        # Regenerate summary and metrics if data is available
         if self.simulation_data:
             self.update_summary_display(self.simulation_data, self.session_info)
         
-        # Actualizar panel de gráficos si existe
+        # Update graphics panel if it exists
         if self.charts_panel and hasattr(self.charts_panel, 'retranslate_ui'):
             self.charts_panel.retranslate_ui()
     
     def closeEvent(self, event):
-        """Evento al cerrar la ventana"""
+        """Event on closing the window"""
         self.window_closed.emit()
         super().closeEvent(event)
