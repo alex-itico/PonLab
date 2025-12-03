@@ -73,6 +73,10 @@ class HybridOLT:
         self.incremental_writer: Optional['IncrementalDataWriter'] = None
         self.incremental_writing_enabled = False
 
+        # RL Integration: Store last allocations and RL action
+        self.last_allocations: Dict[str, float] = {}  # MB allocated per ONU
+        self.rl_action: Optional[Any] = None  # Action from RL agent (if using RL-DBA)
+
         print(f"  OLT: Polling automático cada {self.cycle_duration*1e6:.0f}us (sin eventos en cola)")
     
     def check_and_execute_polling(self, event_queue: EventQueue, current_time: float):
@@ -231,9 +235,12 @@ class HybridOLT:
         allocations = self.dba_algorithm.allocate_bandwidth(
             onu_demands,
             self.channel_capacity,
-            None  # Por ahora sin RL action
+            self.rl_action  # Use RL action if set, otherwise None
         )
-        
+
+        # Store allocations for RL environment to access
+        self.last_allocations = allocations.copy()
+
         # Convertir allocations en grants específicos por T-CONT
         grants = self._convert_allocations_to_grants(allocations, reports)
         
@@ -532,3 +539,24 @@ class HybridOLT:
         self.incremental_writer = None
         self.incremental_writing_enabled = False
         print(f"⚠️ OLT: Escritura incremental deshabilitada")
+
+    def set_rl_action(self, action: Any):
+        """
+        Set the RL action to be used by the DBA algorithm.
+
+        This method allows RealPonEnv to pass actions to the DBA algorithm.
+        The action will be used in the next call to allocate_bandwidth().
+
+        Args:
+            action: Action from the RL agent (typically a numpy array)
+        """
+        self.rl_action = action
+
+    def get_last_allocations(self) -> Dict[str, float]:
+        """
+        Get the last bandwidth allocations made by the DBA algorithm.
+
+        Returns:
+            Dict mapping onu_id to allocated bandwidth in MB
+        """
+        return self.last_allocations.copy()

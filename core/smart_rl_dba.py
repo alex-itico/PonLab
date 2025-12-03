@@ -120,12 +120,13 @@ class SmartRLDBAAlgorithm(DBAAlgorithmInterface):
     def allocate_bandwidth(self, onu_requests: Dict[str, float],
                           total_bandwidth: float, action: Any = None) -> Dict[str, float]:
         """
-        Asigna ancho de banda utilizando el modelo de RL cargado.
+        Asigna ancho de banda utilizando un modelo de RL.
 
         Args:
             onu_requests: Dict {onu_id: bandwidth_requested_mb}
             total_bandwidth: float, capacidad total del canal en Mbps
-            action: IGNORADO (el modelo RL genera sus propias acciones)
+            action: Acción externa del modelo RL (opcional). Si se proporciona, se usa directamente.
+                   Si es None, el DBA usa su modelo interno (si existe) o fallback.
 
         Returns:
             Dict {onu_id: bandwidth_allocated_mb}
@@ -138,29 +139,41 @@ class SmartRLDBAAlgorithm(DBAAlgorithmInterface):
             'onu_buffers': {}  # Será poblado si está disponible
         }
 
-        if not self.model:
-            # Si no hay modelo cargado, usar fallback equitativo
-            return self._fallback_allocation(state)
+        # PRIORITY 1: Si se proporciona una acción externa, usarla directamente
+        if action is not None:
+            try:
+                # Convertir la acción externa en asignaciones
+                allocations = self._action_to_allocations(action, state)
+                self.decision_count += 1
+                return allocations
+            except Exception as e:
+                print(f"[ERROR] SmartRLDBA: Error al usar acción externa. Causa: {e}")
+                # Continuar con fallbacks si falla
 
-        try:
-            # 1. Crear la observación a partir del estado de la red
-            observation = self._create_observation(state)
+        # PRIORITY 2: Si hay modelo interno cargado, usarlo
+        if self.model:
+            try:
+                # 1. Crear la observación a partir del estado de la red
+                observation = self._create_observation(state)
 
-            # 2. Obtener la acción del modelo de RL
-            action, _ = self.model.predict(observation, deterministic=True)
+                # 2. Obtener la acción del modelo de RL interno
+                internal_action, _ = self.model.predict(observation, deterministic=True)
 
-            # 3. Convertir la acción en asignaciones de ancho de banda
-            allocations = self._action_to_allocations(action, state)
+                # 3. Convertir la acción en asignaciones de ancho de banda
+                allocations = self._action_to_allocations(internal_action, state)
 
-            self.decision_count += 1
-            if self.decision_count % 100 == 0:
-                print(f"[SmartRL-DBA] Decisiones tomadas: {self.decision_count}")
+                self.decision_count += 1
+                if self.decision_count % 100 == 0:
+                    print(f"[SmartRL-DBA] Decisiones tomadas: {self.decision_count}")
 
-            return allocations
+                return allocations
 
-        except Exception as e:
-            print(f"[ERROR] SmartRLDBA: Error durante la predicción/asignación. Causa: {e}")
-            return self._fallback_allocation(state)
+            except Exception as e:
+                print(f"[ERROR] SmartRLDBA: Error durante la predicción/asignación del modelo interno. Causa: {e}")
+                # Continuar con fallback
+
+        # PRIORITY 3: Fallback equitativo si no hay acción externa ni modelo interno
+        return self._fallback_allocation(state)
 
     def _create_observation(self, state: Dict[str, Any]) -> np.ndarray:
         """

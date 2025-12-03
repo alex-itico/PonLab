@@ -1,32 +1,32 @@
 """
-Módulo Core
-Contiene la lógica de negocio principal y modelos organizados por funcionalidad
+Core Module
+Contains the main business logic and models organized by functionality
 """
 
-# Imports directos de los archivos principales para evitar problemas de dependencias
+# Direct imports of main files to avoid dependency issues
 try:
-    # Dispositivos - imports directos
+    # Devices - direct imports
     from .devices.device import Device
     from .devices.device_manager import DeviceManager
     
-    # Conexiones - imports directos
+    # Connections - direct imports
     from .connections.connection_manager import ConnectionManager
     
-    # Simulación - imports directos  
+    # Simulation - direct imports  
     from .simulation.simulation_manager import SimulationManager
     
-    # PON - imports directos
+    # PON - direct imports
     from .pon.pon_adapter import PONAdapter
     
-    # Función de importación diferida para device_types
+    # Deferred import function for device_types
     def get_device_types():
-        """Importar tipos de dispositivos de forma diferida"""
+        """Import device types in a deferred manner"""
         from .devices.device_types import OLT, OLT_SDN, ONU, create_device
         return OLT, OLT_SDN, ONU, create_device
     
-    # Función de importación diferida para algoritmos DBA
+    # Deferred import function for DBA algorithms
     def get_dba_algorithms():
-        """Importar algoritmos DBA de forma diferida"""
+        """Import DBA algorithms in a deferred manner"""
         from .algorithms.pon_dba import DBAAlgorithmInterface, FCFSDBAAlgorithm, PriorityDBAAlgorithm, RLDBAAlgorithm
         return {
             'DBAAlgorithmInterface': DBAAlgorithmInterface,
@@ -38,12 +38,12 @@ try:
     print("OK Core module loaded successfully")
 
 except ImportError as e:
-    print(f"ERROR en core imports: {e}")
+    print(f"ERROR in core imports: {e}")
     raise
 
-# Función helper para imports diferidos
+# Helper function for deferred imports
 def get_device_classes():
-    """Obtiene las clases de dispositivos de forma diferida"""
+    """Obtains device classes in a deferred manner"""
     from .devices.device_types import OLT, OLT_SDN, ONU, create_device
     return {'OLT': OLT, 'OLT_SDN': OLT_SDN, 'ONU': ONU, 'create_device': create_device}
 

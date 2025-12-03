@@ -1,6 +1,6 @@
 """
 PON DBA Interface
-Interfaces para algoritmos DBA modulares integradas de netPONPy
+Interfaces for modular DBA algorithms integrated from netPONPy
 """
 
 from abc import ABC, abstractmethod
@@ -9,41 +9,41 @@ from ..data.pon_request import Request
 
 class DBAAlgorithmInterface(ABC):
     """
-    Interface para algoritmos DBA configurables.
+    Interface for configurable DBA algorithms.
     
-    Permite implementar diferentes estrategias DBA que pueden ser
-    dinámicamente intercambiadas, siguiendo el patrón Strategy.
+    Allows implementing different DBA strategies that can be
+    dynamically exchanged, following the Strategy pattern.
     """
     
     @abstractmethod
     def allocate_bandwidth(self, onu_requests: Dict[str, float], 
                           total_bandwidth: float, action: Any = None) -> Dict[str, float]:
         """
-        Asignar ancho de banda a las ONUs.
+        Allocate bandwidth to ONUs.
         
         Args:
-            onu_requests: Diccionario {onu_id: bandwidth_requested}
-            total_bandwidth: Ancho de banda total disponible
-            action: Acción del agente RL (opcional)
+            onu_requests: Dictionary {onu_id: bandwidth_requested}
+            total_bandwidth: Total available bandwidth
+            action: RL agent action (optional)
             
         Returns:
-            Diccionario {onu_id: bandwidth_allocated}
+            Dictionary {onu_id: bandwidth_allocated}
         """
         pass
     
     def select_next_request(self, available_requests: Dict[str, List[Request]], 
                            clock_time: float) -> Optional[Request]:
         """
-        Seleccionar la próxima solicitud a procesar según la política del algoritmo.
+        Select the next request to process according to the algorithm's policy.
         
         Args:
-            available_requests: Diccionario {onu_id: [list_of_requests]}
-            clock_time: Tiempo actual de simulación
+            available_requests: Dictionary {onu_id: [list_of_requests]}
+            clock_time: Current simulation time
             
         Returns:
-            Solicitud seleccionada para procesar
+            Selected request to process
         """
-        # Implementación por defecto - selecciona primera solicitud disponible
+        # Default implementation - selects first available request
         for onu_id, request_list in available_requests.items():
             if request_list:
                 return request_list[0]
@@ -52,32 +52,32 @@ class DBAAlgorithmInterface(ABC):
     @abstractmethod
     def get_algorithm_name(self) -> str:
         """
-        Obtener nombre del algoritmo.
+        Get algorithm name.
         
         Returns:
-            Nombre descriptivo del algoritmo
+            Descriptive algorithm name
         """
         pass
 
 class FCFSDBAAlgorithm(DBAAlgorithmInterface):
-    """Algoritmo DBA First-Come-First-Served - selecciona solicitud más antigua"""
+    """FCFS DBA Algorithm - selects oldest request"""
     
     def allocate_bandwidth(self, onu_requests: Dict[str, float], 
                           total_bandwidth: float, action: Any = None) -> Dict[str, float]:
-        """Asignación FCFS realista: distribuye ancho de banda a todas las ONUs con requests"""
+        """Realistic FCFS allocation: distributes bandwidth to all ONUs with requests"""
         allocations = {}
         
         if not onu_requests:
             return allocations
             
-        # Calcular total solicitado
+        # Calculate total requested
         total_requested = sum(onu_requests.values())
         
         if total_requested <= total_bandwidth:
-            # Si hay suficiente ancho de banda, dar a cada ONU lo que pidió
+            # If there's enough bandwidth, give each ONU what it requested
             allocations = onu_requests.copy()
         else:
-            # Si no hay suficiente, distribuir proporcionalmente
+            # If not enough, distribute proportionally
             for onu_id, requested in onu_requests.items():
                 proportion = requested / total_requested
                 allocations[onu_id] = total_bandwidth * proportion
@@ -86,10 +86,10 @@ class FCFSDBAAlgorithm(DBAAlgorithmInterface):
     
     def select_next_request(self, available_requests: Dict[str, List[Request]], 
                            clock_time: float) -> Optional[Request]:
-        """Seleccionar la solicitud más antigua entre TODAS las ONUs (FCFS verdadero)"""
+        """Select the oldest request among ALL ONUs (true FCFS)"""
         all_requests = []
         
-        # Recolectar todas las solicitudes de todas las ONUs
+        # Collect all requests from all ONUs
         for onu_id, request_list in available_requests.items():
             for request in request_list:
                 all_requests.append(request)
@@ -97,7 +97,7 @@ class FCFSDBAAlgorithm(DBAAlgorithmInterface):
         if not all_requests:
             return None
             
-        # Retornar la solicitud con tiempo de creación más temprano (FCFS verdadero)
+        # Return the request with the earliest creation time (true FCFS)
         oldest_request = min(all_requests, key=lambda r: r.created_at)
         return oldest_request
     
@@ -105,16 +105,16 @@ class FCFSDBAAlgorithm(DBAAlgorithmInterface):
         return "FCFS"
 
 class PriorityDBAAlgorithm(DBAAlgorithmInterface):
-    """Algoritmo DBA basado en prioridades - prioriza por tipo de tráfico con prevención de inanición"""
+    """Priority-based DBA algorithm - prioritizes by traffic type with starvation prevention"""
     
     def __init__(self, starvation_threshold: float = 100.0):  # 100ms threshold
         """
         Args:
-            starvation_threshold: Tiempo máximo de espera antes de promover a mayor prioridad (ms)
+            starvation_threshold: Maximum waiting time before promoting to higher priority (ms)
         """
-        self.starvation_threshold = starvation_threshold / 1000.0  # Convertir a segundos
+        self.starvation_threshold = starvation_threshold / 1000.0  # Convert to seconds
         
-        # Prioridades de tipos de tráfico (menor número = mayor prioridad)
+        # Traffic type priorities (lower number = higher priority)
         self.traffic_priorities = {
             "highest": 1,
             "high": 2, 
@@ -125,10 +125,10 @@ class PriorityDBAAlgorithm(DBAAlgorithmInterface):
     
     def allocate_bandwidth(self, onu_requests: Dict[str, float], 
                           total_bandwidth: float, action: Any = None) -> Dict[str, float]:
-        """Asignación por prioridad: da ancho de banda completo a solicitud de mayor prioridad"""
+        """Priority allocation: gives full bandwidth to highest priority request"""
         allocations = {}
         
-        # Dar ancho de banda completo a primera ONU (lógica real en select_next_request)
+        # Give full bandwidth to first ONU (real logic in select_next_request)
         if onu_requests:
             first_onu = next(iter(onu_requests))
             allocations[first_onu] = min(onu_requests[first_onu], total_bandwidth)
@@ -137,10 +137,10 @@ class PriorityDBAAlgorithm(DBAAlgorithmInterface):
     
     def select_next_request(self, available_requests: Dict[str, List[Request]], 
                            clock_time: float) -> Optional[Request]:
-        """Seleccionar solicitud de mayor prioridad con prevención de inanición"""
+        """Select highest priority request with starvation prevention"""
         all_requests = []
         
-        # Recolectar todas las solicitudes de todas las ONUs
+        # Collect all requests from all ONUs
         for onu_id, request_list in available_requests.items():
             for request in request_list:
                 all_requests.append(request)
@@ -148,29 +148,29 @@ class PriorityDBAAlgorithm(DBAAlgorithmInterface):
         if not all_requests:
             return None
         
-        # Calcular prioridad efectiva para cada solicitud
+        # Calculate effective priority for each request
         prioritized_requests = []
         for request in all_requests:
             waiting_time = clock_time - request.created_at
             
-            # Verificar inanición - promover a mayor prioridad si espera demasiado
+            # Check for starvation - promote to higher priority if waiting too long
             if waiting_time >= self.starvation_threshold:
-                effective_priority = 0  # Mayor que prioridad "highest"
+                effective_priority = 0  # Higher than "highest" priority
                 prioritized_requests.append((0, request.created_at, request))
             else:
-                # Obtener prioridad basada en tipo de tráfico
+                # Get priority based on traffic type
                 request_priority = self._get_request_priority(request)
                 prioritized_requests.append((request_priority, request.created_at, request))
         
-        # Ordenar por: 1) Prioridad (menor = mejor), 2) Tiempo de creación (más antiguo = mejor)
+        # Sort by: 1) Priority (lower = better), 2) Creation time (older = better)
         prioritized_requests.sort(key=lambda x: (x[0], x[1]))
         
-        return prioritized_requests[0][2]  # Retornar la solicitud
+        return prioritized_requests[0][2]  # Return the request
     
     def _get_request_priority(self, request: Request) -> int:
-        """Obtener la mayor prioridad de tipo de tráfico en la solicitud"""
+        """Get the highest traffic type priority in the request"""
         if not request.traffic:
-            return 999  # Prioridad más baja para tráfico vacío
+            return 999  # Lowest priority for empty traffic
         
         highest_priority = 999
         for traffic_type, amount in request.traffic.items():
@@ -185,24 +185,24 @@ class PriorityDBAAlgorithm(DBAAlgorithmInterface):
         return "Priority"
 
 class RLDBAAlgorithm(DBAAlgorithmInterface):
-    """Algoritmo DBA controlado por RL"""
+    """RL-controlled DBA algorithm"""
     
     def allocate_bandwidth(self, onu_requests: Dict[str, float], 
                           total_bandwidth: float, action: Any = None) -> Dict[str, float]:
-        """Asignación controlada por agente RL"""
+        """RL agent-controlled allocation"""
         allocations = {}
         
         if action is None:
-            # Fallback a distribución equitativa
+            # Fallback to equal distribution
             num_onus = len(onu_requests)
             equal_share = total_bandwidth / num_onus if num_onus > 0 else 0
             for onu_id in onu_requests:
                 allocations[onu_id] = min(onu_requests[onu_id], equal_share)
         else:
-            # Asignación basada en acción del usuario
-            # Verificar si la acción es un array válido con pesos
+            # Allocation based on user action
+            # Check if the action is a valid array with weights
             if hasattr(action, '__len__') and len(action) == len(onu_requests):
-                # Normalizar acciones
+                # Normalize actions
                 action_sum = sum(action) if sum(action) > 0 else 1
                 normalized_action = [a / action_sum for a in action]
                 
@@ -211,7 +211,7 @@ class RLDBAAlgorithm(DBAAlgorithmInterface):
                     allocations[onu_id] = min(onu_requests[onu_id], allocated_bandwidth)
             else:
                 print("Warning: Action format not recognized, using equal distribution.")
-                # Fallback si la acción no tiene formato esperado
+                # Fallback if action format is not expected
                 equal_share = total_bandwidth / len(onu_requests)
                 for onu_id in onu_requests:
                     allocations[onu_id] = min(onu_requests[onu_id], equal_share)
@@ -223,8 +223,8 @@ class RLDBAAlgorithm(DBAAlgorithmInterface):
 
 class StrictPriorityMinShareDBA(DBAAlgorithmInterface):
     """
-    Algoritmo DBA con prioridad estricta y garantías mínimas.
-    Asegura mínimos por tipo de tráfico y luego reparte sobrante por prioridad.
+    DBA algorithm with strict priority and minimum guarantees.
+    Ensures minimums by traffic type and then distributes surplus by priority.
     """
     def __init__(self):
         """Constructor simplificado"""

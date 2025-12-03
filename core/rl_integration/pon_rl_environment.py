@@ -7,6 +7,9 @@ import numpy as np
 from typing import Dict, Any, Tuple, Optional
 import random
 
+# Import unified reward function
+from .reward_functions import calculate_pon_reward, get_reward_components
+
 # Importaciones condicionales
 try:
     import gymnasium as gym
@@ -175,73 +178,33 @@ if GYMNASIUM_AVAILABLE:
                     self.onu_buffers[i] = max(0.0, self.onu_buffers[i] - 0.1)
 
         def _calculate_reward(self, allocations):
-            """Calcular recompensa basada en eficiencia y fairness"""
-            total_requested = np.sum(self.onu_requests) * self.total_bandwidth
-            total_allocated = np.sum(allocations)
+            """
+            Calculate reward using unified reward function.
 
-            # Componente 1: Eficiencia en utilización de ancho de banda
-            utilization_efficiency = min(total_allocated / self.total_bandwidth, 1.0)
-
-            # Componente 2: Satisfacción de demandas
-            satisfaction_rewards = []
-            for i in range(self.num_onus):
-                requested = self.onu_requests[i] * self.total_bandwidth
-                allocated = allocations[i]
-                if requested > 0:
-                    satisfaction = min(allocated / requested, 1.0)
-                    satisfaction_rewards.append(satisfaction)
-                else:
-                    satisfaction_rewards.append(1.0)
-
-            avg_satisfaction = np.mean(satisfaction_rewards)
-
-            # Componente 3: Fairness (penalizar diferencias extremas)
-            if len(satisfaction_rewards) > 1:
-                fairness = 1.0 - np.std(satisfaction_rewards)
-            else:
-                fairness = 1.0
-
-            # Componente 4: Penalización por delay alto
-            avg_delay = np.mean(self.onu_delays)
-            delay_penalty = max(0, 1.0 - avg_delay * 10)  # Penalizar delays > 0.1s
-
-            # Componente 5: Penalización por buffers llenos
-            avg_buffer = np.mean(self.onu_buffers)
-            buffer_penalty = max(0, 1.0 - avg_buffer)
-
-            # Recompensa total (weighted sum)
-            reward = (
-                0.25 * utilization_efficiency +
-                0.30 * avg_satisfaction +
-                0.20 * fairness +
-                0.15 * delay_penalty +
-                0.10 * buffer_penalty
+            This ensures consistency with RealPonEnv for proper sim-to-real transfer.
+            """
+            reward = calculate_pon_reward(
+                onu_requests=self.onu_requests,
+                allocations=allocations,
+                onu_delays=self.onu_delays,
+                onu_buffers=self.onu_buffers,
+                total_bandwidth=self.total_bandwidth
             )
-
             return reward
 
         def _get_reward_components(self, allocations):
-            """Obtener componentes individuales de la recompensa para análisis"""
-            total_allocated = np.sum(allocations)
-            utilization_efficiency = min(total_allocated / self.total_bandwidth, 1.0)
+            """
+            Get individual reward components for analysis.
 
-            satisfaction_rewards = []
-            for i in range(self.num_onus):
-                requested = self.onu_requests[i] * self.total_bandwidth
-                allocated = allocations[i]
-                if requested > 0:
-                    satisfaction = min(allocated / requested, 1.0)
-                    satisfaction_rewards.append(satisfaction)
-                else:
-                    satisfaction_rewards.append(1.0)
-
-            return {
-                'utilization_efficiency': utilization_efficiency,
-                'avg_satisfaction': np.mean(satisfaction_rewards),
-                'fairness': 1.0 - np.std(satisfaction_rewards) if len(satisfaction_rewards) > 1 else 1.0,
-                'avg_delay': np.mean(self.onu_delays),
-                'avg_buffer': np.mean(self.onu_buffers)
-            }
+            Uses unified function to ensure consistency with RealPonEnv.
+            """
+            return get_reward_components(
+                onu_requests=self.onu_requests,
+                allocations=allocations,
+                onu_delays=self.onu_delays,
+                onu_buffers=self.onu_buffers,
+                total_bandwidth=self.total_bandwidth
+            )
 
         def _get_observation(self):
             """Construir observación del estado actual"""
