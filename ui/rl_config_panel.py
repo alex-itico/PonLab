@@ -382,7 +382,20 @@ class RLConfigPanel(QWidget):
         self.timestep_spin.setDecimals(1)
         self.timestep_spin.setToolTip(tr("rl_config_panel.timestep_tooltip"))
         group_layout.addWidget(self.timestep_spin, 2, 1)
-        
+
+        # Función de recompensa
+        self.reward_function_label = QLabel("Función de Recompensa")
+        group_layout.addWidget(self.reward_function_label, 3, 0)
+        self.reward_function_combo = QComboBox()
+        self.reward_function_combo.addItems(["balanced", "latency_only", "throughput_only", "fairness_only"])
+        self.reward_function_combo.setCurrentText("balanced")
+        self.reward_function_combo.setToolTip("Selecciona la función de recompensa para el entrenamiento:\n"
+                                               "- balanced: Balancea todos los objetivos (default)\n"
+                                               "- latency_only: Optimiza para baja latencia (70% delay)\n"
+                                               "- throughput_only: Optimiza para alto throughput (50% utilización + 40% satisfacción)\n"
+                                               "- fairness_only: Optimiza para equidad entre ONUs (60% fairness)")
+        group_layout.addWidget(self.reward_function_combo, 3, 1)
+
         layout.addWidget(self.pon_environment_group)
         
     def setup_algorithm_section(self, layout):
@@ -736,7 +749,9 @@ class RLConfigPanel(QWidget):
             'total_timesteps': self.timesteps_spin.value(),
             'eval_freq': self.eval_freq_spin.value(),
             'auto_save': self.auto_save_check.isChecked(),
-            'use_gpu': self.use_gpu_check.isChecked()
+            'use_gpu': self.use_gpu_check.isChecked(),
+            'reward_function': self.reward_function_combo.currentText(),
+            'training_env': 'realistic'  # FIJO: Solo RealPonEnv
         }
 
         # Intentar obtener configuración de la topología del canvas
