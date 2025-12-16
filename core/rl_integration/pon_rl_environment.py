@@ -24,7 +24,7 @@ if GYMNASIUM_AVAILABLE:
     class PonRLEnvironment(gym.Env):
         """Entorno RL nativo de PonLab usando Gymnasium"""
 
-        def __init__(self, num_onus=4, traffic_scenario='residential_medium', onu_configs=None):
+        def __init__(self, num_onus=4, traffic_scenario='residential_medium', onu_configs=None, reward_function='balanced'):
             super().__init__()
 
             if onu_configs:
@@ -35,6 +35,10 @@ if GYMNASIUM_AVAILABLE:
                 self.onu_configs = None
                 self.num_onus = num_onus
                 self.traffic_scenario = traffic_scenario
+
+            # Reward function type
+            self.reward_function = reward_function
+            self.reward_weights = self._get_reward_weights(reward_function)
 
             # Espacios de observación y acción
             obs_size = self.num_onus * 3 + 1
@@ -70,6 +74,40 @@ if GYMNASIUM_AVAILABLE:
                 'mixed': {'base_demand': 0.5, 'variation': 0.25, 'peak_prob': 0.18}
             }
             return scenarios.get(scenario, scenarios['residential_medium'])
+
+        def _get_reward_weights(self, reward_function):
+            """Obtener pesos de la función de recompensa según el tipo"""
+            weight_configs = {
+                'balanced': {
+                    'utilization': 0.25,
+                    'satisfaction': 0.30,
+                    'fairness': 0.20,
+                    'delay': 0.15,
+                    'buffer': 0.10
+                },
+                'latency_only': {
+                    'utilization': 0.05,
+                    'satisfaction': 0.10,
+                    'fairness': 0.05,
+                    'delay': 0.70,
+                    'buffer': 0.10
+                },
+                'throughput_only': {
+                    'utilization': 0.50,
+                    'satisfaction': 0.40,
+                    'fairness': 0.05,
+                    'delay': 0.025,
+                    'buffer': 0.025
+                },
+                'fairness_only': {
+                    'utilization': 0.10,
+                    'satisfaction': 0.20,
+                    'fairness': 0.60,
+                    'delay': 0.05,
+                    'buffer': 0.05
+                }
+            }
+            return weight_configs.get(reward_function, weight_configs['balanced'])
 
         def reset(self, seed=None, options=None):
             """Reiniciar el entorno"""
@@ -188,7 +226,8 @@ if GYMNASIUM_AVAILABLE:
                 allocations=allocations,
                 onu_delays=self.onu_delays,
                 onu_buffers=self.onu_buffers,
-                total_bandwidth=self.total_bandwidth
+                total_bandwidth=self.total_bandwidth,
+                weights=self.reward_weights
             )
             return reward
 
@@ -250,10 +289,11 @@ else:
             return observation, reward, terminated, False, {}
 
 
-def create_pon_rl_environment(num_onus=4, traffic_scenario='residential_medium', onu_configs=None, **kwargs):
+def create_pon_rl_environment(num_onus=4, traffic_scenario='residential_medium', onu_configs=None, reward_function='balanced', **kwargs):
     """Factory function para crear entorno RL de PonLab"""
     return PonRLEnvironment(
         num_onus=num_onus,
         traffic_scenario=traffic_scenario,
-        onu_configs=onu_configs
+        onu_configs=onu_configs,
+        reward_function=reward_function
     )

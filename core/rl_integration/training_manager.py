@@ -4,6 +4,7 @@ Gestor de entrenamiento RL completamente interno - SIN dependencias externas
 """
 
 import os
+import json
 from typing import Dict, Any, Optional
 from datetime import datetime
 from PyQt5.QtCore import QObject, pyqtSignal, QTimer
@@ -226,7 +227,29 @@ class TrainingManager(QObject):
             print(f"ERROR: {error_msg}")
             self.error_occurred.emit(error_msg)
             return False
-    
+
+    # MÉTODOS DE VALIDACIÓN MÚLTIPLE - DESHABILITADOS (no mejoran rendimiento RL)
+    # La validación se hace automáticamente durante el entrenamiento con eval_freq
+
+    def run_validation(self) -> bool:
+        """
+        [DESHABILITADO] Validación múltiple en ambientes
+
+        No se usa porque:
+        - No mejora el rendimiento del RL
+        - SB3 ya valida durante entrenamiento (eval_freq)
+        - Solo RealPonEnv se usa ahora
+        """
+        return True  # Deshabilitado
+
+    def _validate_in_environment(self, env_type: str, n_eval_episodes: int = 10):
+        """[DESHABILITADO] Validar en ambiente específico"""
+        return None
+
+    def _save_validation_results(self, validation_results: Dict[str, Any]):
+        """[DESHABILITADO] Guardar resultados de validación"""
+        pass
+
     def save_model(self, custom_name: Optional[str] = None) -> bool:
         """
         Guardar modelo entrenado
@@ -523,13 +546,14 @@ class TrainingManager(QObject):
         """Callback cuando se completa el entrenamiento"""
         self.is_training = False
         self.metrics_timer.stop()
-        
+
         # Auto-guardar si está configurado
         if self.current_config.get('auto_save', True):
             self.save_model()
-        
+
         self.training_status_changed.emit("completed")
         print("Entrenamiento completado")
+        print("[INFO] El modelo ya fue validado durante el entrenamiento (eval_freq)")
     
     def _on_training_error(self, error_msg: str):
         """Callback para errores de entrenamiento"""

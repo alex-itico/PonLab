@@ -116,25 +116,44 @@ class RLAdapter(QObject):
 
         if RL_AVAILABLE:
             try:
-                from .pon_rl_environment import create_pon_rl_environment
+                training_env_type = params.get('training_env', 'simplified')
 
-                # Parámetros para el entorno
+                # Parámetros comunes
                 env_params = {
                     'num_onus': params.get('num_onus', 4),
                     'traffic_scenario': params.get('traffic_scenario', 'residential_medium'),
-                    'onu_configs': params.get('onu_configs') # Puede ser None
+                    'reward_function': params.get('reward_function', 'balanced')
                 }
 
-                # Crear entorno nativo usando gymnasium
-                self.env = create_pon_rl_environment(**env_params)
+                # Decidir qué ambiente crear según configuración
+                if training_env_type == 'realistic':
+                    # Crear ambiente realista (RealPonEnv)
+                    from .real_pon_env import RealPonEnv
 
-                print("[OK] Entorno RL nativo creado usando gymnasium")
-                if env_params.get('onu_configs'):
-                    print(f"   ONUs: {len(env_params['onu_configs'])} (desde topología)")
+                    max_episode_steps = int(params.get('episode_duration', 1.0) / params.get('simulation_timestep', 0.001))
+                    self.env = RealPonEnv(
+                        num_onus=env_params['num_onus'],
+                        traffic_scenario=env_params['traffic_scenario'],
+                        max_episode_steps=max_episode_steps,
+                        reward_function=env_params['reward_function']
+                    )
+                    print("[OK] Entorno REALISTA creado (RealPonEnv)")
+                    print("[WARNING] Entrenamiento será MUY LENTO (~2-4 horas)")
+                else:
+                    # Crear ambiente simplificado (PonRLEnvironment)
+                    from .pon_rl_environment import create_pon_rl_environment
+
+                    env_params['onu_configs'] = params.get('onu_configs')  # Solo para simplificado
+                    self.env = create_pon_rl_environment(**env_params)
+                    print("[OK] Entorno SIMPLIFICADO creado (PonRLEnvironment)")
+
+                # Info común
+                if params.get('onu_configs') and training_env_type == 'simplified':
+                    print(f"   ONUs: {len(params['onu_configs'])} (desde topología)")
                 else:
                     print(f"   ONUs: {env_params['num_onus']} (manual)")
                     print(f"   Escenario: {env_params['traffic_scenario']}")
-                
+                print(f"   Función de Recompensa: {env_params['reward_function']}")
                 print(f"   Observation Space: {self.env.observation_space}")
                 print(f"   Action Space: {self.env.action_space}")
 

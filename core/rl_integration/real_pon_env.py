@@ -30,7 +30,7 @@ class RealPonEnv(gym.Env):
     event-based simulation instead of a simplified mathematical model.
     """
 
-    def __init__(self, num_onus: int = 4, traffic_scenario: str = "residential_medium", max_episode_steps: int = 1000):
+    def __init__(self, num_onus: int = 4, traffic_scenario: str = "residential_medium", max_episode_steps: int = 1000, reward_function: str = 'balanced'):
         """
         Initializes the RealPonEnv.
 
@@ -38,6 +38,7 @@ class RealPonEnv(gym.Env):
             num_onus (int): The number of ONUs in the network.
             traffic_scenario (str): The traffic scenario to use.
             max_episode_steps (int): The maximum number of steps per episode.
+            reward_function (str): The reward function to use ('balanced', 'latency_only', 'throughput_only', 'fairness_only').
         """
         if not GYMNASIUM_AVAILABLE:
             raise ImportError("Cannot create RealPonEnv: gymnasium library is not installed.")
@@ -47,6 +48,10 @@ class RealPonEnv(gym.Env):
         # --- Simulation Configuration ---
         self.num_onus = num_onus
         self.traffic_scenario = traffic_scenario
+
+        # Reward function type
+        self.reward_function = reward_function
+        self.reward_weights = self._get_reward_weights(reward_function)
 
         self.dba = SmartRLDBAAlgorithm(model_path=None, num_onus=self.num_onus)
 
@@ -194,10 +199,45 @@ class RealPonEnv(gym.Env):
             allocations=allocations,
             onu_delays=onu_delays,
             onu_buffers=onu_buffers,
-            total_bandwidth=self.sim.channel_capacity  # in bps
+            total_bandwidth=self.sim.channel_capacity,  # in bps
+            weights=self.reward_weights
         )
 
         return float(reward)
+
+    def _get_reward_weights(self, reward_function: str) -> Dict[str, float]:
+        """Obtener pesos de la función de recompensa según el tipo"""
+        weight_configs = {
+            'balanced': {
+                'utilization': 0.25,
+                'satisfaction': 0.30,
+                'fairness': 0.20,
+                'delay': 0.15,
+                'buffer': 0.10
+            },
+            'latency_only': {
+                'utilization': 0.05,
+                'satisfaction': 0.10,
+                'fairness': 0.05,
+                'delay': 0.70,
+                'buffer': 0.10
+            },
+            'throughput_only': {
+                'utilization': 0.50,
+                'satisfaction': 0.40,
+                'fairness': 0.05,
+                'delay': 0.025,
+                'buffer': 0.025
+            },
+            'fairness_only': {
+                'utilization': 0.10,
+                'satisfaction': 0.20,
+                'fairness': 0.60,
+                'delay': 0.05,
+                'buffer': 0.05
+            }
+        }
+        return weight_configs.get(reward_function, weight_configs['balanced'])
 
     def reset(self, seed: Optional[int] = None, options: Optional[Dict] = None) -> Tuple[np.ndarray, Dict]:
         """
